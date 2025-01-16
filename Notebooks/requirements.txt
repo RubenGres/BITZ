@@ -1,0 +1,3 @@
+openai
+gradio
+httpx==0.27.2
