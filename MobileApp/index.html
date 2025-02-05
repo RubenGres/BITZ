@@ -45,6 +45,13 @@
             <h2>Species Quest 🌱</h2>
             <div id="chat-box" class="border p-3 mb-3" style="height: 400px; overflow-y: auto;"></div>
             
+            <!-- Spinner -->
+            <div id="spinner" class="text-center" style="display: none;">
+                <div class="spinner-border text-success" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+
             <div class="input-group mb-2">
                 <input type="text" id="user-input" class="form-control" placeholder="Type your message...">
                 <button class="btn btn-success" onclick="sendMessage()">Send</button>
@@ -63,6 +70,8 @@
     </div>
 
     <script>
+        backend_url = "https://scaling-space-carnival-qvvrrjxqgrp246pj-5000.app.github.dev"
+
         let map = L.map('map').setView([48.8566, 2.3522], 5);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
@@ -72,6 +81,20 @@
         let selectedLat, selectedLon;
         const mapCursor = document.getElementById('map-cursor');
         const coordinatesDisplay = document.getElementById('coordinates');
+
+        function getUserLocation() {
+            return new Promise((resolve) => {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        resolve({
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude
+                        });
+                    },
+                    () => resolve(null)
+                );
+            });
+        }
 
         // Center cursor on map
         function updateMapCursor(e) {
@@ -157,7 +180,6 @@
         
         document.getElementById('image-upload').addEventListener('change', function(event) {
             const file = event.target.files[0];
-            const imagePreview = document.getElementById('image-preview');
             
             if (file) {
                 const reader = new FileReader();
@@ -169,45 +191,81 @@
                 
                 reader.readAsDataURL(file);
             }
+
+            const imagePreview = document.getElementById('image-preview');
         });
 
-        function sendMessage() {
+        async function sendMessage() {
             let input = document.getElementById("user-input");
             let chatBox = document.getElementById("chat-box");
             let userMessage = input.value.trim();
-            let imagePreview = document.getElementById('image-preview');
+            let imagePreview = document.getElementById("image-preview");
+            let imagePreview_src = document.getElementById("image-preview").src;
+            let userLocation = "Amstelpark, Amsterdam";
+            let spinner = document.getElementById("spinner");
 
-            // Create message container
-            let messageDiv = document.createElement('div');
-            
-            // Add text if exists
-            if (userMessage) {
-                messageDiv.innerHTML += `<div><b>You:</b> ${userMessage}</div>`;
+            if (!userMessage && (!imagePreview_src || imagePreview_src === "")) {
+                return; // Prevent sending empty messages
             }
 
-            // Add image if exists
-            if (imagePreview.src && imagePreview.src !== '') {
-                messageDiv.innerHTML += `<img src="${imagePreview.src}" style="max-width: 200px; max-height: 200px;">`;
-            }
-
-            // Append to chat
-            chatBox.appendChild(messageDiv);
-            
-            // Reset inputs
             input.value = "";
             imagePreview.src = "";
-            imagePreview.style.display = 'none';
-            document.getElementById('image-upload').value = '';
-
-            // Scroll to bottom
+            imagePreview.style.display = "none";
+            document.getElementById("image-upload").value = "";
             chatBox.scrollTop = chatBox.scrollHeight;
 
-            // Placeholder bot response
-            setTimeout(() => {
-                chatBox.innerHTML += `<div><b>Bot:</b> I'm just a placeholder bot!</div>`;
+            spinner.style.display = "block"; // Show spinner
+
+            // Create message container
+            let messageDiv = document.createElement("div");
+            messageDiv.innerHTML += `<div><b>You:</b> ${userMessage}</div>`;
+            chatBox.appendChild(messageDiv);
+            
+            let imageBase64 = "";
+            if (imagePreview_src && imagePreview_src.startsWith("data:image")) {
+                imageBase64 = imagePreview_src.split(",")[1];
+                messageDiv.innerHTML += `<img src="${imagePreview_src}" style="max-width: 200px; max-height: 200px;">`;
+            }
+
+            try {
+                let response = await fetch(`${backend_url}/chat`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    mode: "cors",
+                    body: JSON.stringify({
+                        message: userMessage,
+                        history: getChatHistory(),
+                        user_location: userLocation,
+                        image_b64: imageBase64
+                    })
+                });
+
+                let data = await response.json();
+                let botResponse = document.createElement("div");
+                botResponse.innerHTML = `<div><b>OAAK:</b> ${data.response}</div>`;
+                chatBox.appendChild(botResponse);
                 chatBox.scrollTop = chatBox.scrollHeight;
-            }, 300);
+            } catch (error) {
+                console.error("Error sending message:", error);
+            } finally {
+                spinner.style.display = "none"; // Hide spinner after response
+            }
         }
+
+
+        function getChatHistory() {
+            let messages = document.querySelectorAll("#chat-box div");
+            let history = [];
+            for (let i = 0; i < messages.length; i += 2) {
+                let userMsg = messages[i]?.textContent.replace("You: ", "");
+                let botMsg = messages[i + 1]?.textContent.replace("Bot: ", "");
+                if (userMsg && botMsg) {
+                    history.push([userMsg, botMsg]);
+                }
+            }
+            return history;
+        }
+
     </script>
 </body>
 </html>
