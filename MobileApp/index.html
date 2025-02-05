@@ -227,6 +227,8 @@
                 messageDiv.innerHTML += `<img src="${imagePreview_src}" style="max-width: 200px; max-height: 200px;">`;
             }
 
+            messageDiv.innerHTML += `<br>`
+
             try {
                 let response = await fetch(`${backend_url}/chat`, {
                     method: "POST",
@@ -242,7 +244,7 @@
 
                 let data = await response.json();
                 let botResponse = document.createElement("div");
-                botResponse.innerHTML = `<div><b>OAAK:</b> ${data.response}</div>`;
+                botResponse.innerHTML = `<div><b>OAAK:</b> ${data.response}</div><br>`;
                 chatBox.appendChild(botResponse);
                 chatBox.scrollTop = chatBox.scrollHeight;
             } catch (error) {
