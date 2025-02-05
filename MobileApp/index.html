@@ -195,6 +195,8 @@
             const imagePreview = document.getElementById('image-preview');
         });
 
+
+        const conversation_id = Math.random().toString().slice(2, 12);
         async function sendMessage() {
             let input = document.getElementById("user-input");
             let chatBox = document.getElementById("chat-box");
@@ -237,6 +239,7 @@
                     body: JSON.stringify({
                         message: userMessage,
                         history: getChatHistory(),
+                        conversation_id: conversation_id,
                         user_location: userLocation,
                         image_b64: imageBase64
                     })

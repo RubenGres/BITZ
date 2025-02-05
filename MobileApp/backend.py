@@ -1,5 +1,6 @@
 import os
 import base64
+import json
 from io import BytesIO
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -17,12 +18,35 @@ model = ChatOpenAI(model="gpt-4o")
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
-def process_image(image):
-    """Convert an image file to base64."""
-    img = Image.open(image)
-    buffered = BytesIO()
-    img.save(buffered, format="PNG")
-    return base64.b64encode(buffered.getvalue()).decode("utf-8")
+HISTORY_DIR = "./history"
+os.makedirs(HISTORY_DIR, exist_ok=True)
+
+def save_conversation(conversation_id, history, image_b64=None):
+    """Save conversation history and images."""
+    convo_dir = os.path.join(HISTORY_DIR, conversation_id)
+    os.makedirs(convo_dir, exist_ok=True)
+
+    # Save conversation history as JSON
+    history_file = os.path.join(convo_dir, "history.json")
+    with open(history_file, "w") as f:
+        json.dump(history, f, indent=4)
+
+    # Save image if provided
+    if image_b64:
+        image_data = base64.b64decode(image_b64)
+        image_path = os.path.join(convo_dir, f"{len(history)//2}_image.jpg")
+        with open(image_path, "wb") as img_file:
+            img_file.write(image_data)
+
+def load_conversation(conversation_id):
+    """Load conversation history if it exists."""
+    convo_dir = os.path.join(HISTORY_DIR, conversation_id)
+    history_file = os.path.join(convo_dir, "history.json")
+    
+    if os.path.exists(history_file):
+        with open(history_file, "r") as f:
+            return json.load(f)
+    return []
 
 @app.route("/", methods=["GET"])
 def home():
@@ -32,38 +56,40 @@ def home():
 def chat():
     """Handles text and image input for biodiversity exploration."""
     data = request.json
+    conversation_id = data.get("conversation_id")
     message = data.get("message", "")
-    history = data.get("history", [])  # Expecting a list of (user_msg, assistant_msg) tuples
     user_location = data.get("user_location")
     image_b64 = data.get("image_b64")
+
+    if not conversation_id:
+        return jsonify({"error": "Please provide a conversation_id."}), 400
 
     if not user_location:
         return jsonify({"error": "Please provide a user location."}), 400
     
-    system_prompt = """
-    You are a helpful assitant helping users identifying the biodiversity around them.
-    Ask for pictures of what there is too see around the user and ask to look for specific species giving detailed instructions.
+    system_prompt = f"""
+    You are a helpful assistant helping users identify the biodiversity around them.
+    Ask for pictures of what there is to see around the user and request images of specific species, providing detailed instructions.
     
-    The flow is as follow:
-    1. user submit an image of a species (insect, bird, animal, plant, etc.)
-    2. assistant analyze this image and return a ecological fact about the species
-    3. assistant propose a new idea to keep exploring new species
-    4. go back to 1.
-
-    Use picture from the user environment to start guiding them in their quest of finding species.
-    When telling what species the user has to look for and how to look for them, ask them for a picture for confirmation.
-    Once you have a picture return facts about the species if you can identify it from the picture.
-    The fact should'nt be longer than 3 lines. Never use more than 5 sentences for each reply.
-
+    The flow is as follows:
+    1. The user submits an image of a species (insect, bird, animal, plant, etc.).
+    2. You analyze the image and return an ecological fact about the species.
+    3. You propose a new idea to explore more species.
+    4. Repeat from step 1.
+    
+    Use pictures from the user's environment to guide them in their quest to discover species.
+    When instructing them on which species to look for and how, ask for a picture as confirmation.
+    If an image is provided, try to identify the species and return a brief fact (maximum 3 lines, no more than 5 sentences total).
+    
     The user is based in {user_location}. Ask them to take a picture of their surroundings to initiate the hunt.
     """
 
-
+    history = load_conversation(conversation_id)
     messages = [SystemMessage(content=system_prompt)]
 
-    for user_content, assistant_content in history:
-        messages.append(HumanMessage(content=[{"type": "text", "text": user_content}]))
-        messages.append(AIMessage(content=assistant_content))
+    for entry in history:
+        messages.append(HumanMessage(content=[{"type": "text", "text": entry["user"]}]))
+        messages.append(AIMessage(content=entry["assistant"]))
     
     user_message_content = [{"type": "text", "text": message}]
     
@@ -76,6 +102,10 @@ def chat():
     messages.append(HumanMessage(content=user_message_content))
     
     ai_response = model.invoke(messages)
+    
+    # Save updated history
+    history.append({"user": message, "assistant": ai_response.content})
+    save_conversation(conversation_id, history, image_b64)
     
     return jsonify({"response": ai_response.content})
 
