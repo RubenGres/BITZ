@@ -1,4 +1,5 @@
 backend_url = "https://oaak.rubengr.es"
+let userLocation = "Horta de la Trinitat. Pg. de Santa Coloma, 60, Sant Andreu, 08030 Barcelona";
 
 let map = L.map('map').setView([48.8566, 2.3522], 5);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -70,6 +71,18 @@ function goToPage(pageNumber) {
     if (pageNumber === 2) {
         fetchSpecies();
     }
+
+    if (pageNumber === 3) {
+        send_first_message();
+    }
+}
+
+function send_first_message() {
+    let chatBox = document.getElementById("chat-box");
+    let botResponse = document.createElement("div");
+    botResponse.innerHTML = `<div><b>OAAK:</b> Hello! Ready to start your quest? <br> To begin please upload a picture of your surroundings! </div><br>`;
+    chatBox.appendChild(botResponse);
+    chatBox.scrollTop = chatBox.scrollHeight;
 }
 
 function fetchSpecies() {
@@ -131,7 +144,6 @@ async function sendMessage() {
     let userMessage = input.value.trim();
     let imagePreview = document.getElementById("image-preview");
     let imagePreview_src = document.getElementById("image-preview").src;
-    let userLocation = "Amstelpark, Amsterdam";
     let spinner = document.getElementById("spinner");
 
     if (!userMessage && (!imagePreview_src || imagePreview_src === "")) {
