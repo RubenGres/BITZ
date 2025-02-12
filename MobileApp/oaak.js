@@ -136,14 +136,15 @@ document.getElementById('image-upload').addEventListener('change', function(even
     const imagePreview = document.getElementById('image-preview');
 });
 
+const conversation_id = `${Date.now()}${Math.floor(performance.now())}`;
 
-const conversation_id = Math.random().toString().slice(2, 12);
 async function sendMessage() {
     let input = document.getElementById("user-input");
     let chatBox = document.getElementById("chat-box");
     let userMessage = input.value.trim();
     let imagePreview = document.getElementById("image-preview");
-    let imagePreview_src = document.getElementById("image-preview").src;
+    let imagePreview_src = imagePreview.src;
+
     let spinner = document.getElementById("spinner");
 
     if (!userMessage && (!imagePreview_src || imagePreview_src === "")) {
@@ -162,14 +163,14 @@ async function sendMessage() {
     let messageDiv = document.createElement("div");
     messageDiv.innerHTML += `<div><b>You:</b> ${userMessage}</div>`;
     chatBox.appendChild(messageDiv);
-    
+
     let imageBase64 = "";
     if (imagePreview_src && imagePreview_src.startsWith("data:image")) {
-        imageBase64 = imagePreview_src.split(",")[1];
-        messageDiv.innerHTML += `<img src="${imagePreview_src}" style="max-width: 200px; max-height: 200px;"><br>`;
+        imageBase64 = await resizeBase64Image(imagePreview_src, 512, 512);
+        messageDiv.innerHTML += `<img src="${imageBase64}" style="max-width: 200px; max-height: 200px;"><br>`;
     }
 
-    messageDiv.innerHTML += `<br>`
+    messageDiv.innerHTML += `<br>`;
 
     try {
         let response = await fetch(`${backend_url}/chat`, {
@@ -181,7 +182,7 @@ async function sendMessage() {
                 history: getChatHistory(),
                 conversation_id: conversation_id,
                 user_location: userLocation,
-                image_b64: imageBase64
+                image_b64: imageBase64.split(",")[1] // Send only Base64 data
             })
         });
 
@@ -195,6 +196,32 @@ async function sendMessage() {
     } finally {
         spinner.style.display = "none"; // Hide spinner after response
     }
+}
+
+async function resizeBase64Image(base64, maxWidth, maxHeight) {
+    return new Promise((resolve) => {
+        let img = new Image();
+        img.onload = function () {
+            let canvas = document.createElement("canvas");
+            let ctx = canvas.getContext("2d");
+
+            // Maintain aspect ratio
+            let width = img.width;
+            let height = img.height;
+            if (width > maxWidth || height > maxHeight) {
+                let ratio = Math.min(maxWidth / width, maxHeight / height);
+                width = Math.round(width * ratio);
+                height = Math.round(height * ratio);
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            ctx.drawImage(img, 0, 0, width, height);
+
+            resolve(canvas.toDataURL("image/jpeg", 0.7)); // Convert to JPEG with compression
+        };
+        img.src = base64;
+    });
 }
 
 
