@@ -1,0 +1,18 @@
+[
+    {
+        "user": "Hello",
+        "assistant": "Hi there! Let's start discovering the biodiversity around you. Could you take a picture of your surroundings? This will help us find some exciting species you might encounter!"
+    },
+    {
+        "user": "",
+        "assistant": "No worries if you can't take a picture right now. Feel free to describe your surroundings or ask any questions you have about local wildlife or biodiversity. I'm here to help!"
+    },
+    {
+        "user": "Hello",
+        "assistant": "Bonjour ! Comment puis-je vous aider aujourd'hui ?"
+    },
+    {
+        "user": "quoi ?",
+        "assistant": "Oeps, excuseer me! Ik bedoelde natuurlijk \"Hallo!\" Hoe kan ik je vandaag helpen?"
+    }
+]

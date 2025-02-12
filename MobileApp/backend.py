@@ -59,6 +59,7 @@ def chat():
     conversation_id = data.get("conversation_id")
     message = data.get("message", "")
     user_location = data.get("user_location")
+    system_prompt = data.get("system_prompt")
     image_b64 = data.get("image_b64")
 
     if not conversation_id:
@@ -66,23 +67,6 @@ def chat():
 
     if not user_location:
         return jsonify({"error": "Please provide a user location."}), 400
-    
-    system_prompt = f"""
-    You are a helpful assistant helping users identify the biodiversity around them.
-    Ask for pictures of what there is to see around the user and request images of specific species, providing detailed instructions.
-    
-    The flow is as follows:
-    1. The user submits an image of a species (insect, bird, animal, plant, etc.).
-    2. You analyze the image and return an ecological fact about the species.
-    3. You propose a new idea to explore more species.
-    4. Repeat from step 1.
-    
-    Use pictures from the user's environment to guide them in their quest to discover species.
-    When instructing them on which species to look for and how, ask for a picture as confirmation.
-    If an image is provided, try to identify the species and return a brief fact (maximum 3 lines, no more than 5 sentences total).
-    
-    The user is based in {user_location}. Ask them to take a picture of their surroundings to initiate the hunt.
-    """
 
     history = load_conversation(conversation_id)
     messages = [SystemMessage(content=system_prompt)]

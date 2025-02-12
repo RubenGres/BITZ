@@ -1,4 +1,4 @@
-backend_url = "https://71vj54rwt3eifq-5000.proxy.runpod.net"
+backend_url = "https://oaak.rubengr.es"
 let userLocation = "Horta de la Trinitat. Pg. de Santa Coloma, 60, Sant Andreu, 08030 Barcelona";
 
 let map = L.map('map').setView([48.8566, 2.3522], 5);
@@ -142,6 +142,7 @@ async function sendMessage() {
     let input = document.getElementById("user-input");
     let chatBox = document.getElementById("chat-box");
     let userMessage = input.value.trim();
+    let system_prompt = document.getElementById("system_prompt").value
     let imagePreview = document.getElementById("image-preview");
     let imagePreview_src = imagePreview.src;
 
@@ -178,6 +179,7 @@ async function sendMessage() {
             headers: { "Content-Type": "application/json" },
             mode: "cors",
             body: JSON.stringify({
+                system_prompt: system_prompt,
                 message: userMessage,
                 history: getChatHistory(),
                 conversation_id: conversation_id,
