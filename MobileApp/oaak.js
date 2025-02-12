@@ -1,4 +1,4 @@
-backend_url = "https://oaak.rubengr.es"
+backend_url = "https://71vj54rwt3eifq-5000.proxy.runpod.net"
 let userLocation = "Horta de la Trinitat. Pg. de Santa Coloma, 60, Sant Andreu, 08030 Barcelona";
 
 let map = L.map('map').setView([48.8566, 2.3522], 5);
