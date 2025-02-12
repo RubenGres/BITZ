@@ -166,7 +166,7 @@ async function sendMessage() {
 
     let imageBase64 = "";
     if (imagePreview_src && imagePreview_src.startsWith("data:image")) {
-        imageBase64 = await resizeBase64Image(imagePreview_src, 512, 512);
+        imageBase64 = await resizeBase64Image(imagePreview_src, 2000, 2000);
         messageDiv.innerHTML += `<img src="${imageBase64}" style="max-width: 200px; max-height: 200px;"><br>`;
     }
 
