@@ -21,15 +21,21 @@ CORS(app)  # Enable CORS for all routes
 HISTORY_DIR = "./history"
 os.makedirs(HISTORY_DIR, exist_ok=True)
 
-def save_conversation(conversation_id, history, image_b64=None):
+def save_conversation(system_prompt, conversation_id, history, image_b64=None):
     """Save conversation history and images."""
     convo_dir = os.path.join(HISTORY_DIR, conversation_id)
     os.makedirs(convo_dir, exist_ok=True)
 
+    # Include system_prompt in the history
+    conversation_data = {
+        "system_prompt": system_prompt,
+        "history": history
+    }
+
     # Save conversation history as JSON
     history_file = os.path.join(convo_dir, "history.json")
     with open(history_file, "w") as f:
-        json.dump(history, f, indent=4)
+        json.dump(conversation_data, f, indent=4)
 
     # Save image if provided
     if image_b64:
@@ -89,7 +95,7 @@ def chat():
     
     # Save updated history
     history.append({"user": message, "assistant": ai_response.content})
-    save_conversation(conversation_id, history, image_b64)
+    save_conversation(system_prompt, conversation_id, history, image_b64)
     
     return jsonify({"response": ai_response.content})
 
