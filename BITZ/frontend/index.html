@@ -12,7 +12,14 @@
 
 <body>
     <div class="container mt-4">
-        <div id="page1">
+        <div id="page0">
+            <h2>Choose Flavor 👩‍🍳</h2>
+            <div class="button-container" id="buttonContainer">
+
+            </div>
+        </div>
+
+        <div id="page1" style="display: none;">
             <h2>Choose Location 📍</h2>
             <label for="place_name" class="form-label">Enter place name or scroll on the map:</label>
             
@@ -62,30 +69,15 @@
                 <button class="btn btn-outline-secondary" onclick="document.getElementById('image-upload').click()">
                     📷 Take Photo
                 </button>
-                <img id="image-preview" src="" style="display:none;">
+                <img id="image-preview" src="#" style="display:none;">
             </div>
-            
+
             <textarea name="system_prompt" id="system_prompt" rows="10" class="form" style="width: 100%;">
-You are a helpful assistant helping users identify the biodiversity around them.
-Ask for pictures of what there is to see around the user and request images of specific species, providing detailed instructions.
-
-The flow is as follows:
-1. The user submits an image of a species (insect, bird, animal, plant, etc.).
-2. You analyze the image and return an ecological fact about the species.
-3. You propose a new idea to explore more species.
-4. Repeat from step 1.
-
-Use pictures from the user's environment to guide them in their quest to discover species.
-When instructing them on which species to look for and how, ask for a picture as confirmation.
-If an image is provided, try to identify the species and return a brief fact (maximum 3 lines, no more than 5 sentences total).
-
-The user is based in {user_location}. Ask them to take a picture of their surroundings to initiate the hunt.
             </textarea>
-
         </div>
-
     </div>
 
+    <script src="flavors.js"></script>
     <script src="oaak.js"></script>
 </body>
 </html>

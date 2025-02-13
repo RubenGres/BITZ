@@ -1,19 +1,27 @@
 const backend_url = "https://oaak.rubengr.es";
 const max_resolution = 2000
 
-let userLocation = "No user provided location";
-let userLocationName;
-let marker;
-let map;
+const conversation_id = `${Date.now()}${Math.floor(performance.now())}`;
 const mapCursor = document.getElementById('map-cursor');
 const coordinatesDisplay = document.getElementById('coordinates');
 
-async function initMap() {
-    userLocation = await getUserLocation();
-    let selectedLat = userLocation ? userLocation.latitude : 48.8566;
-    let selectedLon = userLocation ? userLocation.longitude : 2.3522;
+let userLocation = {latitude: 0, longitude: 0};
+let userLocationName = "unknown";
+let marker;
+let map;
 
-    map = L.map('map').setView([selectedLat, selectedLon], 20);
+async function initMap() {
+    current_user_location = await getUserLocation();
+    let selectedLat = current_user_location ? current_user_location.latitude : 0.0;
+    let selectedLon = current_user_location ? current_user_location.longitude : 0.0;
+
+    let zoom = current_user_location ? 20 : 5
+
+    map = L.map('map').setView([selectedLat, selectedLon], zoom);
+
+    map.on('move', function () {
+        updateMapCursor();
+    });
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
@@ -34,8 +42,6 @@ async function getUserLocation() {
     });
 }
 
-initMap();
-
 async function setUserLocationName(latitude, longitude) {
     const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`;
 
@@ -54,21 +60,26 @@ async function setUserLocationName(latitude, longitude) {
     }
 }
 
-// Center cursor on map
-function updateMapCursor(e) {
+function updateMapCursor() {
     const mapContainer = document.getElementById('map-container');
+    if (!mapContainer) return;
+
     const mapRect = mapContainer.getBoundingClientRect();
     const centerX = mapRect.width / 2;
-    const centerY = (mapRect.height / 2);
+    const centerY = mapRect.height / 2;
 
     mapCursor.style.left = `${centerX}px`;
     mapCursor.style.top = `${centerY}px`;
-    
-    coordinatesDisplay.innerHTML = `Lat: ${userLocation.latitude} | Lon: ${userLocation.longitude}`;
-}
 
-// Initial cursor placement
-updateMapCursor();
+    const center = map.getCenter();
+    userLocation = {
+        latitude: center.lat,
+        longitude: center.lng
+    };
+
+    // Update displayed coordinates
+    coordinatesDisplay.innerHTML = `Lat: ${center.lat.toFixed(6)} | Lon: ${center.lng.toFixed(6)}`;
+}
 
 function searchPlace() {
     let place = document.getElementById("place_name").value;
@@ -83,22 +94,6 @@ function searchPlace() {
         });
 }
 
-// Rest of the previous script remains the same
-function goToPage(pageNumber) {
-    document.getElementById("page1").style.display = pageNumber === 1 ? "block" : "none";
-    document.getElementById("page2").style.display = pageNumber === 2 ? "block" : "none";
-    document.getElementById("page3").style.display = pageNumber === 3 ? "block" : "none";
-    
-    if (pageNumber === 2) {
-        fetchSpecies();
-        setUserLocationName(userLocation.latitude, userLocation.longitude);
-    }
-
-    if (pageNumber === 3) {
-        send_first_message();
-    }
-}
-
 function send_first_message() {
     let chatBox = document.getElementById("chat-box");
     let botResponse = document.createElement("div");
@@ -107,11 +102,11 @@ function send_first_message() {
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-function fetchSpecies() {
+function fetchSpecies(latitude, longitude) {
     const radius = 10; // 10 km radius, adjust as needed
 
     document.getElementById("species-container").innerHTML = "<p>Loading species...</p>";
-    fetch(`https://api.inaturalist.org/v1/observations/species_counts?lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=${radius}&verifiable=true`)
+    fetch(`https://api.inaturalist.org/v1/observations/species_counts?lat=${latitude}&lng=${longitude}&radius=${radius}&verifiable=true`)
         .then(response => response.json())
         .then(data => {
             if (!data.results || data.results.length === 0) {
@@ -140,25 +135,6 @@ function fetchSpecies() {
             document.getElementById("species-container").innerHTML = "<p>Error fetching species.</p>";
         });
 }
-
-document.getElementById('image-upload').addEventListener('change', function(event) {
-    const file = event.target.files[0];
-    
-    if (file) {
-        const reader = new FileReader();
-        
-        reader.onload = function(e) {
-            imagePreview.src = e.target.result;
-            imagePreview.style.display = 'block';
-        }
-        
-        reader.readAsDataURL(file);
-    }
-
-    const imagePreview = document.getElementById('image-preview');
-});
-
-const conversation_id = `${Date.now()}${Math.floor(performance.now())}`;
 
 async function sendMessage() {
     let input = document.getElementById("user-input");
@@ -225,6 +201,33 @@ async function sendMessage() {
     }
 }
 
+async function sendInitialMessage(initial_message) {
+    let chatBox = document.getElementById("chat-box");
+
+    try {
+        let response = await fetch(`${backend_url}/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            mode: "cors",
+            body: JSON.stringify({
+                system_prompt: flavor_system_prompt,
+                message: initial_message,
+                history: getChatHistory(),
+                conversation_id: conversation_id,
+                user_location: userLocationName
+            })
+        });
+
+        let data = await response.json();
+        let botResponse = document.createElement("div");
+        botResponse.innerHTML = `<div><b>OAAK:</b> ${data.response}</div><br>`;
+        chatBox.appendChild(botResponse);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    } catch (error) {
+        console.error("Error sending message:", error);
+    }
+}
+
 async function resizeBase64Image(base64, maxWidth, maxHeight) {
     return new Promise((resolve) => {
         let img = new Image();
@@ -264,3 +267,38 @@ function getChatHistory() {
     }
     return history;
 }
+
+// Rest of the previous script remains the same
+function goToPage(pageNumber) {
+    document.getElementById("page0").style.display = pageNumber === 0 ? "block" : "none";
+    document.getElementById("page1").style.display = pageNumber === 1 ? "block" : "none";
+    document.getElementById("page2").style.display = pageNumber === 2 ? "block" : "none";
+    document.getElementById("page3").style.display = pageNumber === 3 ? "block" : "none";
+    
+    if (pageNumber === 2) {
+        fetchSpecies(userLocation.latitude, userLocation.longitude);
+        setUserLocationName(userLocation.latitude, userLocation.longitude).then( () => {
+            sendInitialMessage("Can you tell me the story of the space around me ? Geological facts, ecological facts and some history.")
+        });
+    }
+    
+    if (pageNumber === 3) {
+        // send_first_message();
+    }
+}
+
+document.getElementById('image-upload').addEventListener('change', function(event) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = document.getElementById('image-preview');
+            img.src = e.target.result;
+            img.style.display = 'block';
+        }
+        reader.readAsDataURL(file);
+    }
+});
+
+initMap();
+updateMapCursor();
