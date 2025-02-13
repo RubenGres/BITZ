@@ -1,4 +1,4 @@
-const backend_url = "https://scaling-space-carnival-qvvrrjxqgrp246pj-5000.app.github.dev";
+const backend_url = "https://oaak.rubengr.es";
 const max_resolution = 2000
 
 let userLocation = "No user provided location";
