@@ -61,6 +61,7 @@ def chat():
     user_location = data.get("user_location")
     system_prompt = data.get("system_prompt")
     image_b64 = data.get("image_b64")
+    image_location = data.get("image_location")
     
     if not conversation_id:
         return jsonify({"error": "Please provide a conversation_id."}), 400
@@ -68,8 +69,10 @@ def chat():
     if not user_location:
         return jsonify({"error": "Please provide a user location."}), 400
     
+    formatted_system_prompt = system_prompt.format(user_location=user_location)
+
     history = load_conversation(conversation_id)
-    messages = [SystemMessage(content=system_prompt)]
+    messages = [SystemMessage(content=formatted_system_prompt)]
     
     for entry in history:
         messages.append(HumanMessage(content=[{"type": "text", "text": entry["user"]}]))
@@ -84,6 +87,9 @@ def chat():
         image_filename = f"{len(history)//2}_image.jpg"
         image_path = os.path.join(convo_dir, image_filename)
         image_data = base64.b64decode(image_b64)
+
+        os.makedirs(os.path.dirname(image_path), exist_ok=True)
+
         with open(image_path, "wb") as img_file:
             img_file.write(image_data)
         user_message_content.append({
@@ -100,9 +106,11 @@ def chat():
         "user": message,
         "timestamp": timestamp,
         "image_filename": image_filename,
+        "image_location": image_location,
         "assistant": ai_response.content
     })
-    save_conversation(system_prompt, conversation_id, history)
+
+    save_conversation(formatted_system_prompt, conversation_id, history)
     
     return jsonify({"response": ai_response.content, "timestamp": timestamp, "image_filename": image_filename})
 

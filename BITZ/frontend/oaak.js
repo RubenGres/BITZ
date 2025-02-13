@@ -1,17 +1,26 @@
-const backend_url = "https://scaling-space-carnival-qvvrrjxqgrp246pj-5000.app.github.dev"
+const backend_url = "https://scaling-space-carnival-qvvrrjxqgrp246pj-5000.app.github.dev";
+const max_resolution = 2000
+
 let userLocation = "No user provided location";
-
-let map = L.map('map').setView([48.8566, 2.3522], 5);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
-}).addTo(map);
-
+let userLocationName;
 let marker;
-let selectedLat, selectedLon;
+let map;
 const mapCursor = document.getElementById('map-cursor');
 const coordinatesDisplay = document.getElementById('coordinates');
 
-function getUserLocation() {
+async function initMap() {
+    userLocation = await getUserLocation();
+    let selectedLat = userLocation ? userLocation.latitude : 48.8566;
+    let selectedLon = userLocation ? userLocation.longitude : 2.3522;
+
+    map = L.map('map').setView([selectedLat, selectedLon], 20);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+}
+
+async function getUserLocation() {
     return new Promise((resolve) => {
         navigator.geolocation.getCurrentPosition(
             (position) => {
@@ -25,6 +34,8 @@ function getUserLocation() {
     });
 }
 
+initMap();
+
 async function setUserLocationName(latitude, longitude) {
     const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`;
 
@@ -35,7 +46,7 @@ async function setUserLocationName(latitude, longitude) {
         }
 
         const data = await response.json();
-        userLocation = data.display_name || "Location not found.";
+        userLocationName = data.display_name || "Location not found.";
 
     } catch (error) {
         console.error("Error fetching location:", error);
@@ -48,21 +59,13 @@ function updateMapCursor(e) {
     const mapContainer = document.getElementById('map-container');
     const mapRect = mapContainer.getBoundingClientRect();
     const centerX = mapRect.width / 2;
-    const centerY = mapRect.height / 2;
+    const centerY = (mapRect.height / 2);
 
     mapCursor.style.left = `${centerX}px`;
     mapCursor.style.top = `${centerY}px`;
-
-    // Get map center coordinates
-    const center = map.getCenter();
-    selectedLat = center.lat.toFixed(4);
-    selectedLon = center.lng.toFixed(4);
     
-    coordinatesDisplay.innerHTML = `Lat: ${selectedLat} | Lon: ${selectedLon}`;
+    coordinatesDisplay.innerHTML = `Lat: ${userLocation.latitude} | Lon: ${userLocation.longitude}`;
 }
-
-// Update cursor and coordinates when map moves
-map.on('move', updateMapCursor);
 
 // Initial cursor placement
 updateMapCursor();
@@ -88,7 +91,7 @@ function goToPage(pageNumber) {
     
     if (pageNumber === 2) {
         fetchSpecies();
-        setUserLocationName(selectedLat, selectedLon);
+        setUserLocationName(userLocation.latitude, userLocation.longitude);
     }
 
     if (pageNumber === 3) {
@@ -108,7 +111,7 @@ function fetchSpecies() {
     const radius = 10; // 10 km radius, adjust as needed
 
     document.getElementById("species-container").innerHTML = "<p>Loading species...</p>";
-    fetch(`https://api.inaturalist.org/v1/observations/species_counts?lat=${selectedLat}&lng=${selectedLon}&radius=${radius}&verifiable=true`)
+    fetch(`https://api.inaturalist.org/v1/observations/species_counts?lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=${radius}&verifiable=true`)
         .then(response => response.json())
         .then(data => {
             if (!data.results || data.results.length === 0) {
@@ -185,8 +188,10 @@ async function sendMessage() {
     chatBox.appendChild(messageDiv);
 
     let imageBase64 = "";
+    let image_location = "";
     if (imagePreview_src && imagePreview_src.startsWith("data:image")) {
-        imageBase64 = await resizeBase64Image(imagePreview_src, 2000, 2000);
+        imageBase64 = await resizeBase64Image(imagePreview_src, max_resolution, max_resolution);
+        image_location = await getUserLocation();
         messageDiv.innerHTML += `<img src="${imageBase64}" style="max-width: 200px; max-height: 200px;"><br>`;
     }
 
@@ -202,8 +207,9 @@ async function sendMessage() {
                 message: userMessage,
                 history: getChatHistory(),
                 conversation_id: conversation_id,
-                user_location: userLocation,
-                image_b64: imageBase64.split(",")[1] // Send only Base64 data
+                user_location: userLocationName,
+                image_b64: imageBase64.split(",")[1],
+                image_location: image_location
             })
         });
 
