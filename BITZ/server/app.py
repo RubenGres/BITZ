@@ -60,8 +60,8 @@ def chat():
     message = data.get("message", "")
     user_location = data.get("user_location")
     system_prompt = data.get("system_prompt")
-    image_b64 = data.get("image_b64")
-    image_location = data.get("image_location")
+    image_b64 = data.get("image_b64", None)
+    image_location = data.get("image_location", None)
     
     if not conversation_id:
         return jsonify({"error": "Please provide a conversation_id."}), 400
@@ -101,14 +101,20 @@ def chat():
     
     ai_response = model.invoke(messages)
     
-    # Save updated history
-    history.append({
+    user_message = {
         "user": message,
         "timestamp": timestamp,
-        "image_filename": image_filename,
-        "image_location": image_location,
-        "assistant": ai_response.content
-    })
+    }
+
+    if image_filename:
+        user_message["image_filename"] = image_filename,
+
+    if image_location:
+        user_message["image_location"] =  image_location,
+    
+    user_message["assistant"] = ai_response.content
+
+    history.append(user_message)
 
     save_conversation(formatted_system_prompt, conversation_id, history)
     
