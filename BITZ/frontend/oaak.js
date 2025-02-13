@@ -1,5 +1,5 @@
 const backend_url = "https://scaling-space-carnival-qvvrrjxqgrp246pj-5000.app.github.dev"
-let userLocation = "Horta de la Trinitat. Pg. de Santa Coloma, 60, Sant Andreu, 08030 Barcelona";
+let userLocation = "No user provided location";
 
 let map = L.map('map').setView([48.8566, 2.3522], 5);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -23,6 +23,24 @@ function getUserLocation() {
             () => resolve(null)
         );
     });
+}
+
+async function setUserLocationName(latitude, longitude) {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`;
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error("Failed to fetch location data");
+        }
+
+        const data = await response.json();
+        userLocation = data.display_name || "Location not found.";
+
+    } catch (error) {
+        console.error("Error fetching location:", error);
+        return "Error retrieving location.";
+    }
 }
 
 // Center cursor on map
@@ -70,6 +88,7 @@ function goToPage(pageNumber) {
     
     if (pageNumber === 2) {
         fetchSpecies();
+        setUserLocationName(selectedLat, selectedLon);
     }
 
     if (pageNumber === 3) {
