@@ -84,7 +84,7 @@ def chat():
     
     if image_b64:
         convo_dir = os.path.join(HISTORY_DIR, conversation_id)
-        image_filename = f"{len(history)//2}_image.jpg"
+        image_filename = f"{len(history)}_image.jpg"
         image_path = os.path.join(convo_dir, image_filename)
         image_data = base64.b64decode(image_b64)
 
