@@ -1,11 +1,13 @@
-const backend_url = "https://oaak.rubengr.es";
+const backend_url = "https://scaling-space-carnival-qvvrrjxqgrp246pj-5000.app.github.dev/";
 const max_resolution = 2000
 
+// TODO load this from cookie if it exist
 const conversation_id = `${Date.now()}${Math.floor(performance.now())}`;
+
 const mapCursor = document.getElementById('map-cursor');
 const coordinatesDisplay = document.getElementById('coordinates');
 
-let userLocation = {latitude: 0, longitude: 0};
+let userLocation = null;
 let userLocationName = "unknown";
 let marker;
 let map;
@@ -81,17 +83,23 @@ function updateMapCursor() {
     coordinatesDisplay.innerHTML = `Lat: ${center.lat.toFixed(6)} | Lon: ${center.lng.toFixed(6)}`;
 }
 
+function call_osm_nominatim(place_name) {
+    return fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${place_name}`)
+        .then(response => response.json());
+}
+
 function searchPlace() {
     let place = document.getElementById("place_name").value;
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${place}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.length > 0) {
-                map.setView([data[0].lat, data[0].lon], 12);
-            } else {
-                alert("Location not found");
-            }
-        });
+    
+    call_osm_nominatim(place).then(data => {
+        if (data.length > 0) {
+            map.setView([data[0].lat, data[0].lon], 12);
+        } else {
+            alert("Location not found");
+        }
+    }).catch(error => {
+        console.error("Error fetching location:", error);
+    });
 }
 
 function send_first_message() {
@@ -136,6 +144,24 @@ function fetchSpecies(latitude, longitude) {
         });
 }
 
+function openFullscreen(imgElement) {
+    const overlay = document.createElement("div");
+    overlay.classList.add("fullscreen-overlay");
+
+    const fullscreenImage = document.createElement("img");
+    fullscreenImage.src = imgElement.src;
+    fullscreenImage.classList.add("fullscreen-image");
+
+    overlay.appendChild(fullscreenImage);
+    document.body.appendChild(overlay);
+
+    // Close the fullscreen mode on click
+    overlay.onclick = function () {
+        overlay.classList.add("fade-out");
+        setTimeout(() => overlay.remove(), 300); // Delay to match animation duration
+    };
+}
+
 async function sendMessage() {
     let input = document.getElementById("user-input");
     let chatBox = document.getElementById("chat-box");
@@ -168,9 +194,9 @@ async function sendMessage() {
     if (imagePreview_src && imagePreview_src.startsWith("data:image")) {
         imageBase64 = await resizeBase64Image(imagePreview_src, max_resolution, max_resolution);
         image_location = await getUserLocation();
-        messageDiv.innerHTML += `<img src="${imageBase64}" style="max-width: 200px; max-height: 200px;"><br>`;
+        messageDiv.innerHTML += `<img src="${imageBase64}" style="max-width: 200px; max-height: 200px; cursor: pointer;" onclick="openFullscreen(this)">`;
     }
-
+    
     messageDiv.innerHTML += `<br>`;
 
     try {
@@ -268,6 +294,19 @@ function getChatHistory() {
     return history;
 }
 
+function load_history() {
+    fetch(`${backend_url}/load`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        mode: "cors",
+        body: JSON.stringify({
+            conversation_id: conversation_id,
+        })
+    }).then((data) => {
+        console.log(data);
+    });
+}
+
 // Rest of the previous script remains the same
 function goToPage(pageNumber) {
     document.getElementById("page0").style.display = pageNumber === 0 ? "block" : "none";
@@ -275,6 +314,20 @@ function goToPage(pageNumber) {
     document.getElementById("page2").style.display = pageNumber === 2 ? "block" : "none";
     document.getElementById("page3").style.display = pageNumber === 3 ? "block" : "none";
     
+    console.log("opening page", pageNumber)
+    
+    if (pageNumber === 1) {
+        console.log("userLocation", userLocation)
+        if (userLocation) {
+            goToPage(2); //skip this part
+            return;    
+        }
+
+        initMap().then(() => {
+            updateMapCursor();
+        });
+    }
+
     if (pageNumber === 2) {
         fetchSpecies(userLocation.latitude, userLocation.longitude);
         setUserLocationName(userLocation.latitude, userLocation.longitude).then( () => {
@@ -283,7 +336,8 @@ function goToPage(pageNumber) {
     }
     
     if (pageNumber === 3) {
-        // send_first_message();
+        // load existing history
+        load_history()
     }
 }
 
@@ -300,5 +354,24 @@ document.getElementById('image-upload').addEventListener('change', function(even
     }
 });
 
-initMap();
-updateMapCursor();
+function getUrlParameter(name) {
+    const params = new URLSearchParams(window.location.search);
+    return params.get(name);
+}
+
+const locationParam = getUrlParameter('loc');
+
+if (!locationParam) {
+    console.log("no location entered in URL");
+} else {
+    console.log("location entered in URL:", locationParam)
+    call_osm_nominatim(locationParam).then(data => {
+        if (data.length > 0) {
+            userLocation = {latitude: data[0].lat, longitude: data[0].lon};
+        } else {
+            console.log("Location not found.");
+        }
+    }).catch(error => {
+        console.error("Error fetching location:", error);
+    });
+}

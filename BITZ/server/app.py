@@ -52,6 +52,13 @@ def load_conversation(conversation_id):
 def home():
     return "Everything is working!"
 
+@app.route("/load", methods=["POST"])
+def load_history():
+    data = request.json
+    conversation_id = data.get("conversation_id")
+    conversation = load_conversation(conversation_id)
+    return conversation
+
 @app.route("/chat", methods=["POST"])
 def chat():
     """Handles text and image input for biodiversity exploration."""
