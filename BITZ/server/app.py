@@ -2,6 +2,7 @@ import os
 import base64
 import json
 import datetime
+import markdown
 from io import BytesIO
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -120,12 +121,13 @@ def chat():
         user_message["image_location"] =  image_location,
     
     user_message["assistant"] = ai_response.content
+    markdown_to_html = markdown.markdown(ai_response.content)
 
     history.append(user_message)
 
     save_conversation(formatted_system_prompt, conversation_id, history)
     
-    return jsonify({"response": ai_response.content, "timestamp": timestamp, "image_filename": image_filename})
+    return jsonify({"response": markdown_to_html, "timestamp": timestamp, "image_filename": image_filename})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
