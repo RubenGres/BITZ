@@ -29,7 +29,7 @@
             </div>
             
             <div id="map-container" style="position: relative;">
-                <div id="map" style="height: 500px;"></div>
+                <div id="map" class="leaflet-map"></div>
                 <div id="map-cursor"></div>
                 <div id="coordinates">Lat: - | Lon: -</div>
             </div>
@@ -50,7 +50,7 @@
 
         <div id="page3" style="display: none;">
             <h2>Species Quest 🌱</h2>
-            <div id="chat-box" class="border p-3 mb-3" style="height: 400px; overflow-y: auto;"></div>
+            <div id="chat-box" class="chatarea border p-3 mb-3"></div>
             
             <!-- Spinner -->
             <div id="spinner" class="text-center" style="display: none;">
@@ -66,13 +66,18 @@
 
             <div id="image-upload-container" class="mb-2">
                 <input type="file" id="image-upload" accept="image/*" capture="environment" style="display:none;">
-                <button class="btn btn-outline-secondary" onclick="document.getElementById('image-upload').click()">
+                <button class="btn btn-outline-secondary btn-light" onclick="document.getElementById('image-upload').click()">
                     📷 Take Photo
                 </button>
                 <img id="image-preview" src="#" style="display:none;">
             </div>
 
-            <textarea name="system_prompt" id="system_prompt" rows="10" class="form" style="width: 100%;">
+            <details>
+                <summary>
+                    Current system prompt
+                </summary>
+                <textarea name="system_prompt" id="system_prompt" rows="10" class="form" style="width: 100%;">
+            </details>
             </textarea>
         </div>
     </div>
