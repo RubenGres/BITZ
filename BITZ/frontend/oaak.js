@@ -1,4 +1,4 @@
-const backend_url = "https://scaling-space-carnival-qvvrrjxqgrp246pj-5000.app.github.dev/";
+const backend_url = "https://oaak.rubengr.es";
 const max_resolution = 2000
 
 // TODO load this from cookie if it exist
@@ -102,14 +102,6 @@ function searchPlace() {
     });
 }
 
-function send_first_message() {
-    let chatBox = document.getElementById("chat-box");
-    let botResponse = document.createElement("div");
-    botResponse.innerHTML = `<div><b>OAAK:</b> Hello! Ready to start your quest? <br> To begin please upload a picture of your surroundings! </div><br>`;
-    chatBox.appendChild(botResponse);
-    chatBox.scrollTop = chatBox.scrollHeight;
-}
-
 function fetchSpecies(latitude, longitude) {
     const radius = 10; // 10 km radius, adjust as needed
 
@@ -186,7 +178,8 @@ async function sendMessage() {
 
     // Create message container
     let messageDiv = document.createElement("div");
-    messageDiv.innerHTML += `<div><b>You:</b> ${userMessage}</div>`;
+    messageDiv.classList.add("message", "user-message");
+    messageDiv.innerHTML = `${userMessage}`;
     chatBox.appendChild(messageDiv);
 
     let imageBase64 = "";
@@ -216,9 +209,12 @@ async function sendMessage() {
         });
 
         let data = await response.json();
+
         let botResponse = document.createElement("div");
-        botResponse.innerHTML = `<div><b>OAAK:</b> ${data.response}</div><br>`;
+        botResponse.classList.add("message", "bot-message");
+        botResponse.innerHTML = `${data.response}`;
         chatBox.appendChild(botResponse);
+
         chatBox.scrollTop = chatBox.scrollHeight;
     } catch (error) {
         console.error("Error sending message:", error);
@@ -245,9 +241,12 @@ async function sendInitialMessage(initial_message) {
         });
 
         let data = await response.json();
+
         let botResponse = document.createElement("div");
-        botResponse.innerHTML = `<div><b>OAAK:</b> ${data.response}</div><br>`;
+        botResponse.classList.add("message", "bot-message");
+        botResponse.innerHTML = `${data.response}`;
         chatBox.appendChild(botResponse);
+
         chatBox.scrollTop = chatBox.scrollHeight;
     } catch (error) {
         console.error("Error sending message:", error);
@@ -279,7 +278,6 @@ async function resizeBase64Image(base64, maxWidth, maxHeight) {
         img.src = base64;
     });
 }
-
 
 function getChatHistory() {
     let messages = document.querySelectorAll("#chat-box div");
@@ -331,7 +329,7 @@ function goToPage(pageNumber) {
     if (pageNumber === 2) {
         fetchSpecies(userLocation.latitude, userLocation.longitude);
         setUserLocationName(userLocation.latitude, userLocation.longitude).then( () => {
-            sendInitialMessage("Can you tell me the story of the space around me ? Geological facts, ecological facts and some history.")
+            sendInitialMessage("Tell me the story of the space around me. Geological, ecological and history wise.")
         });
     }
     
