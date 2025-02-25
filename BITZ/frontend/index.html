@@ -13,14 +13,16 @@
 <body>
     <div class="container mt-4">
         <div id="page0">
-            <h2>Choose Flavor 👩‍🍳</h2>
+            <h2 class="page-title">Choose Flavor 👩‍🍳</h2>
+            <p id="url-location">No default Location</p>
             <div class="button-container" id="buttonContainer">
 
             </div>
+
         </div>
 
         <div id="page1" style="display: none;">
-            <h2>Choose Location 📍</h2>
+            <h2 class="page-title">Choose Location 📍</h2>
             <label for="place_name" class="form-label">Enter place name or scroll on the map:</label>
             
             <input type="text" id="place_name" class="form-control" placeholder="e.g. Paris, France">
@@ -41,7 +43,7 @@
         
         <!-- Rest of the previous HTML remains the same -->
         <div id="page2" style="display: none;">
-            <h2>Here are species around you 🕵️‍♀️</h2>
+            <h2 class="page-title">Here are species around you 🕵️‍♀️</h2>
             <div id="species-container" class="bubble-container mt-3"></div>
             <div class="text-center mt-3">
                 <button class="btn btn-success" onclick="goToPage(3)">Start Quest</button>
@@ -49,7 +51,7 @@
         </div>
 
         <div id="page3" style="display: none;">
-            <h2>Species Quest 🌱</h2>
+            <h2 class="page-title">Species Quest 🌱</h2>
             <div id="chat-box" class="chatarea border p-3 mb-3"></div>
             
             <!-- Spinner -->

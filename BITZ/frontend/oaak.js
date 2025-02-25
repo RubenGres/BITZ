@@ -1,4 +1,4 @@
-const backend_url = "https://oaak.rubengr.es";
+const backend_url = "https://scaling-space-carnival-qvvrrjxqgrp246pj-5000.app.github.dev/";
 const max_resolution = 2000
 
 // TODO load this from cookie if it exist
@@ -366,8 +366,11 @@ if (!locationParam) {
     call_osm_nominatim(locationParam).then(data => {
         if (data.length > 0) {
             userLocation = {latitude: data[0].lat, longitude: data[0].lon};
+            console.log("Found location", userLocation);
+            document.getElementById("url-location").textContent = locationParam + " (" + data[0].lat + ", " +data[0].lon + ")"
         } else {
             console.log("Location not found.");
+            document.getElementById("url-location").textContent = "Location not found."
         }
     }).catch(error => {
         console.error("Error fetching location:", error);

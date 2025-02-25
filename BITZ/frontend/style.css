@@ -1,3 +1,32 @@
+/* General */
+.page-title {
+    text-align: center;
+    margin-bottom: 0.5em;
+}
+
+/* Flavor page */
+
+
+.button-container {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+}
+
+.button-container button {
+    margin: 5px;
+    padding: 10px 20px;
+    background-color: #007BFF;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.button-container button:hover {
+    background-color: #0056b3;
+}
+
 /* Chat container */
 .chatarea {
     flex-grow: 1;
@@ -142,24 +171,6 @@
     display: flex;
     align-items: center;
     gap: 10px;
-}
-
-.button-container {
-    margin-top: 20px;
-}
-
-.button-container button {
-    margin: 5px;
-    padding: 10px 20px;
-    background-color: #007BFF;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.button-container button:hover {
-    background-color: #0056b3;
 }
 
 /* fullscreen */

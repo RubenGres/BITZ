@@ -69,7 +69,8 @@ function createButtons() {
     for (const key in flavors) {
         if (flavors.hasOwnProperty(key)) {
             const button = document.createElement('button');
-            button.textContent = key.charAt(0).toUpperCase() + key.slice(1);
+            button.classList="flavor-button"
+            button.textContent = key.charAt(0).toUpperCase() + key.slice(1).replaceAll('_', ' ');
             button.addEventListener('click', () => {
                 flavor_system_prompt = flavors[key];
                 document.getElementById("system_prompt").value = flavor_system_prompt;
