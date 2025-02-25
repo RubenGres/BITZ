@@ -1,4 +1,4 @@
-const backend_url = "oaak.rubengr.es";
+const backend_url = "https://oaak.rubengr.es";
 const max_resolution = 2000
 
 // TODO load this from cookie if it exist
