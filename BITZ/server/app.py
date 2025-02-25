@@ -38,7 +38,26 @@ def human_readable_size(size, decimal_places=1):
     return f"{size:.{decimal_places}f} PB"
 
 
+
 @app.route("/", methods=["GET"])
+def home():
+    """Serves the OAAK homepage with two buttons."""
+    index_file_path = os.path.join(os.path.dirname(__file__), "templates/home/index.html")
+    if os.path.exists(index_file_path):
+        with open(index_file_path, "r", encoding="utf-8") as f:
+            return f.read()
+    return "<h1>OAAK</h1><p>Missing index.html file</p>"
+
+@app.route("/quest", methods=["GET"])
+def quest():
+    """Serves the OAAK homepage with two buttons."""
+    index_file_path = os.path.join(os.path.dirname(__file__), "templates/quest/index.html")
+    if os.path.exists(index_file_path):
+        with open(index_file_path, "r", encoding="utf-8") as f:
+            return f.read()
+    return "<h1>OAAK</h1><p>Missing index.html file</p>"
+
+
 @app.route("/explore/", methods=["GET"])
 @app.route("/explore/<path:subpath>", methods=["GET"])
 def explore(subpath=""):

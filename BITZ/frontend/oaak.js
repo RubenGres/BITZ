@@ -1,4 +1,4 @@
-const backend_url = "https://scaling-space-carnival-qvvrrjxqgrp246pj-5000.app.github.dev/";
+const backend_url = "oaak.rubengr.es";
 const max_resolution = 2000
 
 // TODO load this from cookie if it exist
