@@ -1,53 +1,28 @@
-import os
-import base64
-import json
 import datetime
 import markdown
-from io import BytesIO
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from PIL import Image
-
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from langchain_openai import ChatOpenAI
-
 from dotenv import load_dotenv
 
-load_dotenv()
+import oaak
 
-# Initialize the model
-model = ChatOpenAI(model="gpt-4o")
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
-HISTORY_DIR = "./history"
-os.makedirs(HISTORY_DIR, exist_ok=True)
-
-def save_conversation(system_prompt, conversation_id, history):
-    """Save conversation history and images."""
-    convo_dir = os.path.join(HISTORY_DIR, conversation_id)
-    os.makedirs(convo_dir, exist_ok=True)
-
-    conversation_data = {
-        "system_prompt": system_prompt,
-        "history": history  # Ensure it's saved as a list of dictionaries
-    }
-
-    history_file = os.path.join(convo_dir, "history.json")
-    with open(history_file, "w") as f:
-        json.dump(conversation_data, f, indent=4)
-
-def load_conversation(conversation_id):
-    """Load conversation history if it exists."""
-    convo_dir = os.path.join(HISTORY_DIR, conversation_id)
-    history_file = os.path.join(convo_dir, "history.json")
-
-    if os.path.exists(history_file):
-        with open(history_file, "r") as f:
-            data = json.load(f)
-            return data.get("history", [])
-    return []
+def _validate_chat_request(data):
+    """Validates the chat request data."""
+    conversation_id = data.get("conversation_id")
+    user_location = data.get("user_location")
+    
+    if not conversation_id:
+        return jsonify({"error": "Please provide a conversation_id."}), 400
+    
+    if not user_location:
+        return jsonify({"error": "Please provide a user location."}), 400
+    
+    return None
 
 @app.route("/", methods=["GET"])
 def home():
@@ -57,13 +32,18 @@ def home():
 def load_history():
     data = request.json
     conversation_id = data.get("conversation_id")
-    conversation = load_conversation(conversation_id)
+    conversation = oaak.load_conversation(conversation_id)
     return conversation
 
 @app.route("/chat", methods=["POST"])
 def chat():
     """Handles text and image input for biodiversity exploration."""
     data = request.json
+    
+    if validation_result := _validate_chat_request(data):
+        return validation_result
+    
+    # Extract data from request
     conversation_id = data.get("conversation_id")
     message = data.get("message", "")
     user_location = data.get("user_location")
@@ -71,63 +51,33 @@ def chat():
     image_b64 = data.get("image_b64", None)
     image_location = data.get("image_location", None)
     
-    if not conversation_id:
-        return jsonify({"error": "Please provide a conversation_id."}), 400
-    
-    if not user_location:
-        return jsonify({"error": "Please provide a user location."}), 400
-    
     formatted_system_prompt = system_prompt.format(user_location=user_location)
-
-    history = load_conversation(conversation_id)
-    messages = [SystemMessage(content=formatted_system_prompt)]
     
-    for entry in history:
-        messages.append(HumanMessage(content=[{"type": "text", "text": entry["user"]}]))
-        messages.append(AIMessage(content=entry["assistant"]))
+    history = oaak.load_conversation(conversation_id)
     
-    user_message_content = [{"type": "text", "text": message}]
-    timestamp = datetime.datetime.utcnow().isoformat()
+    # Process image if provided
     image_filename = None
+    if image_b64: 
+        image_filename = oaak.process_image(image_b64, conversation_id, len(history))
     
-    if image_b64:
-        convo_dir = os.path.join(HISTORY_DIR, conversation_id)
-        image_filename = f"{len(history)}_image.jpg"
-        image_path = os.path.join(convo_dir, image_filename)
-        image_data = base64.b64decode(image_b64)
-
-        os.makedirs(os.path.dirname(image_path), exist_ok=True)
-
-        with open(image_path, "wb") as img_file:
-            img_file.write(image_data)
-        user_message_content.append({
-            "type": "image_url",
-            "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"},
-        })
+    messages = oaak.prepare_messages(formatted_system_prompt, history, message, image_b64)
+    ai_response = oaak.get_model().invoke(messages)
     
-    messages.append(HumanMessage(content=user_message_content))
+    # Create user message entry
+    timestamp = datetime.datetime.utcnow().isoformat()
+    user_message = oaak.create_user_message(message, timestamp, image_filename, image_location, ai_response.content)
     
-    ai_response = model.invoke(messages)
-    
-    user_message = {
-        "user": message,
-        "timestamp": timestamp,
-    }
-
-    if image_filename:
-        user_message["image_filename"] = image_filename,
-
-    if image_location:
-        user_message["image_location"] =  image_location,
-    
-    user_message["assistant"] = ai_response.content
-    markdown_to_html = markdown.markdown(ai_response.content)
-
+    # Update and save conversation history
     history.append(user_message)
-
-    save_conversation(formatted_system_prompt, conversation_id, history)
+    oaak.save_conversation(formatted_system_prompt, conversation_id, history)
     
-    return jsonify({"response": markdown_to_html, "timestamp": timestamp, "image_filename": image_filename})
+    markdown_to_html = markdown.markdown(ai_response.content)
+    
+    return jsonify({
+        "response": markdown_to_html, 
+        "timestamp": timestamp, 
+        "image_filename": image_filename
+    })
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
