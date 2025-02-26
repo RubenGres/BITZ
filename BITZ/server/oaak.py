@@ -52,7 +52,7 @@ def load_conversation(conversation_id, history_directory="./history"):
 
 def process_image(image_b64, conversation_id, history_length, history_directory="./history"):
     """Processes and saves an uploaded image."""
-    convo_dir = os.path.join(history_directory, conversation_id)
+    convo_dir = os.path.join(history_directory, conversation_id, "imgs")
     image_filename = f"{history_length}_image.jpg"
     image_path = os.path.join(convo_dir, image_filename)
     image_data = base64.b64decode(image_b64)
