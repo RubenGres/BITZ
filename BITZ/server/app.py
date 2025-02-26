@@ -1,6 +1,6 @@
 import datetime
 import markdown
-from flask import Flask, send_from_directory, abort, request, jsonify, url_for
+from flask import Flask, send_from_directory, abort, request, jsonify, url_for, render_template
 from flask_cors import CORS
 from dotenv import load_dotenv
 import os
@@ -42,98 +42,78 @@ def human_readable_size(size, decimal_places=1):
 @app.route("/", methods=["GET"])
 def home():
     """Serves the OAAK homepage with two buttons."""
-    index_file_path = os.path.join(os.path.dirname(__file__), "templates/home/index.html")
-    if os.path.exists(index_file_path):
-        with open(index_file_path, "r", encoding="utf-8") as f:
-            return f.read()
-    return "<h1>OAAK</h1><p>Missing index.html file</p>"
-
-@app.route("/quest", methods=["GET"])
-def quest():
-    """Serves the OAAK homepage with two buttons."""
-    index_file_path = os.path.join(os.path.dirname(__file__), "templates/quest/index.html")
-    if os.path.exists(index_file_path):
-        with open(index_file_path, "r", encoding="utf-8") as f:
-            return f.read()
-    return "<h1>OAAK</h1><p>Missing index.html file</p>"
-
+    return render_template('home.html')
 
 @app.route("/explore/", methods=["GET"])
 @app.route("/explore/<path:subpath>", methods=["GET"])
 def explore(subpath=""):
     abs_path = os.path.join(BASE_DIR, subpath)
-
+    
     # Prevent directory traversal attacks
     if not os.path.commonpath([BASE_DIR, abs_path]).startswith(BASE_DIR):
         abort(403)
-
+    
     if os.path.isdir(abs_path):
         items = os.listdir(abs_path)
         items.sort()  # Sort for better organization
-        file_info = []
-
+        
+        file_list = []
         for item in items:
             item_path = os.path.join(abs_path, item)
             is_dir = os.path.isdir(item_path)
-            size = "-" if is_dir else human_readable_size(os.path.getsize(item_path))
-            mod_time = datetime.datetime.fromtimestamp(os.path.getmtime(item_path)).strftime('%Y-%m-%d %H:%M')
-            icon = "📁" if is_dir else "📄"
-            link = f'<a href="{url_for("explore", subpath=f"{subpath}/{item}" if subpath else item)}">{icon} {item}</a>'
-            file_info.append(f"<tr><td>{link}</td><td>{size}</td><td>{mod_time}</td></tr>")
-
-        # "Go Up" button
-        go_up_link = ""
+            
+            # Get full path for links
+            full_path = os.path.join(subpath, item) if subpath else item
+            
+            file_info = {
+                'name': item,
+                'full_path': full_path,
+                'is_dir': is_dir,
+                'size': "-" if is_dir else human_readable_size(os.path.getsize(item_path)),
+                'mod_time': datetime.datetime.fromtimestamp(os.path.getmtime(item_path)).strftime('%Y-%m-%d %H:%M'),
+                'icon': "📁" if is_dir else "📄"
+            }
+            
+            file_list.append(file_info)
+        
+        # Prepare parent path for "Go Up" link
+        parent_path = None
         if subpath:
             parent_path = "/".join(subpath.split("/")[:-1])  # Go up one level
-            go_up_link = f'<tr><td><a href="{url_for("explore", subpath=parent_path)}">..</a></td><td>-</td><td>-</td></tr>'
-
-        return f"""
-            <html>
-            <head>
-                <title>File Explorer</title>
-                <style>
-                    body {{
-                        font-family: Arial, sans-serif;
-                        margin: 20px;
-                        padding: 10px;
-                    }}
-                    table {{
-                        width: 100%;
-                        border-collapse: collapse;
-                    }}
-                    th, td {{
-                        padding: 10px;
-                        text-align: left;
-                        border-bottom: 1px solid #ddd;
-                    }}
-                    th {{
-                        background-color: #f4f4f4;
-                    }}
-                    a {{
-                        text-decoration: none;
-                        color: #007bff;
-                    }}
-                    a:hover {{
-                        text-decoration: underline;
-                    }}
-                </style>
-            </head>
-            <body>
-                <h1>Browsing: {subpath or 'history'}</h1>
-                <table>
-                    <tr><th>Name</th><th>Size</th><th>Last Modified</th></tr>
-                    {go_up_link}
-                    {''.join(file_info)}
-                </table>
-            </body>
-            </html>
-        """
-
+        
+        return render_template('explorer.html', 
+                              items=file_list, 
+                              current_path=subpath,
+                              parent_path=parent_path)
+    
     elif os.path.isfile(abs_path):
         return send_from_directory(BASE_DIR, subpath)
-
+    
     abort(404)
 
+@app.route("/recap/<id>")
+def recap(id):
+    # Construct paths to the CSV file and images directory
+    csv_path = os.path.join(BASE_DIR, id, "species_data_english.csv")
+    imgs_path = os.path.join(BASE_DIR, id, "imgs")
+    
+    # Check if the CSV file exists
+    if not os.path.isfile(csv_path):
+        return f"Error: CSV file not found at {csv_path}", 404
+    
+    # Check if the images directory exists
+    if not os.path.isdir(imgs_path):
+        return f"Error: Images directory not found at {imgs_path}", 404
+    
+    # Prepare the relative path for the CSV file to be used in the template
+    relative_csv_path = f"/explore/{id}/species_data_english.csv"
+    relative_imgs_path = f"/explore/{id}/imgs/"
+    
+    # Render the template
+    return render_template('species_viewer.html', 
+                          id=id, 
+                          csv_path=relative_csv_path,
+                          imgs_path=relative_imgs_path)
 
 @app.route("/file/<path:subpath>", methods=["GET"])
 def get_file(subpath):

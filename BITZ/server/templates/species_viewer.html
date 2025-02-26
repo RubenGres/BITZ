@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Species Data Viewer - {{ id }}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 10px;
+            background-color: #f5f5f5;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            max-width: 600px;
+        }
+
+        input, select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            width: 200px;
+            max-width: 100%;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .table-wrapper {
+            width: 100%;
+            transform-origin: top left;
+        }
+
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            table-layout: fixed;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        th {
+            background-color: #f8fafc;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        td img {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .stats {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8fafc;
+            border-radius: 4px;
+        }
+
+        .back-button {
+            display: inline-block;
+            margin-bottom: 15px;
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+
+        .back-button:hover {
+            background-color: #45a049;
+        }
+
+        @media screen and (max-width: 768px) {
+            body {
+                padding: 5px;
+            }
+
+            .card {
+                padding: 10px;
+            }
+
+            .controls {
+                flex-direction: row;
+                justify-content: flex-start;
+                max-width: 100%;
+            }
+
+            input, select {
+                width: calc(50% - 5px);
+                min-width: unset;
+                font-size: 14px;
+            }
+
+            .table-container {
+                overflow-x: visible;
+            }
+
+            table {
+                width: 100% !important;
+                transform-origin: top left;
+            }
+            th, td {
+                padding: 8px;
+                font-size: 3.5vw;
+            }
+            td img {
+                width: 15vw;
+                height: 15vw;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="{{ url_for('explore') }}" class="back-button">← Back to Explorer</a>
+    
+    <div class="card">
+        <h1>Species Data Viewer - {{ id }}</h1>
+
+        <div class="controls">
+            <input type="text" id="search" placeholder="Search..." oninput="filterTable()">
+            <select id="groupFilter" onchange="filterTable()">
+                <option value="">All Groups</option>
+            </select>
+        </div>
+
+        <div class="table-wrapper">
+            <div class="table-container">
+                <table id="speciesTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 20%">Image</th>
+                            <th style="width: 25%">Taxonomic Group</th>
+                            <th style="width: 30%">Scientific Name</th>
+                            <th style="width: 25%">Common Name</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="stats" id="statsSection">
+            Loading data...
+        </div>
+    </div>
+
+    <script>
+        let data = [];
+        const csvPath = '{{ csv_path }}';
+        const imgsPath = '{{ imgs_path }}';
+
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch(csvPath);
+                const text = await response.text();
+                console.log(text)
+                processData(text);
+                adjustTableScale();
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('statsSection').innerHTML = 'Error loading CSV file. Please check the path.';
+            }
+        });
+
+        function processData(csv) {
+            const lines = csv.split('\n');
+            const headers = lines[0].split(',');
+
+            data = lines.slice(1).map(line => {
+                if (!line.trim()) return null;
+                
+                const values = line.split(',');
+                return {
+                    image_name: values[0],
+                    taxonomic_group: values[1],
+                    scientific_name: values[2],
+                    common_name: values[3]
+                };
+            }).filter(row => row !== null && row.image_name);
+
+            updateGroupFilter();
+            populateTable(data);
+        }
+
+        function updateGroupFilter() {
+            const groups = new Set(data.map(row => row.taxonomic_group));
+            const select = document.getElementById('groupFilter');
+            select.innerHTML = '<option value="">All Groups</option>';
+
+            groups.forEach(group => {
+                if (group) {
+                    const option = document.createElement('option');
+                    option.value = group;
+                    option.textContent = group;
+                    select.appendChild(option);
+                }
+            });
+        }
+
+        function populateTable(filteredData) {
+            console.log(filteredData)
+
+            const tbody = document.querySelector('#speciesTable tbody');
+            tbody.innerHTML = '';
+
+            filteredData.forEach(row => {
+                const tr = document.createElement('tr');
+                const imgSrc = `${imgsPath}${row.image_name}`;
+                
+                tr.innerHTML = `
+                    <td><img src="${imgSrc}" alt="Species image"/></td>
+                    <td>${row.taxonomic_group || 'N/A'}</td>
+                    <td>${row.scientific_name || 'N/A'}</td>
+                    <td>${row.common_name || 'N/A'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            updateStats(filteredData);
+            adjustTableScale();
+        }
+
+        function adjustTableScale() {
+            const table = document.getElementById('speciesTable');
+            const wrapper = document.querySelector('.table-wrapper');
+
+            if (window.innerWidth <= 768) {
+                const scale = Math.min(1, (window.innerWidth - 20) / table.offsetWidth);
+                wrapper.style.transform = `scale(${scale})`;
+                wrapper.style.width = `${100 / scale}%`;
+                wrapper.style.height = `${table.offsetHeight * scale}px`;
+            } else {
+                wrapper.style.transform = '';
+                wrapper.style.width = '100%';
+                wrapper.style.height = 'auto';
+            }
+        }
+
+        window.addEventListener('resize', adjustTableScale);
+
+        function updateStats(filteredData) {
+            const groups = {};
+            filteredData.forEach(row => {
+                if (row.taxonomic_group) {
+                    groups[row.taxonomic_group] = (groups[row.taxonomic_group] || 0) + 1;
+                }
+            });
+
+            const statsHtml = `
+                <strong>Total entries:</strong> ${filteredData.length}<br>
+                <strong>Groups:</strong> ${Object.entries(groups).map(([group, count]) =>
+                    `${group} (${count})`).join(', ')}
+            `;
+            document.getElementById('statsSection').innerHTML = statsHtml;
+        }
+
+        function filterTable() {
+            const searchTerm = document.getElementById('search').value.toLowerCase();
+            const groupFilter = document.getElementById('groupFilter').value;
+
+            const filtered = data.filter(row => {
+                const matchesSearch = Object.values(row).some(value =>
+                    value && value.toLowerCase().includes(searchTerm)
+                );
+                const matchesGroup = !groupFilter || row.taxonomic_group === groupFilter;
+                return matchesSearch && matchesGroup;
+            });
+
+            populateTable(filtered);
+        }
+    </script>
+</body>
+</html>

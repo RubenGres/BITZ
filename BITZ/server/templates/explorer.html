@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Explorer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        a {
+            text-decoration: none;
+            color: #007bff;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .view-btn {
+            display: inline-block;
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 4px;
+            text-decoration: none;
+        }
+        .view-btn:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>Browsing: {{ current_path or 'root' }}</h1>
+    <table>
+        <tr>
+            <th>Name</th>
+            <th>Size</th>
+            <th>Last Modified</th>
+            <th>Actions</th>
+        </tr>
+        {% if parent_path is defined %}
+        <tr>
+            <td><a href="{{ url_for('explore', subpath=parent_path) }}">..</a></td>
+            <td>-</td>
+            <td>-</td>
+            <td></td>
+        </tr>
+        {% endif %}
+        {% for item in items %}
+        <tr>
+            <td>
+                <a href="{{ url_for('explore', subpath=item.full_path) }}">
+                    {{ item.icon }} {{ item.name }}
+                </a>
+            </td>
+            <td>{{ item.size }}</td>
+            <td>{{ item.mod_time }}</td>
+            <td>
+                {% if item.is_dir and not current_path %}
+                <a href="{{ url_for('recap', id=item.name) }}" class="view-btn">View Species Data</a>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
