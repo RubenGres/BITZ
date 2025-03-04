@@ -108,12 +108,15 @@ def recap(id):
     # Prepare the relative path for the CSV file to be used in the template
     relative_csv_path = f"/explore/{id}/species_data_english.csv"
     relative_imgs_path = f"/explore/{id}/imgs/"
+    relative_history_path = f"/explore/{id}/history.json"
     
     # Render the template
     return render_template('species_viewer.html', 
                           id=id, 
                           csv_path=relative_csv_path,
-                          imgs_path=relative_imgs_path)
+                          imgs_path=relative_imgs_path,
+                          images_base_path=relative_imgs_path,
+                          history_path=relative_history_path)
 
 @app.route("/file/<path:subpath>", methods=["GET"])
 def get_file(subpath):

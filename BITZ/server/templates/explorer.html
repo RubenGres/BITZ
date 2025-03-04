@@ -70,7 +70,7 @@
             <td>{{ item.mod_time }}</td>
             <td>
                 {% if item.is_dir and not current_path %}
-                <a href="{{ url_for('recap', id=item.name) }}" class="view-btn">View Species Data</a>
+                <a href="{{ url_for('recap', id=item.name) }}" class="view-btn">View quest</a>
                 {% endif %}
             </td>
         </tr>

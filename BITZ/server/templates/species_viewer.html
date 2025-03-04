@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Species Data Viewer - {{ id }}</title>
+    <title>Species Discovery Journey</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css" rel="stylesheet">
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -11,6 +12,63 @@
             margin: 0 auto;
             padding: 10px;
             background-color: #f5f5f5;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .back-button {
+            grid-column: span 2;
+            display: inline-block;
+            margin-bottom: 15px;
+            padding: 8px 15px;
+            background-color: #f0f0f0;
+            color: #333;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        .back-button:hover {
+            background-color: #e0e0e0;
+        }
+
+        #map {
+            height: 500px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .conversation {
+            max-height: 500px;
+            overflow-y: auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+        }
+
+        
+        .message {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .user-message {
+            background-color: #e6f2ff;
+        }
+
+        .assistant-message {
+            background-color: #f0f0f0;
+            text-align: left;
+        }
+
+        .message img {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 5px;
+            margin-top: 10px;
         }
 
         .controls {
@@ -18,202 +76,127 @@
             display: flex;
             gap: 10px;
             align-items: center;
-            flex-wrap: wrap;
-            max-width: 600px;
         }
 
-        input, select {
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-            width: 200px;
-            max-width: 100%;
-        }
-
-        .card {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            padding: 15px;
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-        .table-wrapper {
-            width: 100%;
-            transform-origin: top left;
-        }
-
-        .table-container {
-            width: 100%;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        table {
+        .species-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
-            table-layout: fixed;
-        }
-
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border: 1px solid #e2e8f0;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        th {
-            background-color: #f8fafc;
-            font-weight: 600;
-            cursor: pointer;
-        }
-
-        td img {
-            width: 100px;
-            height: 100px;
-            object-fit: cover;
-            display: block;
-        }
-
-        .stats {
             margin-top: 20px;
+            grid-column: span 2;
+        }
+
+        .species-table th, .species-table td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+
+        .species-table img {
+            max-width: 100px;
+            max-height: 100px;
+            object-fit: cover;
+        }
+
+        .error-message {
+            background-color: #ffebee;
+            color: #d32f2f;
             padding: 15px;
-            background-color: #f8fafc;
-            border-radius: 4px;
+            border-radius: 5px;
+            text-align: center;
+            grid-column: span 2;
         }
 
-        .back-button {
-            display: inline-block;
-            margin-bottom: 15px;
-            padding: 8px 16px;
-            background-color: #4CAF50;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-        }
-
-        .back-button:hover {
-            background-color: #45a049;
-        }
-
-        @media screen and (max-width: 768px) {
+        @media (max-width: 768px) {
             body {
-                padding: 5px;
-            }
-
-            .card {
-                padding: 10px;
-            }
-
-            .controls {
-                flex-direction: row;
-                justify-content: flex-start;
-                max-width: 100%;
-            }
-
-            input, select {
-                width: calc(50% - 5px);
-                min-width: unset;
-                font-size: 14px;
-            }
-
-            .table-container {
-                overflow-x: visible;
-            }
-
-            table {
-                width: 100% !important;
-                transform-origin: top left;
-            }
-            th, td {
-                padding: 8px;
-                font-size: 3.5vw;
-            }
-            td img {
-                width: 15vw;
-                height: 15vw;
+                grid-template-columns: 1fr;
             }
         }
     </style>
 </head>
 <body>
-    <a href="{{ url_for('explore') }}" class="back-button">← Back to Explorer</a>
-    
-    <div class="card">
-        <h1>Species Data Viewer - {{ id }}</h1>
+    <a href="/explore/" class="back-button">← Back to Explorer</a>
 
-        <div class="controls">
-            <input type="text" id="search" placeholder="Search..." oninput="filterTable()">
-            <select id="groupFilter" onchange="filterTable()">
-                <option value="">All Groups</option>
-            </select>
-        </div>
+    <div id="map"></div>
+    <div class="conversation" id="conversation"></div>
 
-        <div class="table-wrapper">
-            <div class="table-container">
-                <table id="speciesTable">
-                    <thead>
-                        <tr>
-                            <th style="width: 20%">Image</th>
-                            <th style="width: 25%">Taxonomic Group</th>
-                            <th style="width: 30%">Scientific Name</th>
-                            <th style="width: 25%">Common Name</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="stats" id="statsSection">
-            Loading data...
-        </div>
+    <div class="controls" style="grid-column: span 2;">
+        <input type="text" id="search" placeholder="Search species..." oninput="filterTable()">
+        <select id="groupFilter" onchange="filterTable()">
+            <option value="">All Groups</option>
+        </select>
     </div>
 
+    <table class="species-table">
+        <thead>
+            <tr>
+                <th>Image</th>
+                <th>Taxonomic Group</th>
+                <th>Scientific Name</th>
+                <th>Common Name</th>
+                <th>Discovery Timestamp</th>
+            </tr>
+        </thead>
+        <tbody id="species-tbody"></tbody>
+    </table>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
     <script>
-        let data = [];
+        const historyPath = '{{ history_path }}';
         const csvPath = '{{ csv_path }}';
-        const imgsPath = '{{ imgs_path }}';
+        const imagesBasePath = '{{ images_base_path }}';
 
-        window.addEventListener('load', async () => {
+        let historyData = [];
+        let speciesData = [];
+
+        // Initialize map
+        const map = L.map('map').setView([48.8374, 2.4117], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Fetch and process CSV data
+        async function processCsvData(csv) {
             try {
-                const response = await fetch(csvPath);
-                const text = await response.text();
-                console.log(text)
-                processData(text);
-                adjustTableScale();
+                const lines = csv.split('\n');
+                const headers = lines[0].split(',');
+
+                speciesData = lines.slice(1).map(line => {
+                    if (!line.trim()) return null;
+                    
+                    const values = line.split(',');
+                    return {
+                        image_name: values[0],
+                        taxonomic_group: values[1],
+                        scientific_name: values[2],
+                        common_name: values[3]
+                    };
+                }).filter(row => row !== null && row.image_name);
+
+                if (speciesData.length === 0) {
+                    throw new Error('No species data found');
+                }
+
+                updateGroupFilter();
             } catch (error) {
-                console.error('Error loading data:', error);
-                document.getElementById('statsSection').innerHTML = 'Error loading CSV file. Please check the path.';
+                console.error('Error processing CSV:', error);
+                showErrorMessage('No species data available. Please check the data source.');
             }
-        });
-
-        function processData(csv) {
-            const lines = csv.split('\n');
-            const headers = lines[0].split(',');
-
-            data = lines.slice(1).map(line => {
-                if (!line.trim()) return null;
-                
-                const values = line.split(',');
-                return {
-                    image_name: values[0],
-                    taxonomic_group: values[1],
-                    scientific_name: values[2],
-                    common_name: values[3]
-                };
-            }).filter(row => row !== null && row.image_name);
-
-            updateGroupFilter();
-            populateTable(data);
         }
 
+        // Show error message on the page
+        function showErrorMessage(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.classList.add('error-message');
+            errorDiv.textContent = message;
+            
+            // Insert the error message before the species table
+            const speciesTable = document.querySelector('.species-table');
+            speciesTable.parentNode.insertBefore(errorDiv, speciesTable);
+        }
+
+        // Update group filter options
         function updateGroupFilter() {
-            const groups = new Set(data.map(row => row.taxonomic_group));
+            const groups = new Set(speciesData.map(row => row.taxonomic_group));
             const select = document.getElementById('groupFilter');
             select.innerHTML = '<option value="">All Groups</option>';
 
@@ -227,68 +210,165 @@
             });
         }
 
-        function populateTable(filteredData) {
-            console.log(filteredData)
+        // Fetch and process history data
+        async function loadData() {
+            try {
+                // Fetch history JSON
+                const historyResponse = await fetch(historyPath);
+                const historyJson = await historyResponse.json();
+                historyData = historyJson.history;
 
-            const tbody = document.querySelector('#speciesTable tbody');
-            tbody.innerHTML = '';
+                // Fetch CSV with extended error handling
+                try {
+                    const csvResponse = await fetch(csvPath);
+                    if (csvResponse.ok) {
+                        const csvText = await csvResponse.text();
+                        await processCsvData(csvText);
+                    } else {
+                        throw new Error('CSV file not found or inaccessible');
+                    }
+                } catch(error) {
+                    console.error('CSV fetch error:', error);
+                    showErrorMessage('Unable to load species data. Please check the CSV file.');
+                }
 
-            filteredData.forEach(row => {
-                const tr = document.createElement('tr');
-                const imgSrc = `${imgsPath}${row.image_name}`;
-                
-                tr.innerHTML = `
-                    <td><img src="${imgSrc}" alt="Species image"/></td>
-                    <td>${row.taxonomic_group || 'N/A'}</td>
-                    <td>${row.scientific_name || 'N/A'}</td>
-                    <td>${row.common_name || 'N/A'}</td>
-                `;
-                tbody.appendChild(tr);
-            });
+                // Populate conversation
+                const conversationDiv = document.getElementById('conversation');
+                historyData.forEach(entry => {
+                    // Only create a message if there's user or assistant text
+                    if ((entry.user && entry.user.trim() !== '') || entry.assistant) {
+                        const messageEl = document.createElement('div');
+                        messageEl.classList.add('message');
+                        
+                        // Determine message type and content
+                        messageEl.classList.add('user-message');
+                        messageEl.innerHTML = `<strong>User:</strong> </br> ${entry.user} </br> `;
+                        
+                        // Add image to user message if exists
+                        if (entry.image_filename) {
+                            const imgEl = document.createElement('img');
+                            imgEl.src = `${imagesBasePath}${entry.image_filename}`;
+                            imgEl.alt = 'Species image';
+                            messageEl.appendChild(imgEl);
+                        }
+                        
+                        if (entry.assistant) {
+                            const assistantMessageEl = document.createElement('div');
+                            assistantMessageEl.classList.add('message', 'assistant-message');
+                            assistantMessageEl.innerHTML = `<strong>Assistant:</strong> </br> ${entry.assistant} </br> `;
 
-            updateStats(filteredData);
-            adjustTableScale();
-        }
+                            // Add timestamp to both messages
+                            const timestampEl = document.createElement('div');
+                            timestampEl.innerHTML = `</br> <small>${new Date(entry.timestamp).toLocaleString()}</small>`;
+                            messageEl.appendChild(timestampEl);
+                            assistantMessageEl.appendChild(timestampEl.cloneNode(true));
 
-        function adjustTableScale() {
-            const table = document.getElementById('speciesTable');
-            const wrapper = document.querySelector('.table-wrapper');
+                            // Add both messages
+                            conversationDiv.appendChild(messageEl);
+                            conversationDiv.appendChild(assistantMessageEl);
+                        } else {
+                            // Add timestamp for user-only messages
+                            const timestampEl = document.createElement('div');
+                            timestampEl.innerHTML = `</br> <small>${new Date(entry.timestamp).toLocaleString()}</small>`;
+                            messageEl.appendChild(timestampEl);
+                            conversationDiv.appendChild(messageEl);
+                        }
+                    }
+                });
 
-            if (window.innerWidth <= 768) {
-                const scale = Math.min(1, (window.innerWidth - 20) / table.offsetWidth);
-                wrapper.style.transform = `scale(${scale})`;
-                wrapper.style.width = `${100 / scale}%`;
-                wrapper.style.height = `${table.offsetHeight * scale}px`;
-            } else {
-                wrapper.style.transform = '';
-                wrapper.style.width = '100%';
-                wrapper.style.height = 'auto';
+                // Populate species table
+                // If speciesData is empty, this will not add anything
+                populateSpeciesTable(historyData, speciesData);
+
+            } catch (error) {
+                console.error('Error loading data:', error);
+                showErrorMessage('Unable to load history data. Please check the data source.');
             }
         }
 
-        window.addEventListener('resize', adjustTableScale);
+        // Populate species table with combined data
+        function populateSpeciesTable(historyData, speciesData) {
+            const speciesTbody = document.getElementById('species-tbody');
+            speciesTbody.innerHTML = ''; // Clear existing rows
 
-        function updateStats(filteredData) {
-            const groups = {};
-            filteredData.forEach(row => {
-                if (row.taxonomic_group) {
-                    groups[row.taxonomic_group] = (groups[row.taxonomic_group] || 0) + 1;
+            // If no species data, display a message
+            if (speciesData.length === 0) {
+                const row = speciesTbody.insertRow();
+                const noDataCell = row.insertCell(0);
+                noDataCell.colSpan = 5;
+                noDataCell.textContent = 'No species data available';
+                noDataCell.style.textAlign = 'center';
+                return;
+            }
+
+            // Create a map of image filenames to their timestamps from history
+            const imageTimestamps = new Map(
+                historyData
+                    .filter(entry => entry.image_filename)
+                    .map(entry => [entry.image_filename, entry.timestamp])
+            );
+
+            speciesData.forEach(species => {
+                // Find corresponding history entry
+                const row = speciesTbody.insertRow();
+                
+                // Image cell
+                const imgCell = row.insertCell(0);
+                const img = document.createElement('img');
+                img.src = `${imagesBasePath}${species.image_name}`;
+                img.alt = 'Species image';
+                imgCell.appendChild(img);
+
+                // Taxonomic Group cell
+                const groupCell = row.insertCell(1);
+                groupCell.textContent = species.taxonomic_group || 'N/A';
+
+                // Scientific Name cell
+                const sciNameCell = row.insertCell(2);
+                sciNameCell.textContent = species.scientific_name || 'N/A';
+
+                // Common Name cell
+                const commonNameCell = row.insertCell(3);
+                commonNameCell.textContent = species.common_name || 'N/A';
+
+                // Timestamp cell
+                const timestampCell = row.insertCell(4);
+                timestampCell.textContent = imageTimestamps.get(species.image_name) 
+                    ? new Date(imageTimestamps.get(species.image_name)).toLocaleString() 
+                    : 'N/A';
+
+                // Add marker to map if location exists
+                const matchingHistoryEntry = historyData.find(
+                    entry => entry.image_filename === species.image_name
+                );
+
+                if (matchingHistoryEntry && matchingHistoryEntry.image_location) {
+                    L.marker([
+                        matchingHistoryEntry.image_location.latitude, 
+                        matchingHistoryEntry.image_location.longitude
+                    ])
+                     .addTo(map)
+                     .bindPopup(`
+                        <img src="${imagesBasePath}${species.image_name}" style="max-width:200px;"><br>
+                        ${species.common_name || species.scientific_name}
+                     `);
                 }
             });
 
-            const statsHtml = `
-                <strong>Total entries:</strong> ${filteredData.length}<br>
-                <strong>Groups:</strong> ${Object.entries(groups).map(([group, count]) =>
-                    `${group} (${count})`).join(', ')}
-            `;
-            document.getElementById('statsSection').innerHTML = statsHtml;
+            // Fit map to markers
+            // const markers = map.getLayers().filter(layer => layer instanceof L.Marker);
+            // if (markers.length > 0) {
+            //     const group = new L.featureGroup(markers);
+            //     map.fitBounds(group.getBounds().pad(0.2));
+            // }
         }
 
+        // Filter table function
         function filterTable() {
             const searchTerm = document.getElementById('search').value.toLowerCase();
             const groupFilter = document.getElementById('groupFilter').value;
 
-            const filtered = data.filter(row => {
+            const filtered = speciesData.filter(row => {
                 const matchesSearch = Object.values(row).some(value =>
                     value && value.toLowerCase().includes(searchTerm)
                 );
@@ -296,8 +376,17 @@
                 return matchesSearch && matchesGroup;
             });
 
-            populateTable(filtered);
+            // Repopulate table with filtered data
+            populateSpeciesTable(
+                historyData.filter(entry => 
+                    filtered.some(species => species.image_name === entry.image_filename)
+                ),
+                filtered
+            );
         }
+
+        // Load data when page loads
+        window.addEventListener('load', loadData);
     </script>
 </body>
 </html>
