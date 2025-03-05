@@ -44,6 +44,31 @@ def home():
     """Serves the OAAK homepage with two buttons."""
     return render_template('home.html')
 
+@app.route("/explore/raw", methods=["GET"])
+@app.route("/explore/<path:subpath>/raw", methods=["GET"])
+def explore_raw(subpath=""):
+    abs_path = os.path.join(BASE_DIR, subpath)
+    
+    # Prevent directory traversal attacks
+    if not os.path.commonpath([BASE_DIR, abs_path]).startswith(BASE_DIR):
+        abort(403)
+    
+    if os.path.isdir(abs_path):
+        items = os.listdir(abs_path)
+        items.sort()
+        
+        file_list = []
+        for item in items:
+            item_path = os.path.join(abs_path, item)
+            is_dir = os.path.isdir(item_path)
+            
+            file_info = f"{item} {'DIR' if is_dir else 'FILE'} {os.path.getsize(item_path) if not is_dir else '-'} {datetime.datetime.fromtimestamp(os.path.getmtime(item_path)).strftime('%Y-%m-%d %H:%M')}"
+            file_list.append(file_info)
+        
+        return "\n".join(file_list)
+    
+    abort(404)
+
 @app.route("/explore/", methods=["GET"])
 @app.route("/explore/<path:subpath>", methods=["GET"])
 def explore(subpath=""):
