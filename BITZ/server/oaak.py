@@ -26,8 +26,10 @@ def save_conversation(system_prompt, conversation_id, history, history_directory
     """Save conversation history and images."""
     os.makedirs(history_directory, exist_ok=True)
 
+    # check if the image directory exist 
     convo_dir = os.path.join(history_directory, conversation_id)
-    os.makedirs(convo_dir, exist_ok=True)
+    if not os.path.exists(convo_dir):
+        return # return if we don't have any images in the conversation (saving images create the dir)
 
     conversation_data = {
         "system_prompt": system_prompt,
@@ -49,9 +51,7 @@ def load_conversation(conversation_id, history_directory="./history"):
             return data.get("history", [])
     return []
 
-
-def process_image(image_b64, conversation_id, history_length, history_directory="./history"):
-    """Processes and saves an uploaded image."""
+def save_image(image_b64, conversation_id, history_length, history_directory):
     convo_dir = os.path.join(history_directory, conversation_id, "imgs")
     image_filename = f"{history_length}_image.jpg"
     image_path = os.path.join(convo_dir, image_filename)
@@ -62,6 +62,9 @@ def process_image(image_b64, conversation_id, history_length, history_directory=
     with open(image_path, "wb") as img_file:
         img_file.write(image_data)
 
+    return image_path
+
+def extract_species_from_images(image_path, conversation_id, history_directory):
     # run this in parallel to avoid slowing down
     classify_thread = threading.Thread(
         target=oaak_classify.identify_and_populate,
@@ -70,8 +73,12 @@ def process_image(image_b64, conversation_id, history_length, history_directory=
     )
     classify_thread.start()
 
+def process_image(image_b64, conversation_id, history_length, history_directory="./history"):
+    """Processes and saves an uploaded image."""
+    image_path = save_image(image_b64, conversation_id, history_length, history_directory)
+    extract_species_from_images(image_path, conversation_id, history_directory)
+    image_filename = os.path.basename(image_path)
     return image_filename
-
 
 def prepare_messages(system_prompt, history, current_message, image_b64):
     """Prepares the message list for the model."""
