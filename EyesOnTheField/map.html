@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinite OSM Map in 3D</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px;
+            font-family: monospace;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">Loading OSM tiles...</div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Initialize Three.js scene
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x87ceeb); // Sky blue background
+        document.body.appendChild(renderer.domElement);
+
+        // Set camera position
+        camera.position.set(0, 300, 0);
+        camera.lookAt(0, 0, 0);
+
+        // Add ambient light
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        // Add directional light (sun)
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(1000, 1000, 1000);
+        scene.add(directionalLight);
+
+        // Function to load an OSM tile at given coordinates
+        
+        // Controls for moving around
+        let moveForward = false;
+        let moveBackward = false;
+        let moveLeft = false;
+        let moveRight = false;
+        const moveSpeed = 5;
+
+        document.addEventListener('keydown', (event) => {
+            switch (event.code) {
+                case 'ArrowUp':
+                case 'KeyW':
+                    moveForward = true;
+                    break;
+                case 'ArrowDown':
+                case 'KeyS':
+                    moveBackward = true;
+                    break;
+                case 'ArrowLeft':
+                case 'KeyA':
+                    moveLeft = true;
+                    break;
+                case 'ArrowRight':
+                case 'KeyD':
+                    moveRight = true;
+                    break;
+                case 'KeyQ':
+                    // Zoom in
+                    if (zoomLevel < 19) {
+                        zoomLevel++;
+                        // Clear all tiles and reset
+                        for (const tileId in loadedTiles) {
+                            scene.remove(loadedTiles[tileId]);
+                        }
+                        loadedTiles = {};
+                        updateTiles();
+                    }
+                    break;
+                case 'KeyE':
+                    // Zoom out
+                    if (zoomLevel > 10) {
+                        zoomLevel--;
+                        // Clear all tiles and reset
+                        for (const tileId in loadedTiles) {
+                            scene.remove(loadedTiles[tileId]);
+                        }
+                        loadedTiles = {};
+                        updateTiles();
+                    }
+                    break;
+            }
+        });
+
+        document.addEventListener('keyup', (event) => {
+            switch (event.code) {
+                case 'ArrowUp':
+                case 'KeyW':
+                    moveForward = false;
+                    break;
+                case 'ArrowDown':
+                case 'KeyS':
+                    moveBackward = false;
+                    break;
+                case 'ArrowLeft':
+                case 'KeyA':
+                    moveLeft = false;
+                    break;
+                case 'ArrowRight':
+                case 'KeyD':
+                    moveRight = false;
+                    break;
+            }
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Mouse controls for camera rotation
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let cameraRotation = { x: 0, y: 0 };
+        
+        document.addEventListener('mousedown', (event) => {
+            isDragging = true;
+            previousMousePosition = { x: event.clientX, y: event.clientY };
+        });
+        
+        document.addEventListener('mousemove', (event) => {
+            if (isDragging) {
+                const deltaMove = {
+                    x: event.clientX - previousMousePosition.x,
+                    y: event.clientY - previousMousePosition.y
+                };
+                
+                // Adjust camera rotation based on mouse movement
+                cameraRotation.y -= deltaMove.x * 0.005;
+                
+                // Limit vertical rotation to prevent flipping
+                cameraRotation.x -= deltaMove.y * 0.005;
+                cameraRotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 4, cameraRotation.x));
+                
+                previousMousePosition = { x: event.clientX, y: event.clientY };
+                
+                // Update camera direction
+                updateCameraDirection();
+            }
+        });
+        
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+        
+        function updateCameraDirection() {
+            // Calculate camera direction based on rotation
+            camera.rotation.x = cameraRotation.x;
+            camera.rotation.y = cameraRotation.y;
+        }
+
+        // Initial load of tiles
+        updateTiles();
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Handle movement
+            const moveVector = new THREE.Vector3(0, 0, 0);
+            
+            if (moveForward) {
+                moveVector.z -= moveSpeed;
+            }
+            if (moveBackward) {
+                moveVector.z += moveSpeed;
+            }
+            if (moveLeft) {
+                moveVector.x -= moveSpeed;
+            }
+            if (moveRight) {
+                moveVector.x += moveSpeed;
+            }
+            
+            // Apply rotation to movement
+            moveVector.applyQuaternion(camera.quaternion);
+            moveVector.y = 0; // Keep movement on xz plane
+            
+            // Update world position
+            worldX += moveVector.x;
+            worldZ += moveVector.z;
+            
+            // Move camera
+            camera.position.add(moveVector);
+            
+            // Update tiles if we've moved enough
+            if (Math.abs(moveVector.x) > 0 || Math.abs(moveVector.z) > 0) {
+                updateTiles();
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+    </script>
+</body>
+</html>

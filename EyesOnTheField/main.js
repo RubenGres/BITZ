@@ -3,6 +3,32 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { SimplexNoise } from 'three/addons/math/SimplexNoise.js';
 
+
+// Map tile management
+const tileSize = 256; // Standard OSM tile size
+const tileScale = 1;
+const loadedTiles = {};
+const visibleTileRadius = 4; // Number of tiles to load in each direction
+
+// Current position in world coordinates
+let worldX = 0;
+let worldZ = 0;
+
+// Initial zoom level
+let zoomLevel = 16;
+
+// Helper to convert lat/lon to tile coordinates
+function lon2tile(lon, zoom) { return Math.floor((lon + 180) / 360 * Math.pow(2, zoom)); }
+function lat2tile(lat, zoom) { return Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, zoom)); }
+
+// Starting coordinates (San Francisco)
+const startLat = 52.3292;
+const startLon = 4.894237;
+
+// Convert starting coordinates to tile coordinates
+let centerTileX = lon2tile(startLon, zoomLevel);
+let centerTileY = lat2tile(startLat, zoomLevel);
+
 const ImagePaths = [
     "10070.jpg","126155.jpg","13858.jpg","15282.jpg","204496.jpg","4270.jpg","480298.jpg","52482.jpg","53059.jpg","552449.JPG","55626.jpg","55882.jpeg","56162.jpeg","58085.jpeg","7008.jpeg","79025.jpg","84954.jpeg",
     "118552.jpg","126585.jpg","13988.jpg","153440.jpeg","204533.jpeg","43151.jpg","48484.jpg","52506.jpg","53168.jpg","55563.jpeg","55637.jpg","55891.jpeg","56170.jpg","61508.jpg","70211.jpeg","79141.jpeg","891696.jpg",
@@ -37,6 +63,9 @@ document.body.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; // Smooth orbiting
 
+// Make the initial ground plane
+updateTiles()
+
 // Create a group to hold the spheres
 const spheresGroup = new THREE.Group();
 scene.add(spheresGroup);
@@ -52,6 +81,81 @@ function createPoint(texture, position) {
     sprite.userData.originalPosition = position.clone(); // Store original position
     return sprite;
 }
+
+function loadTile(tileX, tileY, zoom) {
+    const tileId = `${tileX},${tileY},${zoom}`;
+    console.log(`loading tile... ${tileId}`)
+    
+    // Check if tile is already loaded
+    if (loadedTiles[tileId]) return;
+    
+    // Create tile material with OSM texture
+    const texture = new THREE.TextureLoader().load(
+        `https://tile.openstreetmap.org/${zoom}/${tileX}/${tileY}.png`,
+        function() {
+            document.getElementById('info').textContent = `Coords: ${tileX}, ${tileY} | Zoom: ${zoom}`;
+        },
+        undefined,
+        function(err) {
+            console.error('Error loading tile:', err);
+        }
+    );
+    
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    
+    const material = new THREE.MeshBasicMaterial({ map: texture });
+    
+    // Create tile geometry
+    const geometry = new THREE.PlaneGeometry(tileSize * tileScale, tileSize * tileScale);
+    
+    // Create tile mesh
+    const tile = new THREE.Mesh(geometry, material);
+    
+    // Position tile in world (rotated to lie flat)
+    tile.rotation.x = -Math.PI / 2;
+    
+    // Position based on tile coordinates
+    const worldTileX = (tileX - centerTileX) * tileSize * tileScale;
+    const worldTileZ = (tileY - centerTileY) * tileSize * tileScale;
+    
+    tile.position.set(worldTileX, 0, worldTileZ);
+    
+    // Add to scene and tracking
+    scene.add(tile);
+    loadedTiles[tileId] = tile;
+}
+
+// Function to update visible tiles based on current position
+function updateTiles() {
+    // Convert world position to center tile
+    const offsetTileX = Math.floor(worldX / (tileSize * tileScale));
+    const offsetTileY = Math.floor(worldZ / (tileSize * tileScale));
+    
+    const currentCenterTileX = centerTileX + offsetTileX;
+    const currentCenterTileY = centerTileY + offsetTileY;
+    
+    // Load tiles around current position
+    for (let x = -visibleTileRadius; x <= visibleTileRadius; x++) {
+        for (let y = -visibleTileRadius; y <= visibleTileRadius; y++) {
+            loadTile(currentCenterTileX + x, currentCenterTileY + y, zoomLevel);
+        }
+    }
+    
+    // Clean up tiles that are too far away
+    const cleanupRadius = visibleTileRadius + 2;
+    for (const tileId in loadedTiles) {
+        const [tx, ty, tz] = tileId.split(',').map(Number);
+        
+        if (tz !== zoomLevel ||
+            Math.abs(tx - currentCenterTileX) > cleanupRadius ||
+            Math.abs(ty - currentCenterTileY) > cleanupRadius) {
+            scene.remove(loadedTiles[tileId]);
+            delete loadedTiles[tileId];
+        }
+    }
+}
+
 
 // Function to create lines connecting each sprite to one of its five nearest neighbors
 function createNearestNeighborLines(group, lineColor = 0x000000) {
@@ -189,4 +293,5 @@ function animate() {
     controls.update();
     renderer.render(scene, camera);
 }
+
 animate();
