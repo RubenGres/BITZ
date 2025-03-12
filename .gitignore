@@ -1,2 +1,3 @@
 .env
 BITZ/server/history
+__pycache__
