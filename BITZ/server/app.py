@@ -184,7 +184,7 @@ def delete(id=""):
 def images(id=""):
     abort(404)
 
-@app.route("/dashboard", methods=["GET"])
+@app.route("/dashboard/", methods=["GET"])
 def dashboard():
     """
     Display a dashboard with all quests and associated actions.
