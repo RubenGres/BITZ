@@ -149,7 +149,7 @@
         let speciesData = [];
 
         // Initialize map
-        const map = L.map('map').setView([48.8374, 2.4117], 12);
+        const map = L.map('map').setView([0.0, 0.0], 12);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
@@ -280,9 +280,126 @@
                 // If speciesData is empty, this will not add anything
                 populateSpeciesTable(historyData, speciesData);
 
+                addCenterCursor(historyJson);
+                populateMapCursors(historyData);
+
             } catch (error) {
                 console.error('Error loading data:', error);
                 showErrorMessage('Unable to load history data. Please check the data source.');
+            }
+        }
+
+        function addCenterCursor(historyJson) {
+            // Check if historyJson has the location property with coordinates
+            if (historyJson && 
+                historyJson.location && 
+                historyJson.location.coordinates && 
+                historyJson.location.coordinates.latitude && 
+                historyJson.location.coordinates.longitude) {
+                
+                // Extract the coordinates
+                const lat = historyJson.location.coordinates.latitude;
+                const lng = historyJson.location.coordinates.longitude;
+                
+                // Create a custom red icon
+                const redIcon = L.divIcon({
+                    html: `<div style="background-color: #ff3333; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border: 2px solid white;"></div>`,
+                    className: 'center-marker',
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                });
+                
+                // Add the marker to the map with the red icon
+                const centerMarker = L.marker([lat, lng], { icon: redIcon }).addTo(map);
+                
+                // Add a popup with location information
+                centerMarker.bindPopup(`
+                    <strong>Center Location</strong><br>
+                    Latitude: ${lat}<br>
+                    Longitude: ${lng}
+                `);
+                
+                // Center the map on this location
+                map.setView([lat, lng], 14);
+                
+                // Store the marker reference if needed for later manipulation
+                window.centerMarker = centerMarker;
+                
+                console.log('Center cursor added at:', lat, lng);
+            } else {
+                console.error('Location coordinates not found in history JSON');
+            }
+        }
+
+
+        function populateMapCursors(historyData) {
+            // Clear any existing markers first
+            map.eachLayer(layer => {
+                if (layer instanceof L.Marker) {
+                    map.removeLayer(layer);
+                }
+            });
+            
+            // Filter history entries that have image locations
+            const entriesWithLocations = historyData.filter(entry => 
+                entry.image_location && 
+                entry.image_location.latitude && 
+                entry.image_location.longitude
+            );
+            
+            // Create markers for each location
+            entriesWithLocations.forEach((entry, index) => {
+                // Create a custom numbered icon
+                const numberIcon = L.divIcon({
+                    html: `<div style="background-color: #3388ff; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid white;">${index + 1}</div>`,
+                    className: 'number-marker',
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12]
+                });
+                
+                // Create the marker with the numbered icon
+                const marker = L.marker(
+                    [entry.image_location.latitude, entry.image_location.longitude],
+                    { icon: numberIcon }
+                ).addTo(map);
+                
+                // Prepare popup content
+                let popupContent = '';
+                
+                // Add image if available
+                if (entry.image_filename) {
+                    popupContent += `<img src="${imagesBasePath}${entry.image_filename}" style="max-width:200px; max-height:150px;"><br>`;
+                }
+                
+                // Look up species info if available
+                const speciesInfo = speciesData.find(species => species.image_name === entry.image_filename);
+                
+                if (speciesInfo) {
+                    popupContent += `<strong>${speciesInfo.common_name || speciesInfo.scientific_name}</strong><br>`;
+                    popupContent += `<em>${speciesInfo.scientific_name}</em><br>`;
+                    popupContent += `Group: ${speciesInfo.taxonomic_group}<br>`;
+                }
+                
+                // Add timestamp
+                popupContent += `<small>Discovered: ${new Date(entry.timestamp).toLocaleString()}</small>`;
+                
+                // Bind popup to marker
+                marker.bindPopup(popupContent);
+                
+                // Show popup on hover
+                marker.on('mouseover', function() {
+                    this.openPopup();
+                });
+            });
+            
+            // Fit map to show all markers if there are any
+            if (entriesWithLocations.length > 0) {
+                const group = L.featureGroup(
+                    entriesWithLocations.map(entry => 
+                        L.marker([entry.image_location.latitude, entry.image_location.longitude])
+                    )
+                );
+                map.fitBounds(group.getBounds().pad(0.2));
             }
         }
 

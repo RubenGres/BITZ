@@ -24,10 +24,8 @@ def _validate_chat_request(data):
         return jsonify({"error": "Please provide a user location."}), 400
     
     return None
-BASE_DIR = os.path.abspath("history")  # Set base directory to "history"
 
 BASE_DIR = os.path.abspath("history")  # Base directory
-
 
 def human_readable_size(size, decimal_places=1):
     """Convert bytes to human-readable format (KB, MB, GB, etc.)"""
@@ -36,8 +34,6 @@ def human_readable_size(size, decimal_places=1):
             return f"{size:.{decimal_places}f} {unit}"
         size /= 1024.0
     return f"{size:.{decimal_places}f} PB"
-
-
 
 @app.route("/", methods=["GET"])
 def home():
@@ -73,7 +69,6 @@ def explore_raw(subpath=""):
 
     abort(404)
 
-
 @app.route("/explore/", methods=["GET"])
 @app.route("/explore/<path:subpath>", methods=["GET"])
 def explore(subpath=""):
@@ -83,6 +78,11 @@ def explore(subpath=""):
     if not os.path.commonpath([BASE_DIR, abs_path]).startswith(BASE_DIR):
         abort(403)
     
+    print(abs_path)
+    print(abs_path)
+    print(abs_path)
+    print(abs_path)
+
     if os.path.isdir(abs_path):
         items = os.listdir(abs_path)
         items.sort()  # Sort for better organization
@@ -121,11 +121,120 @@ def explore(subpath=""):
     
     abort(404)
 
+
+@app.route("/delete/<id>", methods=["GET", "POST"])
+def delete(id=""):
+    """
+    Handle deletion of a conversation record.
+    GET: Display password confirmation form
+    POST: Verify password and delete record if authorized
+    
+    This will delete:
+    - The main record directory (BASE_DIR/<id>)
+    - Associated images (BASE_DIR/images/<id>)
+    - Associated data (BASE_DIR/data/<id>)
+    """
+    if not id:
+        return jsonify({"error": "No ID provided"}), 400
+    
+    # Paths to the record and associated data to be deleted
+    images_path = os.path.join(BASE_DIR, "images", id)
+    data_path = os.path.join(BASE_DIR, "data", id)
+    
+    # Check if the main record exists
+    if not os.path.exists(data_path):
+        return render_template('delete_error.html', message=f"Record with ID {id} not found"), 404
+    
+    # Handle POST request (password submission)
+    if request.method == "POST":
+        password = request.form.get('password')
+        
+        # Get the deletion password from environment variable
+        correct_password = os.environ.get('DELETE_PASSWORD')
+        
+        # Verify password
+        if password == correct_password:
+            import shutil
+            try:
+                # Delete the images directory if it exists
+                if os.path.exists(images_path):
+                    shutil.rmtree(images_path)
+                
+                # Delete the data directory if it exists
+                if os.path.exists(data_path):
+                    shutil.rmtree(data_path)
+                    
+                return render_template('delete_success.html', 
+                                       message=f"Record {id} and all associated data successfully deleted",
+                                       redirect_url="/dashboard")
+            except Exception as e:
+                return render_template('delete_error.html', 
+                                       message=f"Error deleting record: {str(e)}"), 500
+        else:
+            # Password is incorrect
+            return render_template('delete.html', 
+                                  id=id, 
+                                  error="Incorrect password. Please try again.")
+    
+    # Handle GET request (show password form)
+    return render_template('delete.html', id=id)
+
+@app.route("/images/", methods=["GET"])
+@app.route("/images/<id>", methods=["GET"])
+def images(id=""):
+    abort(404)
+
+@app.route("/dashboard", methods=["GET"])
+def dashboard():
+    """
+    Display a dashboard with all quests and associated actions.
+    """
+    # Get all top-level folders in the history directory
+    abs_path = os.path.join(BASE_DIR, "data")
+    
+    # Check if the directory exists
+    if not os.path.isdir(abs_path):
+        return render_template('delete_error.html', message="History directory not found"), 404
+    
+    # Get list of top-level folders (quests)
+    items = os.listdir(abs_path)
+    items.sort()  # Sort alphabetically by default
+    
+    quests = []
+    for item in items:
+        item_path = os.path.join(abs_path, item)
+        
+        # Skip if not a directory or if it's a special directory
+        if not os.path.isdir(item_path) or item.startswith('.'):
+            continue
+        
+        # Calculate directory size
+        total_size = 0
+        for dirpath, dirnames, filenames in os.walk(item_path):
+            for f in filenames:
+                fp = os.path.join(dirpath, f)
+                if os.path.isfile(fp):
+                    total_size += os.path.getsize(fp)
+        
+        # Create quest info dictionary
+        quest_info = {
+            'name': item,
+            'full_path': item,
+            'is_dir': True,
+            'size': human_readable_size(total_size),
+            'mod_time': datetime.datetime.fromtimestamp(os.path.getmtime(item_path)).strftime('%Y-%m-%d %H:%M'),
+            'icon': "📁"
+        }
+        
+        quests.append(quest_info)
+    
+    return render_template('dashboard.html', quests=quests)
+
 @app.route("/recap/<id>")
 def recap(id):
     # Construct paths to the CSV file and images directory
-    csv_path = os.path.join(BASE_DIR, id, "species_data_english.csv")
-    imgs_path = os.path.join(BASE_DIR, id, "imgs")
+    csv_path = os.path.join(BASE_DIR, "data", id, "species_data_english.csv")
+    imgs_path = os.path.join(BASE_DIR, "images", id)
     
     # Check if the CSV file exists
     if not os.path.isfile(csv_path):
@@ -136,9 +245,9 @@ def recap(id):
         return f"Error: Images directory not found at {imgs_path}", 404
     
     # Prepare the relative path for the CSV file to be used in the template
-    relative_csv_path = f"/explore/{id}/species_data_english.csv"
-    relative_imgs_path = f"/explore/{id}/imgs/"
-    relative_history_path = f"/explore/{id}/history.json"
+    relative_csv_path = f"/explore/data/{id}/species_data_english.csv"
+    relative_history_path = f"/explore/data/{id}/history.json"
+    relative_imgs_path = f"/explore/images/{id}/"
     
     # Render the template
     return render_template('species_viewer.html', 

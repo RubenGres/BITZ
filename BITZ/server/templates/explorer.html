@@ -32,14 +32,23 @@
         .view-btn {
             display: inline-block;
             padding: 5px 10px;
-            background-color: #4CAF50;
             color: white;
             border-radius: 4px;
             text-decoration: none;
         }
-        .view-btn:hover {
-            background-color: #45a049;
+        
+        .view-btn.quest {
+            background-color: #4CAF50;
         }
+
+        .view-btn.images {
+            background-color: #4c90af;
+        }
+
+        .view-btn.delete {
+            background-color: #fc3636;
+        }
+
     </style>
 </head>
 <body>
@@ -49,7 +58,6 @@
             <th>Name</th>
             <th>Size</th>
             <th>Last Modified</th>
-            <th>Actions</th>
         </tr>
         {% if parent_path is defined %}
         <tr>
@@ -68,11 +76,6 @@
             </td>
             <td>{{ item.size }}</td>
             <td>{{ item.mod_time }}</td>
-            <td>
-                {% if item.is_dir and not current_path %}
-                <a href="{{ url_for('recap', id=item.name) }}" class="view-btn">View quest</a>
-                {% endif %}
-            </td>
         </tr>
         {% endfor %}
     </table>

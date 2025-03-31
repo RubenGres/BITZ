@@ -1,0 +1,101 @@
+<!-- templates/delete.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delete Confirmation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .warning {
+            color: #721c24;
+            background-color: #f8d7da;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="password"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+        }
+        .error {
+            color: #dc3545;
+            margin-top: 5px;
+        }
+        .btn {
+            display: inline-block;
+            font-weight: 400;
+            color: #fff;
+            text-align: center;
+            vertical-align: middle;
+            cursor: pointer;
+            padding: 0.375rem 0.75rem;
+            font-size: 1rem;
+            line-height: 1.5;
+            border-radius: 0.25rem;
+            transition: background-color 0.15s ease-in-out;
+            text-decoration: none;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+            border: 1px solid #dc3545;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+            border-color: #bd2130;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            border: 1px solid #6c757d;
+            margin-left: 10px;
+        }
+        .btn-secondary:hover {
+            background-color: #5a6268;
+            border-color: #545b62;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Delete Confirmation</h1>
+        
+        <div class="warning">
+            <p><strong>Warning:</strong> You are about to delete record with ID: <strong>{{ id }}</strong>. This action cannot be undone.</p>
+        </div>
+        
+        <form method="POST" action="/delete/{{ id }}">
+            <div class="form-group">
+                <label for="password">Enter admin password to confirm deletion:</label>
+                <input type="password" id="password" name="password" required>
+                {% if error %}
+                <div class="error">{{ error }}</div>
+                {% endif %}
+            </div>
+            
+            <button type="submit" class="btn btn-danger">Delete</button>
+            <a href="/explore/" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+</body>
+</html>

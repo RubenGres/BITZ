@@ -24,10 +24,12 @@ def get_model(model_name="gpt-4o"):
 
 def save_conversation(system_prompt, conversation_id, history, history_directory="./history"):
     """Save conversation history and images."""
-    os.makedirs(history_directory, exist_ok=True)
+    history_data_dir = os.path.join(history_directory, "data")
+    
+    os.makedirs(history_data_dir, exist_ok=True)
 
     # check if the image directory exist 
-    convo_dir = os.path.join(history_directory, conversation_id)
+    convo_dir = os.path.join(history_data_dir, conversation_id)
     if not os.path.exists(convo_dir):
         return # return if we don't have any images in the conversation (saving images create the dir)
 
@@ -42,7 +44,9 @@ def save_conversation(system_prompt, conversation_id, history, history_directory
 
 def load_conversation(conversation_id, history_directory="./history"):
     """Load conversation history if it exists."""
-    convo_dir = os.path.join(history_directory, conversation_id)
+    history_data_dir = os.path.join(history_directory, "data")
+
+    convo_dir = os.path.join(history_data_dir, conversation_id)
     history_file = os.path.join(convo_dir, "history.json")
 
     if os.path.exists(history_file):
@@ -52,7 +56,9 @@ def load_conversation(conversation_id, history_directory="./history"):
     return []
 
 def save_image(image_b64, conversation_id, history_length, history_directory):
-    convo_dir = os.path.join(history_directory, conversation_id, "imgs")
+    history_data_dir = os.path.join(history_directory, "images")
+    convo_dir = os.path.join(history_data_dir, conversation_id)
+    
     image_filename = f"{history_length}_image.jpg"
     image_path = os.path.join(convo_dir, image_filename)
     image_data = base64.b64decode(image_b64)

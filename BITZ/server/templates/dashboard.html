@@ -1,0 +1,205 @@
+{% block content %}
+<div class="dashboard-container">
+    <h1>Quest Dashboard</h1>
+    
+    <div class="dashboard-filters">
+        <input type="text" id="searchInput" placeholder="Search quests..." onkeyup="filterQuests()">
+        <select id="sortSelect" onchange="sortQuests()">
+            <option value="name-asc">Name (A-Z)</option>
+            <option value="name-desc">Name (Z-A)</option>
+            <option value="date-desc">Date (Newest)</option>
+            <option value="date-asc">Date (Oldest)</option>
+        </select>
+    </div>
+
+    <div class="quest-list">
+        <div class="quest-header">
+            <div class="quest-name">Name</div>
+            <div class="quest-date">Created</div>
+            <div class="quest-size">Size</div>
+            <div class="quest-actions">Actions</div>
+        </div>
+        
+        {% for quest in quests %}
+        <div class="quest-item" data-name="{{ quest.name }}" data-date="{{ quest.mod_time }}">
+            <div class="quest-name">
+                <span class="quest-icon">{{ quest.icon }}</span>
+                <span class="quest-label">{{ quest.name }}</span>
+            </div>
+            <div class="quest-date">{{ quest.mod_time }}</div>
+            <div class="quest-size">{{ quest.size }}</div>
+            <div class="quest-actions">
+                <a href="{{ url_for('recap', id=quest.name) }}" class="action-btn quest-btn">View Quest</a>
+                <a href="{{ url_for('images', id=quest.name) }}" class="action-btn images-btn">Images</a>
+                <a href="{{ url_for('delete', id=quest.name) }}" class="action-btn delete-btn">Delete</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    {% if not quests %}
+    <div class="no-quests">
+        <p>No quests found.</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function filterQuests() {
+    const input = document.getElementById('searchInput');
+    const filter = input.value.toUpperCase();
+    const questItems = document.getElementsByClassName('quest-item');
+    
+    for (let i = 0; i < questItems.length; i++) {
+        const questName = questItems[i].getElementsByClassName('quest-label')[0];
+        const txtValue = questName.textContent || questName.innerText;
+        
+        if (txtValue.toUpperCase().indexOf(filter) > -1) {
+            questItems[i].style.display = "";
+        } else {
+            questItems[i].style.display = "none";
+        }
+    }
+}
+
+function sortQuests() {
+    const sortSelect = document.getElementById('sortSelect');
+    const sortValue = sortSelect.value;
+    const questList = document.querySelector('.quest-list');
+    const questItems = Array.from(document.getElementsByClassName('quest-item'));
+    
+    questItems.sort(function(a, b) {
+        if (sortValue === 'name-asc') {
+            return a.dataset.name.localeCompare(b.dataset.name);
+        } else if (sortValue === 'name-desc') {
+            return b.dataset.name.localeCompare(a.dataset.name);
+        } else if (sortValue === 'date-asc') {
+            return new Date(a.dataset.date) - new Date(b.dataset.date);
+        } else if (sortValue === 'date-desc') {
+            return new Date(b.dataset.date) - new Date(a.dataset.date);
+        }
+    });
+    
+    // Remove all existing quest items
+    questItems.forEach(item => {
+        questList.removeChild(item);
+    });
+    
+    // Add sorted quest items back to the list
+    const questHeader = document.querySelector('.quest-header');
+    questItems.forEach(item => {
+        questList.appendChild(item);
+    });
+    
+    // Ensure header stays at the top
+    questList.insertBefore(questHeader, questList.firstChild);
+}
+</script>
+{% endblock %}
+
+{% block styles %}
+<style>
+    .dashboard-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    h1 {
+        margin-bottom: 20px;
+        color: #333;
+    }
+    
+    .dashboard-filters {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 20px;
+    }
+    
+    #searchInput {
+        flex-grow: 1;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        margin-right: 10px;
+    }
+    
+    #sortSelect {
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    
+    .quest-list {
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    
+    .quest-header {
+        display: grid;
+        grid-template-columns: 3fr 1fr 1fr 3fr;
+        background-color: #f5f5f5;
+        padding: 12px 15px;
+        font-weight: bold;
+        border-bottom: 1px solid #ddd;
+    }
+    
+    .quest-item {
+        display: grid;
+        grid-template-columns: 3fr 1fr 1fr 3fr;
+        padding: 12px 15px;
+        border-bottom: 1px solid #ddd;
+        transition: background-color 0.2s;
+    }
+    
+    .quest-item:last-child {
+        border-bottom: none;
+    }
+    
+    .quest-item:hover {
+        background-color: #f9f9f9;
+    }
+    
+    .quest-icon {
+        margin-right: 10px;
+    }
+    
+    .quest-actions {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .action-btn {
+        padding: 6px 12px;
+        border-radius: 4px;
+        text-decoration: none;
+        color: white;
+        font-size: 14px;
+        text-align: center;
+        transition: opacity 0.2s;
+    }
+    
+    .action-btn:hover {
+        opacity: 0.9;
+    }
+    
+    .quest-btn {
+        background-color: #4CAF50;
+    }
+    
+    .images-btn {
+        background-color: #2196F3;
+    }
+    
+    .delete-btn {
+        background-color: #f44336;
+    }
+    
+    .no-quests {
+        text-align: center;
+        padding: 30px;
+        color: #666;
+    }
+</style>
+{% endblock %}

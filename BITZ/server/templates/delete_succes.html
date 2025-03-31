@@ -1,0 +1,65 @@
+<!-- templates/delete_success.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Success</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success {
+            color: #155724;
+            background-color: #d4edda;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .btn {
+            display: inline-block;
+            font-weight: 400;
+            color: #fff;
+            text-align: center;
+            vertical-align: middle;
+            cursor: pointer;
+            padding: 0.375rem 0.75rem;
+            font-size: 1rem;
+            line-height: 1.5;
+            border-radius: 0.25rem;
+            transition: background-color 0.15s ease-in-out;
+            text-decoration: none;
+            background-color: #007bff;
+            border: 1px solid #007bff;
+        }
+        .btn:hover {
+            background-color: #0069d9;
+            border-color: #0062cc;
+        }
+    </style>
+    <script>
+        // Redirect after 3 seconds
+        setTimeout(function() {
+            window.location.href = "{{ redirect_url }}";
+        }, 3000);
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="success">
+            <p>{{ message }}</p>
+        </div>
+        <p>You will be redirected in 3 seconds. If not, click the button below.</p>
+        <a href="{{ redirect_url }}" class="btn">Go Back</a>
+    </div>
+</body>
+</html>
