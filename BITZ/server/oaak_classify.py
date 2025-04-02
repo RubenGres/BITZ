@@ -84,6 +84,7 @@ Guidelines:
 
 def identify_chatgpt(image_path, language):
     llm_reply_raw = identify_chatgpt_raw(image_path, language)
+    print(image_path)
 
     identified_species = extract_json(llm_reply_raw)
 
@@ -109,7 +110,7 @@ def identify_and_populate(image, quest_id, history_directory, language="english"
     # Define species_csv_header before using it
     species_csv_header = ["image_name", "taxonomic_group", "scientific_name", "common_name", "confidence", "notes"]
     
-    csv_filename = f"{history_directory}/{quest_id}/species_data_{language}.csv"
+    csv_filename = os.path.join(history_directory, "data", quest_id, f"species_data_{language}.csv")
     
     # Ensure directory exists
     os.makedirs(os.path.dirname(csv_filename), exist_ok=True)

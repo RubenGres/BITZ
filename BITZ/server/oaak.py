@@ -28,31 +28,30 @@ def save_conversation(system_prompt, conversation_id, history, history_directory
     
     os.makedirs(history_data_dir, exist_ok=True)
 
-    # check if the image directory exist 
+    # # check if the image directory exist 
+    # if not os.path.exists(convo_dir):
+    #     return # return if we don't have any images in the conversation (saving images create the dir)
+
+
     convo_dir = os.path.join(history_data_dir, conversation_id)
-    if not os.path.exists(convo_dir):
-        return # return if we don't have any images in the conversation (saving images create the dir)
-
-    conversation_data = {
-        "system_prompt": system_prompt,
-        "history": history  # Ensure it's saved as a list of dictionaries
-    }
-
     history_file = os.path.join(convo_dir, "history.json")
     with open(history_file, "w") as f:
+        conversation_data = {
+            "system_prompt": system_prompt,
+            "history": history  # Ensure it's saved as a list of dictionaries
+        }
+
         json.dump(conversation_data, f, indent=4)
 
 def load_conversation(conversation_id, history_directory="./history"):
     """Load conversation history if it exists."""
-    history_data_dir = os.path.join(history_directory, "data")
-
-    convo_dir = os.path.join(history_data_dir, conversation_id)
-    history_file = os.path.join(convo_dir, "history.json")
+    history_file = os.path.join(history_directory, "data", conversation_id, "history.json")
 
     if os.path.exists(history_file):
         with open(history_file, "r") as f:
             data = json.load(f)
             return data.get("history", [])
+    
     return []
 
 def save_image(image_b64, conversation_id, history_length, history_directory):

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Analyzer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Initial Screen -->
+        <div id="initial-screen" class="screen active">
+            <div class="prompt-container">
+                <h1>Explore with AI Vision</h1>
+                <p>Take a photo or upload an image to start the conversation</p>
+                <div class="button-container">
+                    <button id="camera-button" class="primary-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                            <circle cx="12" cy="13" r="4"/>
+                        </svg>
+                        Take Photo
+                    </button>
+                    <input type="file" id="file-input" accept="image/*" style="display: none;">
+                    <button id="upload-button" class="secondary-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Image
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Camera Screen -->
+        <div id="camera-screen" class="screen">
+            <video id="video" autoplay playsinline></video>
+            <div class="camera-controls">
+                <button id="capture-button" class="primary-button">Capture</button>
+                <button id="camera-back" class="secondary-button">Back</button>
+            </div>
+        </div>
+
+        <!-- Analysis Screen -->
+        <div id="analysis-screen" class="screen">
+            <div class="image-container">
+                <img id="captured-image" src="" alt="Captured image">
+                <div class="overlay">
+                    <div id="analysis-content" class="content-box">
+                        <div id="description" class="section"></div>
+                        <div id="questions" class="section"></div>
+                        <div id="follow-up" class="section">
+                            <button id="new-photo" class="primary-button">Take Another Photo</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Screen -->
+        <div id="loading-screen" class="screen">
+            <div class="loader"></div>
+            <p>Analyzing image...</p>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html> 
