@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interactive Concept Map</title>
+<style>
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: Arial, sans-serif;
+  background-color: #f5f5f5;
+}
+
+#canvas-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  transition: width 0.3s ease, height 0.3s ease;
+}
+
+canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  cursor: grab; /* Add cursor for panning */
+}
+
+canvas:active {
+  cursor: grabbing; /* Change cursor when actively panning */
+}
+
+#ui-controls {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 10;
+}
+
+button {
+  background-color: #4CAF50;
+  border: none;
+  color: white;
+  padding: 10px 20px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 4px 2px;
+  cursor: pointer;
+  border-radius: 4px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.3s;
+}
+
+button:hover {
+  background-color: #45a049;
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 20;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+  background-color: white;
+  margin: 15% auto;
+  padding: 20px;
+  border-radius: 5px;
+  width: 300px;
+}
+
+.modal input, .modal textarea {
+  width: 100%;
+  padding: 8px;
+  margin: 8px 0;
+  box-sizing: border-box;
+}
+
+.close {
+  color: #aaa;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.close:hover {
+  color: black;
+}
+
+/* Side Panel Styles */
+#side-panel {
+  position: fixed;
+  background-color: white;
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.2);
+  z-index: 15;
+  overflow-y: auto;
+  padding: 20px;
+  display: none;
+  transition: transform 0.3s ease;
+}
+
+/* Horizontal panel (for landscape) */
+.panel-horizontal {
+  top: 0;
+  right: 0;
+  width: 30%;
+  height: 100%;
+  transform: translateX(100%);
+}
+
+/* Vertical panel (for portrait) */
+.panel-vertical {
+    bottom: 0;
+    left: 0;
+    width: 90%;
+    height: 80%;
+    transform: translateY(100%);
+}
+
+/* Active panel states */
+.panel-horizontal.active {
+  transform: translateX(0);
+}
+
+.panel-vertical.active {
+  transform: translateY(0);
+}
+
+#panel-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #555;
+}
+
+#panel-image {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  margin: 0 auto 20px auto;
+}
+</style>
+</head>
+<body>
+<div id="canvas-container">
+<canvas id="concept-map"></canvas>
+</div>
+
+<div id="side-panel">
+<button id="panel-close">&times;</button>
+<img id="panel-image" src="" alt="Node Image">
+<h3 id="panel-title">Node Details</h3>
+<div id="panel-content">
+  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam in dui mauris. Vivamus hendrerit arcu sed erat molestie vehicula. Sed auctor neque eu tellus rhoncus ut eleifend nibh porttitor. Ut in nulla enim.</p>
+  <p>Phasellus molestie magna non est bibendum non venenatis nisl tempor. Suspendisse dictum feugiat nisl ut dapibus. Mauris iaculis porttitor posuere. Praesent id metus massa, ut blandit odio.</p>
+  <p>Proin quis tortor orci. Etiam at risus et justo dignissim congue. Donec congue lacinia dui, a porttitor lectus condimentum laoreet. Nunc eu ullamcorper orci. Quisque eget odio ac lectus vestibulum faucibus eget in metus.</p>
+</div>
+</div>
+
+<div id="ui-controls">
+<button id="add-circle">Add Circle</button>
+</div>
+
+<div id="edit-modal" class="modal">
+<div class="modal-content">
+  <span class="close">&times;</span>
+  <h3>Edit Connection</h3>
+  <input type="text" id="connection-text" placeholder="Enter text for connection...">
+  <button id="save-connection">Save</button>
+</div>
+</div>
+
+<div id="image-modal" class="modal">
+<div class="modal-content">
+  <span class="close">&times;</span>
+  <h3>Add Image</h3>
+  <div id="camera-container" style="text-align: center; margin-bottom: 15px;">
+    <video id="camera-preview" style="display: none; max-width: 100%; margin-bottom: 10px;"></video>
+    <canvas id="photo-canvas" style="display: none; max-width: 100%; margin-bottom: 10px;"></canvas>
+    <button id="capture-photo" style="display: none;">Capture Photo</button>
+  </div>
+  <div style="text-align: center;">
+    <label for="file-upload" class="custom-file-upload" style="display: inline-block; padding: 8px 15px; background: #4CAF50; color: white; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+      Upload File
+    </label>
+    <input id="file-upload" type="file" accept="image/*" style="display: none;">
+    <button id="use-camera">Use Camera</button>
+  </div>
+</div>
+</div>
+
+<script>
+// Initialize canvas and context
+const canvas = document.getElementById('concept-map');
+const ctx = canvas.getContext('2d');
+
+const repulsion_str = 0.02;
+const attraction_str = 0.005;
+
+// Set canvas size
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// Node class
+class Node {
+  constructor(x, y, size, type = 'grey') {
+    this.x = x;
+    this.y = y;
+    this.vx = 0;
+    this.vy = 0;
+    this.size = size;
+    this.type = type; // 'grey' or 'frame'
+    this.image = null;
+    this.connections = [];
+  }
+  
+  update() {
+    // Apply velocity
+    this.x += this.vx;
+    this.y += this.vy;
+    
+    // // Boundary checking
+    // if (this.x < this.size) this.x = this.size;
+    // if (this.x > canvas.width - this.size) this.x = canvas.width - this.size;
+    // if (this.y < this.size) this.y = this.size;
+    // if (this.y > canvas.height - this.size) this.y = canvas.height - this.size;
+    
+    // Damping
+    this.vx *= 0.95;
+    this.vy *= 0.95;
+  }
+  
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    
+    if (this.type === 'grey') {
+      ctx.fillStyle = '#cccccc';
+      ctx.fill();
+    } else if (this.type === 'frame' && this.image) {
+      // Create circular clipping
+      ctx.save();
+      ctx.clip();
+      
+      // Draw the image
+      const imageSize = this.size * 2;
+      ctx.drawImage(this.image, this.x - this.size, this.y - this.size, imageSize, imageSize);
+      ctx.restore();
+      
+      // Draw circle border
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    } else {
+      // Default if frame but no image
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }
+  
+  contains(x, y) {
+    const distance = Math.sqrt((this.x - x) ** 2 + (this.y - y) ** 2);
+    return distance <= this.size;
+  }
+}
+
+// Connection class
+class Connection {
+  constructor(node1, node2, text = '') {
+    this.node1 = node1;
+    this.node2 = node2;
+    this.text = text;
+  }
+  
+  draw() {
+    const start = { x: this.node1.x, y: this.node1.y };
+    const end = { x: this.node2.x, y: this.node2.y };
+    
+    // Calculate direction vector
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    
+    // Calculate normalized direction vector
+    const length = Math.sqrt(dx * dx + dy * dy);
+    const ndx = dx / length;
+    const ndy = dy / length;
+    
+    // Set start and end points on the edge of the circles
+    const startX = start.x + ndx * this.node1.size;
+    const startY = start.y + ndy * this.node1.size;
+    const endX = end.x - ndx * this.node2.size;
+    const endY = end.y - ndy * this.node2.size;
+    
+    // Draw line
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(endX, endY);
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    
+    // Draw text
+    if (this.text) {
+      const midX = (startX + endX) / 2;
+      const midY = (startY + endY) / 2;
+      
+      // Rotate text based on line angle
+      ctx.save();
+      ctx.translate(midX, midY);
+      
+      let angle = Math.atan2(dy, dx);
+      
+      // Adjust angle to ensure text is always readable (not upside down)
+      if (angle > Math.PI / 2 || angle < -Math.PI / 2) {
+        angle += Math.PI;
+      }
+      
+      ctx.rotate(angle);
+      
+      ctx.fillStyle = '#000';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = '12px Arial';
+      
+      // Add background to text for better readability
+      const textWidth = ctx.measureText(this.text).width;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.fillRect(-textWidth / 2 - 5, -10, textWidth + 10, 20);
+      
+      ctx.fillStyle = '#000';
+      ctx.fillText(this.text, 0, 0);
+      
+      ctx.restore();
+    }
+  }
+}
+
+// Main app
+class ConceptMap {
+  constructor() {
+    this.nodes = [];
+    this.connections = [];
+    this.selectedNode = null;
+    this.draggedNode = null;
+    this.dragOffsetX = 0;
+    this.dragOffsetY = 0;
+    this.selectedConnection = null;
+    
+    // Pan feature variables
+    this.isPanning = false;
+    this.panStartX = 0;
+    this.panStartY = 0;
+    
+    // Initialize with starting nodes
+    this.initialize();
+    
+    // Start animation loop
+    this.animate();
+    
+    // Set up event listeners
+    this.setupEventListeners();
+  }
+  
+  initialize() {
+    // Create initial nodes
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    
+    // Add a few initial nodes
+    this.addNode(centerX - 150, centerY - 100, 40, 'grey');
+    this.addNode(centerX + 150, centerY + 100, 40, 'grey');
+    
+    // Create connection between them
+    this.connectNodes(this.nodes[0], this.nodes[1], 'feeds on');
+  }
+  
+  addNode(x, y, size, type = 'grey') {
+    const node = new Node(x, y, size, type);
+    this.nodes.push(node);
+    return node;
+  }
+  
+  connectNodes(node1, node2, text = '') {
+    // Check if connection already exists
+    const exists = this.connections.some(
+      conn => (conn.node1 === node1 && conn.node2 === node2) || 
+             (conn.node1 === node2 && conn.node2 === node1)
+    );
+    
+    if (!exists) {
+      const connection = new Connection(node1, node2, text);
+      this.connections.push(connection);
+      
+      // Add to nodes' connections list
+      node1.connections.push(connection);
+      node2.connections.push(connection);
+      
+      return connection;
+    }
+    
+    return null;
+  }
+  
+  findRandomNodeForConnection(excludeNode) {
+    const availableNodes = this.nodes.filter(node => node !== excludeNode);
+    if (availableNodes.length === 0) return null;
+    
+    const randomIndex = Math.floor(Math.random() * availableNodes.length);
+    return availableNodes[randomIndex];
+  }
+  
+  addRandomNode() {
+    const minSize = 30;
+    const maxSize = 60;
+    const size = minSize + Math.random() * (maxSize - minSize);
+    
+    const padding = size;
+    const x = padding + Math.random() * (canvas.width - 2 * padding);
+    const y = padding + Math.random() * (canvas.height - 2 * padding);
+    
+    const node = this.addNode(x, y, size);
+    
+    // Connect to a random existing node
+    const targetNode = this.findRandomNodeForConnection(node);
+    if (targetNode) {
+      this.connectNodes(node, targetNode, "linked");
+    }
+    
+    return node;
+  }
+  
+  applyForces() {
+    // Apply repulsive forces between nodes
+    for (let i = 0; i < this.nodes.length; i++) {
+      const nodeA = this.nodes[i];
+      
+      for (let j = i + 1; j < this.nodes.length; j++) {
+        const nodeB = this.nodes[j];
+        
+        const dx = nodeB.x - nodeA.x;
+        const dy = nodeB.y - nodeA.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        const minDistance = nodeA.size + nodeB.size + 50;
+        
+        if (distance < minDistance) {
+          const dirX = dx / distance;
+          const dirY = dy / distance;
+          
+          const repulsionForce = repulsion_str * (minDistance - distance);
+          
+          nodeB.vx += dirX * repulsionForce;
+          nodeB.vy += dirY * repulsionForce;
+          nodeA.vx -= dirX * repulsionForce;
+          nodeA.vy -= dirY * repulsionForce;
+        }
+      }
+    }
+    
+    // Apply attractive forces for connected nodes
+    for (const connection of this.connections) {
+      const nodeA = connection.node1;
+      const nodeB = connection.node2;
+      
+      const dx = nodeB.x - nodeA.x;
+      const dy = nodeB.y - nodeA.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      const idealDistance = nodeA.size + nodeB.size + 150;
+      const diff = distance - idealDistance;
+      
+      if (Math.abs(diff) > 1) {
+        const dirX = dx / distance;
+        const dirY = dy / distance;
+        
+        const attractionForce = attraction_str * diff;
+        
+        nodeB.vx -= dirX * attractionForce;
+        nodeB.vy -= dirY * attractionForce;
+        nodeA.vx += dirX * attractionForce;
+        nodeA.vy += dirY * attractionForce;
+      }
+    }
+  }
+  
+  convertToFrameNode(node) {
+    if (node.type === 'grey') {
+      node.type = 'frame';
+      this.selectedNode = node;
+      this.showImageModal();
+    }
+  }
+  
+  showImageModal() {
+    const modal = document.getElementById('image-modal');
+    modal.style.display = 'block';
+  }
+  
+  handleCameraCapture() {
+    const video = document.getElementById('camera-preview');
+    const canvas = document.getElementById('photo-canvas');
+    const context = canvas.getContext('2d');
+    
+    // Set canvas dimensions to match video
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    // Draw video frame to canvas
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // Hide video, show canvas
+    video.style.display = 'none';
+    canvas.style.display = 'block';
+    
+    // Stop all video tracks
+    video.srcObject.getTracks().forEach(track => track.stop());
+    
+    // Create an image from the canvas
+    const imageDataUrl = canvas.toDataURL('image/png');
+    const img = new Image();
+    img.src = imageDataUrl;
+    
+    img.onload = () => {
+      if (this.selectedNode) {
+        this.selectedNode.image = img;
+        
+        // Close the modal
+        document.getElementById('image-modal').style.display = 'none';
+
+        this.showSidePanel(this.selectedNode);
+      }
+    };
+  }
+  
+  handleFileUpload(e) {
+    const file = e.target.files[0];
+    if (file && file.type.match(/^image\//)) {
+      const reader = new FileReader();
+      
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        
+        img.onload = () => {
+          if (this.selectedNode) {
+            this.selectedNode.image = img;
+            
+            // Close the modal
+            document.getElementById('image-modal').style.display = 'none';
+
+            this.onImageAdded(this.selectedNode);
+          }
+        };
+      };
+      
+      reader.readAsDataURL(file);
+    }
+  }
+  
+  onImageAdded(node) {
+    this.showSidePanel(this.selectedNode);
+    
+    const targetNode = node;
+
+    for(var i = 0; i < 3; i++) {
+        // add new grey nodes
+        const minSize = 30;
+        const maxSize = 60;
+        const size = minSize + Math.random() * (maxSize - minSize);
+        
+        const padding = size;
+        const x = padding + Math.random() * (canvas.width - 2 * padding);
+        const y = padding + Math.random() * (canvas.height - 2 * padding);
+        
+        const new_node = this.addNode(x, y, size);
+        this.connectNodes(new_node, targetNode, "linked " + i);
+    }
+
+    return node;
+  }
+
+  showSidePanel(node) {
+    if (node.type === 'frame' && node.image) {
+      const panel = document.getElementById('side-panel');
+      const panelImage = document.getElementById('panel-image');
+      
+      // Check if we need horizontal or vertical layout
+      const isLandscape = window.innerWidth > window.innerHeight;
+      
+      // Update panel class based on orientation
+      panel.className = isLandscape ? 'panel-horizontal' : 'panel-vertical';
+      
+      // Set the image
+      panelImage.src = node.image.src;
+      
+      // Display the panel
+      panel.style.display = 'block';
+      
+      // Trigger animation
+      setTimeout(() => {
+        panel.classList.add('active');
+      }, 10);
+      
+      // Adjust canvas container size
+      const canvasContainer = document.getElementById('canvas-container');
+      if (isLandscape) {
+        canvasContainer.style.width = '70vw';
+      } else {
+        canvasContainer.style.height = '70vh';
+      }
+    }
+  }
+  
+  closeSidePanel() {
+    const panel = document.getElementById('side-panel');
+    const canvasContainer = document.getElementById('canvas-container');
+    
+    // Remove active class to trigger transition
+    panel.classList.remove('active');
+    
+    // Reset canvas container size
+    canvasContainer.style.width = '100vw';
+    canvasContainer.style.height = '100vh';
+    
+    // Hide panel after transition
+    setTimeout(() => {
+      panel.style.display = 'none';
+    }, 300);
+  }
+  
+  update() {
+    this.applyForces();
+    
+    for (const node of this.nodes) {
+      node.update();
+    }
+  }
+  
+  draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw connections first
+    for (const connection of this.connections) {
+      connection.draw();
+    }
+    
+    // Draw nodes on top
+    for (const node of this.nodes) {
+      node.draw();
+    }
+  }
+  
+  animate() {
+    this.update();
+    this.draw();
+    requestAnimationFrame(() => this.animate());
+  }
+
+  findConnection(x, y) {
+    for (const connection of this.connections) {
+      const start = {
+        x: connection.node1.x + (connection.node2.x - connection.node1.x) * 0.2,
+        y: connection.node1.y + (connection.node2.y - connection.node1.y) * 0.2
+      };
+      
+      const end = {
+        x: connection.node1.x + (connection.node2.x - connection.node1.x) * 0.8,
+        y: connection.node1.y + (connection.node2.y - connection.node1.y) * 0.8
+      };
+      
+      const midX = (start.x + end.x) / 2;
+      const midY = (start.y + end.y) / 2;
+      
+      // Simple check if click is near the connection midpoint
+      const distance = Math.sqrt((midX - x) ** 2 + (midY - y) ** 2);
+      if (distance < 20) {
+        return connection;
+      }
+    }
+    
+    return null;
+  }
+  
+  // Pan the entire map by moving all nodes
+  panMap(dx, dy) {
+    for (const node of this.nodes) {
+      node.x += dx;
+      node.y += dy;
+      node.vx = 0;
+      node.vy = 0;
+    }
+  }
+  
+  setupEventListeners() {
+    const addCircleBtn = document.getElementById('add-circle');
+    const saveConnectionBtn = document.getElementById('save-connection');
+    const editModal = document.getElementById('edit-modal');
+    const imageModal = document.getElementById('image-modal');
+    const closeBtns = document.querySelectorAll('.close');
+    const fileUpload = document.getElementById('file-upload');
+    const useCameraBtn = document.getElementById('use-camera');
+    const capturePhotoBtn = document.getElementById('capture-photo');
+    const panelCloseBtn = document.getElementById('panel-close');
+    
+    addCircleBtn.addEventListener('click', () => {
+      this.addRandomNode();
+    });
+    
+    canvas.addEventListener('mousedown', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      // Check if clicking on a node
+      let clickedOnNode = false;
+      for (let i = this.nodes.length - 1; i >= 0; i--) {
+        const node = this.nodes[i];
+        if (node.contains(x, y)) {
+          clickedOnNode = true;
+          if (node.type === 'grey') {
+            this.convertToFrameNode(node);
+          } else if (node.type === 'frame' && node.image) {
+            this.showSidePanel(node);
+          } else {
+            this.draggedNode = node;
+            this.dragOffsetX = node.x - x;
+            this.dragOffsetY = node.y - y;
+          }
+          break;
+        }
+      }
+      
+      // If not clicking on a node, start panning
+      if (!clickedOnNode) {
+        this.isPanning = true;
+        this.panStartX = x;
+        this.panStartY = y;
+        canvas.style.cursor = 'grabbing';
+      }
+    });
+    
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      if (this.draggedNode) {
+        // Dragging a node
+        this.draggedNode.x = x + this.dragOffsetX;
+        this.draggedNode.y = y + this.dragOffsetY;
+        this.draggedNode.vx = 0;
+        this.draggedNode.vy = 0;
+      } else if (this.isPanning) {
+        // Panning the map
+        const dx = x - this.panStartX;
+        const dy = y - this.panStartY;
+        
+        this.panMap(dx, dy);
+        
+        this.panStartX = x;
+        this.panStartY = y;
+      }
+    });
+    
+    canvas.addEventListener('mouseup', () => {
+      this.draggedNode = null;
+      if (this.isPanning) {
+        this.isPanning = false;
+        canvas.style.cursor = 'grab';
+      }
+    });
+    
+    canvas.addEventListener('mouseleave', () => {
+      this.draggedNode = null;
+      if (this.isPanning) {
+        this.isPanning = false;
+        canvas.style.cursor = 'grab';
+      }
+    });
+    
+    saveConnectionBtn.addEventListener('click', () => {
+      if (this.selectedConnection) {
+        const textInput = document.getElementById('connection-text');
+        this.selectedConnection.text = textInput.value;
+        editModal.style.display = 'none';
+      }
+    });
+    
+    // Close button for all modals
+    closeBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        editModal.style.display = 'none';
+        imageModal.style.display = 'none';
+        
+        // If camera is active, stop it
+        const video = document.getElementById('camera-preview');
+        if (video.srcObject) {
+          video.srcObject.getTracks().forEach(track => track.stop());
+        }
+      });
+    });
+    
+    // Close side panel
+    panelCloseBtn.addEventListener('click', () => {
+      this.closeSidePanel();
+    });
+    
+    // Handle file upload
+    fileUpload.addEventListener('change', (e) => {
+      this.handleFileUpload(e);
+    });
+    
+    // Use camera button
+    useCameraBtn.addEventListener('click', () => {
+      const video = document.getElementById('camera-preview');
+      const captureBtn = document.getElementById('capture-photo');
+      
+      // Reset display
+      video.style.display = 'block';
+      document.getElementById('photo-canvas').style.display = 'none';
+      captureBtn.style.display = 'inline-block';
+      
+      // Check if browser supports getUserMedia
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ video: true })
+          .then(stream => {
+            video.srcObject = stream;
+            video.play();
+          })
+          .catch(err => {
+            console.error('Error accessing camera: ', err);
+            alert('Error accessing camera. Please try file upload instead.');
+          });
+      } else {
+        alert('Your browser does not support camera access. Please try file upload instead.');
+      }
+    });
+    
+    // Capture photo button
+    capturePhotoBtn.addEventListener('click', () => {
+      this.handleCameraCapture();
+    });
+    
+    // Close modals when clicking outside
+    window.addEventListener('click', (e) => {
+      if (e.target === editModal) {
+        editModal.style.display = 'none';
+      }
+      if (e.target === imageModal) {
+        imageModal.style.display = 'none';
+        
+        // If camera is active, stop it
+        const video = document.getElementById('camera-preview');
+        if (video.srcObject) {
+          video.srcObject.getTracks().forEach(track => track.stop());
+        }
+      }
+    });
+    
+    // Listen for window resize to update panel orientation if open
+    window.addEventListener('resize', () => {
+      const panel = document.getElementById('side-panel');
+      if (panel.style.display === 'block') {
+        const isLandscape = window.innerWidth > window.innerHeight;
+        panel.className = isLandscape ? 'panel-horizontal active' : 'panel-vertical active';
+        
+        const canvasContainer = document.getElementById('canvas-container');
+        if (isLandscape) {
+          canvasContainer.style.width = '70vw';
+          canvasContainer.style.height = '100vh';
+        } else {
+          canvasContainer.style.width = '100vw';
+          canvasContainer.style.height = '70vh';
+        }
+      }
+    });
+  }
+}
+
+// Initialize the concept map when window loads
+window.onload = () => {
+  const conceptMap = new ConceptMap();
+};
+</script>
+</body>
+</html>
