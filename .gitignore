@@ -1,3 +1,13 @@
 .env
 BITZ/server/history
-__pycache__
+node_modules
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.log
+*.egg-info
+*.egg
+*.DS_Store
+

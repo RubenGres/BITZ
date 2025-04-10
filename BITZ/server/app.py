@@ -4,9 +4,9 @@ import datetime
 import markdown
 from dotenv import load_dotenv
 from image_analyzer import ImageAnalyzer
-from flask import Flask, send_from_directory, abort, request, jsonify, url_for, render_template
+from flask import Flask, send_from_directory, abort, request, jsonify, url_for, render_template, make_response, redirect
 from flask_cors import CORS
-
+import mimetypes
 import oaak
 
 
@@ -65,6 +65,28 @@ def home():
     """Serves the OAAK homepage with two buttons."""
     return render_template('home.html')
 
+@app.route('/viz/', defaults={'path': ''})
+@app.route('/viz/<path:path>')
+def serve_viz(path):
+    # Handle directory paths
+    viz_folder = os.path.join(app.static_folder, 'viz')
+    full_path = os.path.join(viz_folder, path)
+    
+    # If it's a directory and doesn't end with a slash, redirect to the slash version
+    if os.path.isdir(full_path) and not path.endswith('/') and path:
+        return redirect('/viz/' + path + '/')
+    
+    # If it's a directory, look for index.html
+    if os.path.isdir(full_path):
+        path = os.path.join(path, 'index.html')
+    
+    try:
+        response = send_from_directory(viz_folder, path)
+        return response
+    except Exception as e:
+        app.logger.error(f"Error serving {path}: {str(e)}")
+        return f"File not found: {path}", 404
+    
 @app.route("/explore/raw", methods=["GET"])
 @app.route("/explore/<path:subpath>/raw", methods=["GET"])
 def explore_raw(subpath=""):
@@ -372,6 +394,7 @@ def chat():
         "timestamp": timestamp, 
         "image_filename": image_filename
     })
+
 @app.route("/images/")
 def image_grid(quest_id=None):
     quest_id = request.args.get('id', None)
