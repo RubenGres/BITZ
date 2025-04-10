@@ -1,5 +1,5 @@
-// const API_URL = "https://scaling-space-carnival-qvvrrjxqgrp246pj-5000.app.github.dev"
-const API_URL = "https://oaak.rubengr.es"
+const API_URL = "https://scaling-space-carnival-qvvrrjxqgrp246pj-5000.app.github.dev"
+//const API_URL = "https://oaak.rubengr.es"
 
 // DOM Elements
 const app = {
@@ -13,11 +13,13 @@ const app = {
         video: document.getElementById('video'),
         capturedImage: document.getElementById('captured-image'),
         cameraButton: document.getElementById('camera-button'),
+        cameraInput: document.getElementById('camera-input'),
         captureButton: document.getElementById('capture-button'),
         cameraBackButton: document.getElementById('camera-back'),
         uploadButton: document.getElementById('upload-button'),
         fileInput: document.getElementById('file-input'),
         newPhotoButton: document.getElementById('new-photo'),
+        endQuestButton: document.getElementById('end-quest'),
         description: document.getElementById('description'),
         questions: document.getElementById('questions')
     }
@@ -76,18 +78,24 @@ async function fetchLocationName(latitude, longitude) {
     }
 }
 
-// Camera Handling
+// Camera Handling (fallback for devices without capture support)
 async function startCamera() {
-    try {
-        stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { facingMode: 'environment' }, 
-            audio: false 
-        });
-        app.elements.video.srcObject = stream;
-        showScreen('camera');
-    } catch (err) {
-        console.error('Error accessing camera:', err);
-        alert('Unable to access camera. Please make sure you have granted camera permissions.');
+    // On modern mobile devices, we'll use the capture attribute
+    // This is just a fallback for browsers that don't support it
+    if (isMobile()) {
+        app.elements.cameraInput.click();
+    } else {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: 'environment' }, 
+                audio: false 
+            });
+            app.elements.video.srcObject = stream;
+            showScreen('camera');
+        } catch (err) {
+            console.error('Error accessing camera:', err);
+            alert('Unable to access camera. Please make sure you have granted camera permissions.');
+        }
     }
 }
 
@@ -98,7 +106,12 @@ function stopCamera() {
     }
 }
 
-// Image Capture
+// Check if the device is mobile
+function isMobile() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
+// Image Capture (for the fallback camera interface)
 async function captureImage() {
     const canvas = document.createElement('canvas');
     canvas.width = app.elements.video.videoWidth;
@@ -113,7 +126,7 @@ async function captureImage() {
     processImage(imageData);
 }
 
-// File Upload Handling
+// File Upload Handling (for both camera capture and gallery uploads)
 async function handleFileUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -313,7 +326,13 @@ function handleYesNoResponse(event) {
         const actionButton = document.createElement('button');
         actionButton.className = 'primary-button action-button';
         actionButton.textContent = 'Take Photo';
-        actionButton.addEventListener('click', startCamera);
+        actionButton.addEventListener('click', () => {
+            if (isMobile()) {
+                app.elements.cameraInput.click();
+            } else {
+                startCamera();
+            }
+        });
         guidanceContainer.appendChild(actionButton);
     }
     
@@ -377,7 +396,16 @@ function isEmptyValue(value) {
 })();
 
 // Event Listeners
-app.elements.cameraButton.addEventListener('click', startCamera);
+app.elements.cameraButton.addEventListener('click', () => {
+    // Use the capture attribute on mobile, fallback to getUserMedia on desktop
+    if (isMobile()) {
+        app.elements.cameraInput.click();
+    } else {
+        startCamera();
+    }
+});
+
+app.elements.cameraInput.addEventListener('change', handleFileUpload);
 app.elements.captureButton.addEventListener('click', captureImage);
 app.elements.cameraBackButton.addEventListener('click', () => {
     stopCamera();
@@ -388,5 +416,13 @@ app.elements.uploadButton.addEventListener('click', () => {
 });
 app.elements.fileInput.addEventListener('change', handleFileUpload);
 app.elements.newPhotoButton.addEventListener('click', () => {
-    startCamera();  // Directly start the camera instead of showing initial screen
+    if (isMobile()) {
+        app.elements.cameraInput.click();
+    } else {
+        startCamera();
+    }
+});
+app.elements.endQuestButton.addEventListener('click', () => {
+    localStorage.removeItem('conversation_id');
+    window.open(API_URL + '/graph_view?quest_id=' + conversation_id);
 });

@@ -24,7 +24,8 @@ canvas {
   position: absolute;
   top: 0;
   left: 0;
-  cursor: grab; /* Add cursor for panning */
+  cursor: grab;
+  background-color: rgba(0, 0, 0, 0); /* transparent background */
 }
 
 canvas:active {
@@ -39,9 +40,9 @@ canvas:active {
 }
 
 button {
-  background-color: #4CAF50;
+  background-color: #4caf4f00;
   border: none;
-  color: white;
+  color: rgba(255, 255, 255, 0);
   padding: 10px 20px;
   text-align: center;
   text-decoration: none;
@@ -50,12 +51,12 @@ button {
   margin: 4px 2px;
   cursor: pointer;
   border-radius: 4px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0);
   transition: background-color 0.3s;
 }
 
 button:hover {
-  background-color: #45a049;
+  background-color: #45a04900;
 }
 
 .modal {
@@ -154,9 +155,23 @@ button:hover {
   display: block;
   margin: 0 auto 20px auto;
 }
+
+#background-video {
+  position: fixed;
+  top: 0;
+  left: 0;
+  min-width: 100%;
+  min-height: 100%;
+  width: auto;
+  height: auto;
+  z-index: -1; /* Places it behind all other elements */
+  object-fit: cover;
+}
+
 </style>
 </head>
 <body>
+<video id="background-video" autoplay loop muted preload="auto"></video>
 <div id="canvas-container">
 <canvas id="concept-map"></canvas>
 </div>
@@ -174,6 +189,7 @@ button:hover {
 
 <div id="ui-controls">
 <button id="add-circle">Add Circle</button>
+<button id="rm-grey">Remove grey nodes</button>
 </div>
 
 <div id="edit-modal" class="modal">
@@ -240,10 +256,10 @@ class Node {
     this.y += this.vy;
     
     // // Boundary checking
-    // if (this.x < this.size) this.x = this.size;
-    // if (this.x > canvas.width - this.size) this.x = canvas.width - this.size;
-    // if (this.y < this.size) this.y = this.size;
-    // if (this.y > canvas.height - this.size) this.y = canvas.height - this.size;
+    if (this.x < this.size) this.x = this.size;
+    if (this.x > canvas.width - this.size) this.x = canvas.width - this.size;
+    if (this.y < this.size) this.y = this.size;
+    if (this.y > canvas.height - this.size) this.y = canvas.height - this.size;
     
     // Damping
     this.vx *= 0.95;
@@ -255,8 +271,11 @@ class Node {
     ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
     
     if (this.type === 'grey') {
-      ctx.fillStyle = '#cccccc';
+      ctx.strokeStyle = '#ffffff';
+      ctx.fillStyle = '#ffffff99'
       ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.stroke();
     } else if (this.type === 'frame' && this.image) {
       // Create circular clipping
       ctx.save();
@@ -268,7 +287,7 @@ class Node {
       ctx.restore();
       
       // Draw circle border
-      ctx.strokeStyle = '#000';
+      ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 2;
       ctx.stroke();
     } else {
@@ -358,6 +377,50 @@ class Connection {
   }
 }
 
+async function get_all_quests(url) {
+    // Fetch the JSON data from <url>/explore/raw
+    const response = await fetch(`${url}/explore/data/raw`);
+    const questsList = await response.json();
+
+    // Create an object to store all quests
+    const questsObject = {};
+
+    // Fetch image data for each quest
+    const questPromises = questsList.map(async (quest) => {
+        const imgsResponse = await fetch(`${url}/explore/images/${quest.name}/raw`);
+        let imgsData;
+        try {
+            imgsData = await imgsResponse.json();
+        } catch (error) {
+            imgsData = []; // Handle cases where there's no image data
+        }
+
+        const images_url = imgsData.map(img => `${url}/explore/images/${quest.name}/${img.name}`);
+
+        // Add this quest directly to the object
+        questsObject[quest.name] = {
+            ...quest,
+            "image_urls": images_url
+        };
+    });
+
+    // Wait for all fetch operations to complete
+    await Promise.all(questPromises);
+
+    // Return the complete object
+    return questsObject;
+}
+
+var quests_data; 
+get_all_quests("https://oaak.rubengr.es").then( (data) => {
+    console.log(data);
+    quests_data = data;
+  }
+);
+
+// let quest_id = prompt("Enter the quest id");
+const quest_id = 1739523711743455
+
 // Main app
 class ConceptMap {
   constructor() {
@@ -373,6 +436,7 @@ class ConceptMap {
     this.isPanning = false;
     this.panStartX = 0;
     this.panStartY = 0;
+    
     
     // Initialize with starting nodes
     this.initialize();
@@ -390,12 +454,13 @@ class ConceptMap {
     const centerY = canvas.height / 2;
     
     // Add a few initial nodes
-    this.addNode(centerX - 150, centerY - 100, 40, 'grey');
-    this.addNode(centerX + 150, centerY + 100, 40, 'grey');
+    // this.addNode(centerX, centerY, 40, 'grey');
+    // this.addNode(centerX + 150, centerY + 100, 40, 'grey');
     
     // Create connection between them
-    this.connectNodes(this.nodes[0], this.nodes[1], 'feeds on');
+    // this.connectNodes(this.nodes[0], this.nodes[1], '');
   }
+
   
   addNode(x, y, size, type = 'grey') {
     const node = new Node(x, y, size, type);
@@ -423,7 +488,53 @@ class ConceptMap {
     
     return null;
   }
+
+  removeGreyNodes() {
+    // Find all grey nodes
+    const greyNodes = this.nodes.filter(node => node.type === 'grey');
+    
+    // Remove all connections involving grey nodes
+    this.connections = this.connections.filter(connection => {
+      const involvesGreyNode = greyNodes.includes(connection.node1) || 
+                              greyNodes.includes(connection.node2);
+      
+      // Also remove the connection from the nodes' connection lists
+      if (involvesGreyNode) {
+        const index1 = connection.node1.connections.indexOf(connection);
+        if (index1 !== -1) connection.node1.connections.splice(index1, 1);
+        
+        const index2 = connection.node2.connections.indexOf(connection);
+        if (index2 !== -1) connection.node2.connections.splice(index2, 1);
+      }
+      
+      return !involvesGreyNode;
+    });
+    
+    // Remove the grey nodes from the nodes array
+    this.nodes = this.nodes.filter(node => node.type !== 'grey');
+  }
+
+  getFramedNodes() {
+    return this.nodes.filter(node => node.type === 'frame');
+  }
+
+  findRandomFramedNode() {
+    const framedNodes = this.getFramedNodes();
+    if (framedNodes.length === 0) return null;
+    const randomIndex = Math.floor(Math.random() * framedNodes.length);
+    return framedNodes[randomIndex];
+  }
   
+  findLastFramedNode() {
+    for (let i = this.nodes.length - 1; i >= 0; i--) {
+      if (this.nodes[i].type === 'frame') {
+        return this.nodes[i];
+      }
+    }
+
+    return null;
+  }
+
   findRandomNodeForConnection(excludeNode) {
     const availableNodes = this.nodes.filter(node => node !== excludeNode);
     if (availableNodes.length === 0) return null;
@@ -438,18 +549,80 @@ class ConceptMap {
     const size = minSize + Math.random() * (maxSize - minSize);
     
     const padding = size;
-    const x = padding + Math.random() * (canvas.width - 2 * padding);
-    const y = padding + Math.random() * (canvas.height - 2 * padding);
+
+    var x = padding + 0.5 * (canvas.width - 2 * padding);
+    var y = padding + Math.random() * (canvas.height - 2 * padding);
     
+    if(this.nodes.length > 1) {
+      const targetNode = this.nodes[this.nodes.length - 1];
+      const r = 100; // radius of the circle
+      const angle = Math.random() * 2 * Math.PI; // random angle between 0 and 2π
+      x = targetNode.x + r * Math.cos(angle);
+      y = targetNode.y + r * Math.sin(angle);
+    }
+
     const node = this.addNode(x, y, size);
     
     // Connect to a random existing node
-    const targetNode = this.findRandomNodeForConnection(node);
+    // const targetNode = this.findRandomNodeForConnection(node);
+    const targetNode = this.findLastFramedNode()
     if (targetNode) {
       this.connectNodes(node, targetNode, "linked");
     }
     
     return node;
+  }
+
+  addFrameNodeFromQuest() {
+    if(this.getFramedNodes().length < 3) {
+      var imgs_url = ["images/1.jpg", "images/2.jpg", "images/3.jpg"]
+    } else {
+      var imgs_url = quests_data[quest_id]["image_urls"]
+    }
+
+    const minSize = 30;
+    const maxSize = 60;
+    const size = minSize + Math.random() * (maxSize - minSize);
+    
+    const padding = size;
+
+    // const node = this.addNode(x, y, size);
+    const targetNode = this.findLastFramedNode()
+
+    if(this.nodes.length == 0) {
+      const centerX = canvas.width * 3 / 4;
+      const centerY = canvas.height / 2;
+      this.addNode(centerX, centerY, 40, 'grey');
+    }
+
+    const node = this.nodes[this.getFramedNodes().length]
+    node.type = "frame"
+
+    console.log(imgs_url.length)
+
+    const img = new Image();
+    const id = (this.getFramedNodes().length - 1) % imgs_url.length
+    img.src = imgs_url[id];
+    node.image = img;
+    
+    if (targetNode) {
+      this.connectNodes(node, targetNode, "linked");
+      const random_framed = this.findRandomFramedNode()
+      if(random_framed && random_framed != node)
+        this.connectNodes(node, random_framed, "depends on");
+    }
+    
+    return node;
+  }
+
+  applyRandomNoise(strength) {
+    for (const node of this.nodes) {
+      const randomX = (Math.random() * 2 - 1) * strength;
+      const randomY = (Math.random() * 2 - 1) * strength;
+      
+      node.vx += randomX;
+      node.vy += randomY;
+    }
   }
   
   applyForces() {
@@ -653,6 +826,8 @@ class ConceptMap {
   
   update() {
     this.applyForces();
+
+    this.applyRandomNoise(0.15);
     
     for (const node of this.nodes) {
       node.update();
@@ -716,6 +891,8 @@ class ConceptMap {
   
   setupEventListeners() {
     const addCircleBtn = document.getElementById('add-circle');
+    const rmGreyButton = document.getElementById('rm-grey');
+
     const saveConnectionBtn = document.getElementById('save-connection');
     const editModal = document.getElementById('edit-modal');
     const imageModal = document.getElementById('image-modal');
@@ -725,8 +902,22 @@ class ConceptMap {
     const capturePhotoBtn = document.getElementById('capture-photo');
     const panelCloseBtn = document.getElementById('panel-close');
     
+    rmGreyButton.addEventListener('click', () => {
+      this.removeGreyNodes();
+    });
+
     addCircleBtn.addEventListener('click', () => {
-      this.addRandomNode();
+      // this.addRandomNode();
+      this.addFrameNodeFromQuest();
+      
+      setTimeout(() => {
+        this.addRandomNode();
+        
+        setTimeout(() => {
+          this.addRandomNode();
+
+        }, 500);
+      }, 500);
     });
     
     canvas.addEventListener('mousedown', (e) => {
@@ -900,10 +1091,17 @@ class ConceptMap {
   }
 }
 
-// Initialize the concept map when window loads
 window.onload = () => {
   const conceptMap = new ConceptMap();
+  
+  // Set up background video
+  const video = document.getElementById('background-video');
+  video.src = "video.mov";
+  video.load();
+
+  console.log(video)
 };
+
 </script>
 </body>
 </html>

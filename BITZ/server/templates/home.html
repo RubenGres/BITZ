@@ -3,51 +3,228 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OAAK</title>
+    <title>BITZ</title>
     <style>
+        :root {
+            --primary: #2e7d32;
+            --primary-hover: #1b5e20;
+            --secondary: #43a047;
+            --tertiary: #66bb6a;
+            --background: #f1f8e9;
+            --card: #ffffff;
+            --text: #1b5e20;
+            --text-secondary: #558b2f;
+            --border-radius: 8px;
+        }
+        
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             text-align: center;
-            background-color: #f4f4f4;
-            color: #333;
+            background-color: var(--background);
+            color: var(--text);
             margin: 0;
             padding: 0;
             display: flex;
             flex-direction: column;
-            height: 100vh;
+            min-height: 100vh;
             justify-content: center;
             align-items: center;
+            line-height: 1.6;
         }
+        
+        .container {
+            max-width: 900px;
+            background-color: var(--card);
+            border-radius: var(--border-radius);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            margin: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .logo-container {
+            margin-bottom: 1rem;
+            width: 100%;
+            background-image: url("{{ url_for('static', filename='images/home_bkg.jpg') }}");
+            background-size: cover;
+            background-position: center;
+            padding: 30px 0;
+            border-radius: var(--border-radius) var(--border-radius) 0 0;
+        }
+        
+        .logo-image {
+            max-width: 300px;
+            height: auto;
+            border-radius: var(--border-radius);
+        }
+        
         h1 {
-            font-size: 48px;
-            font-weight: 600;
-            margin-bottom: 30px;
+            font-size: 72px;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(90deg, var(--primary), var(--tertiary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 2px 4px rgba(0, 100, 0, 0.1);
+            letter-spacing: -2px;
+            position: relative;
         }
-        .button-container {
-            display: flex;
-            gap: 15px;
+        
+        h1::before {
+            content: "";
+            position: absolute;
+            height: 4px;
+            width: 60px;
+            background: linear-gradient(90deg, var(--primary), var(--tertiary));
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 2px;
         }
-        .button {
-            padding: 12px 24px;
+        
+        .tagline {
             font-size: 18px;
-            color: #fff;
-            background-color: #007bff;
-            text-decoration: none;
-            border-radius: 5px;
-            font-weight: 500;
-            transition: background-color 0.2s ease-in-out;
+            color: var(--text-secondary);
+            margin-bottom: 2.5rem;
         }
-        .button:hover {
-            background-color: #0056b3;
+        
+        .menu-container {
+            display: flex;
+            padding: 2rem;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .menu-section {
+            flex: 1;
+            min-width: 220px;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .links-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .link {
+            padding: 12px 20px;
+            font-size: 16px;
+            color: var(--text);
+            background-color: rgba(255, 255, 255, 0.05);
+            text-decoration: none;
+            border-radius: var(--border-radius);
+            font-weight: 500;
+            transition: all 0.2s ease-in-out;
+            display: flex;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .link:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .link.primary {
+            background-color: var(--primary);
+            color: white;
+            font-weight: 600;
+            font-size: 18px;
+            padding: 15px 30px;
+        }
+        
+        .link.primary:hover {
+            background-color: var(--primary-hover);
+        }
+        
+        .icon {
+            margin-right: 8px;
+            font-size: 20px;
+        }
+        
+        .footer {
+            margin-top: 2rem;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        @media (max-width: 768px) {
+            .menu-container {
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            .container {
+                margin: 1rem;
+            }
+            
+            h1 {
+                font-size: 50px;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>OAAK</h1>
-    <div class="button-container">
-        <a href="https://rubengr.es/oaak" class="button">Start a Quest</a>
-        <!-- <a href="/explore" class="button">View files</a> -->
-        <a href="https://oaak.rubengr.es/dashboard" class="button">Dashboard</a>
+    <div class="container">
+        <div class="logo-container">
+            <img src="{{ url_for('static', filename='images/bitz_logo.png') }}" alt="BITZ Logo" class="logo-image">
+        </div>
+        <p class="tagline"><strong>B</strong>iodiversity <strong>I</strong>n <strong>T</strong>ransition <strong>Z</strong>ones</p>
+        
+        <div class="menu-container">
+            <div class="menu-section">
+                <h2 class="section-title">Explore</h2>
+                <div class="links-group">
+                    <a href="https://rubengr.es/oaak" class="link primary">
+                        <span class="icon">🌱</span>Start a Quest
+                    </a>
+                </div>
+            </div>
+            
+            <div class="menu-section">
+                <h2 class="section-title">Data Visualization</h2>
+                <div class="links-group">
+                    <a href="/graph" class="link">
+                        <span class="icon">📈</span>Graph View
+                    </a>
+                    <a href="/images" class="link">
+                        <span class="icon">🖼️</span>Images
+                    </a>
+                    <a href="/map" class="link">
+                        <span class="icon">🗺️</span>Map
+                    </a>
+                    <a href="/3d" class="link">
+                        <span class="icon">🌍</span>3D View
+                    </a>
+                </div>
+            </div>
+            
+            <div class="menu-section">
+                <h2 class="section-title">Admin</h2>
+                <div class="links-group">
+                    <a href="/dashboard" class="link">
+                        <span class="icon">📈</span>Dashboard
+                    </a>
+                    <a href="/explore" class="link">
+                        <span class="icon">🔍</span>View files
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        &copy; 2025 Nicetrails + Genomic Gastronomy.
     </div>
 </body>
 </html>

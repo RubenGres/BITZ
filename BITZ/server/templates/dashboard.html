@@ -30,7 +30,7 @@
             <div class="quest-size">{{ quest.size }}</div>
             <div class="quest-actions">
                 <a href="{{ url_for('recap', id=quest.name) }}" class="action-btn quest-btn">View Quest</a>
-                <a href="{{ url_for('images', id=quest.name) }}" class="action-btn images-btn">Images</a>
+                <a href="{{ url_for('image_grid', id=quest.name) }}" class="action-btn images-btn">Images</a>
                 <a href="{{ url_for('delete', id=quest.name) }}" class="action-btn delete-btn">Delete</a>
             </div>
         </div>

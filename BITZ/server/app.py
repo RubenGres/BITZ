@@ -1,9 +1,11 @@
+import os
+import json
 import datetime
 import markdown
+from dotenv import load_dotenv
+from image_analyzer import ImageAnalyzer
 from flask import Flask, send_from_directory, abort, request, jsonify, url_for, render_template
 from flask_cors import CORS
-from dotenv import load_dotenv
-import os
 
 import oaak
 
@@ -35,6 +37,28 @@ def human_readable_size(size, decimal_places=1):
             return f"{size:.{decimal_places}f} {unit}"
         size /= 1024.0
     return f"{size:.{decimal_places}f} PB"
+
+def get_quest_ids():
+    """List folder names in history/data directory - these represent quest IDs"""
+    quest_path = os.path.join(BASE_DIR, "data")
+    
+    # Check if the directory exists
+    if not os.path.isdir(quest_path):
+        return []
+    
+    # Get all items in the directory
+    items = os.listdir(quest_path)
+    
+    # Filter to only include directories and exclude any hidden folders
+    quest_ids = [
+        item for item in items 
+        if os.path.isdir(os.path.join(quest_path, item)) and not item.startswith('.')
+    ]
+    
+    # Sort the quest IDs for consistent output
+    quest_ids.sort()
+    
+    return quest_ids
 
 @app.route("/", methods=["GET"])
 def home():
@@ -175,11 +199,6 @@ def delete(id=""):
     # Handle GET request (show password form)
     return render_template('delete.html', id=id)
 
-@app.route("/images/", methods=["GET"])
-@app.route("/images/<id>", methods=["GET"])
-def images(id=""):
-    abort(404)
-
 @app.route("/dashboard/", methods=["GET"])
 def dashboard():
     """
@@ -225,6 +244,46 @@ def dashboard():
         quests.append(quest_info)
     
     return render_template('dashboard.html', quests=quests)
+
+@app.route("/map")
+def map_view():
+    quest_ids = get_quest_ids()
+
+    if not quest_ids:
+        return "Error: No quest IDs provided. Use ?ids=quest1&ids=quest2", 400
+    
+    # Prepare data for all quests
+    all_quests_data = []
+    
+    for quest_id in quest_ids:
+        # Construct paths to the CSV file and history JSON
+        csv_path = os.path.join(BASE_DIR, "data", quest_id, "species_data_english.csv")
+        history_path = os.path.join(BASE_DIR, "data", quest_id, "history.json")
+        imgs_path = os.path.join(BASE_DIR, "images", quest_id)
+        
+        # Verify files exist
+        if not os.path.isfile(csv_path) or not os.path.isfile(history_path) or not os.path.isdir(imgs_path):
+            continue  # Skip this quest if any required files are missing
+        
+        # Prepare relative paths for frontend
+        relative_csv_path = f"/explore/data/{quest_id}/species_data_english.csv"
+        relative_history_path = f"/explore/data/{quest_id}/history.json"
+        relative_imgs_path = f"/explore/images/{quest_id}/"
+        
+        # Add quest data to the collection
+        all_quests_data.append({
+            "id": quest_id,
+            "csv_path": relative_csv_path,
+            "history_path": relative_history_path,
+            "images_path": relative_imgs_path
+        })
+    
+    if not all_quests_data:
+        return "Error: None of the provided quest IDs exist or have valid data", 404
+    
+    # Render the quests overview template
+    return render_template('map_view.html', quests=all_quests_data)
+
 
 @app.route("/recap/<id>")
 def recap(id):
@@ -313,11 +372,128 @@ def chat():
         "timestamp": timestamp, 
         "image_filename": image_filename
     })
+@app.route("/images/")
+def image_grid(quest_id=None):
+    quest_id = request.args.get('id', None)
 
+    # If quest_id is not provided, get all quest IDs from query params or use all available
+    if not quest_id:
+        quest_ids = request.args.getlist('ids')
+        if not quest_ids:
+            # If no IDs are provided, try to find all available quests
+            try:
+                data_dir = os.path.join(BASE_DIR, "data")
+                quest_ids = [d for d in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, d))]
+            except Exception as e:
+                return f"Error finding quests: {str(e)}", 500
+    else:
+        quest_ids = [quest_id]
+    
+    # Collect all image data
+    all_images = []
+    
+    for qid in quest_ids:
+        # Construct paths
+        csv_path = os.path.join(BASE_DIR, "data", qid, "species_data_english.csv")
+        history_path = os.path.join(BASE_DIR, "data", qid, "history.json")
+        imgs_path = os.path.join(BASE_DIR, "images", qid)
+        
+        # Skip if required files don't exist
+        if not os.path.isfile(csv_path) or not os.path.isfile(history_path) or not os.path.isdir(imgs_path):
+            continue
+        
+        # Get relative paths for frontend
+        relative_imgs_path = f"/explore/images/{qid}/"
+        
+        try:
+            # Load species data from CSV - key differences here to handle multiple entries
+            species_data = {}
+            with open(csv_path, 'r', encoding='utf-8') as f:
+                csv_lines = f.readlines()
+                # Skip header
+                for line in csv_lines[1:]:
+                    if line.strip():
+                        parts = line.strip().split(',')
+                        if len(parts) >= 4:
+                            image_name = parts[0]
+                            
+                            # If this image isn't in the dictionary yet, initialize an empty list
+                            if image_name not in species_data:
+                                species_data[image_name] = []
+                            
+                            # Add this entry as a new item in the list
+                            species_data[image_name].append({
+                                'image_name': image_name,
+                                'taxonomic_group': parts[1],
+                                'scientific_name': parts[2],
+                                'common_name': parts[3],
+                                # Add a unique identifier for each instance to differentiate them
+                                'entry_id': len(species_data[image_name])
+                            })
+            
+            # Load history data
+            with open(history_path, 'r', encoding='utf-8') as f:
+                history_json = json.load(f)
+            
+            # Get center location
+            center_location = None
+            if history_json.get('location') and history_json['location'].get('coordinates'):
+                center_location = {
+                    'latitude': history_json['location']['coordinates'].get('latitude'),
+                    'longitude': history_json['location']['coordinates'].get('longitude')
+                }
+            
+            # Extract image data from history
+            for entry in history_json.get('history', []):
+                if entry.get('image_filename'):
+                    image_filename = entry['image_filename']
+                    
+                    # If this image has species data
+                    if image_filename in species_data:
+                        # For each entry in the species data, create a separate image entry
+                        for species_entry in species_data[image_filename]:
+                            image_info = {
+                                'quest_id': qid,
+                                'image_path': f"{relative_imgs_path}{image_filename}",
+                                'image_filename': image_filename,
+                                'timestamp': entry.get('timestamp'),
+                                'location': entry.get('image_location'),
+                                # Add a unique ID combining filename and entry ID for proper randomization
+                                'unique_id': f"{image_filename}_{species_entry['entry_id']}"
+                            }
+                            
+                            # Add species data
+                            image_info.update(species_entry)
+                            
+                            all_images.append(image_info)
+                    else:
+                        # If no species data, still add the image once
+                        image_info = {
+                            'quest_id': qid,
+                            'image_path': f"{relative_imgs_path}{image_filename}",
+                            'image_filename': image_filename,
+                            'timestamp': entry.get('timestamp'),
+                            'location': entry.get('image_location'),
+                            'unique_id': f"{image_filename}_0"
+                        }
+                        
+                        all_images.append(image_info)
+        
+        except Exception as e:
+            print(f"Error processing quest {qid}: {str(e)}")
+            continue
+    
+    # Sort images by timestamp (newest first)
+    all_images.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+    
+    # Render the template
+    return render_template('image_grid.html', 
+                          images=all_images,
+                          filtered_quest_id=quest_id,
+                          total_quests=len(set(img['quest_id'] for img in all_images)),
+                          total_images=len(all_images))
 
-from image_analyzer import ImageAnalyzer
 analyzer = ImageAnalyzer()
-
 @app.route('/analyze', methods=['POST'])
 def analyze():
     data = request.json

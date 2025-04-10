@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Species Image Gallery</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+        }
+        
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .back-button {
+            display: inline-block;
+            padding: 8px 15px;
+            background-color: #f0f0f0;
+            color: #333;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        
+        .back-button:hover {
+            background-color: #e0e0e0;
+        }
+        
+        .title {
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+        
+        .search {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            width: 250px;
+        }
+        
+        .stats {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        /* New grid layout using grid-area for varying aspect ratios */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 5px;
+            padding: 5px;
+            margin-top: 70px; /* Space for fixed header */
+        }
+        
+        .grid-item {
+            position: relative;
+            overflow: hidden;
+            border-radius: 4px;
+            cursor: pointer;
+            transform: scale(1);
+            transition: transform 0.2s ease, z-index 0.2s;
+            background-color: #eee;
+        }
+        
+        /* Default size (1x1) */
+        .grid-item {
+            grid-column: span 1;
+            grid-row: span 1;
+            aspect-ratio: 1/1;
+        }
+        
+        /* Wide size (2x1) */
+        .grid-item.wide {
+            grid-column: span 2;
+            grid-row: span 1;
+            aspect-ratio: 2/1;
+        }
+        
+        /* Tall size (1x2) */
+        .grid-item.tall {
+            grid-column: span 1;
+            grid-row: span 2;
+            aspect-ratio: 1/2;
+        }
+        
+        /* Large size (2x2) */
+        .grid-item.large {
+            grid-column: span 2;
+            grid-row: span 2;
+            aspect-ratio: 1/1;
+        }
+        
+        .grid-item:hover {
+            transform: scale(1.05);
+            z-index: 10;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .grid-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        
+        .info-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            /* transform: translateY(100%); */
+            transition: transform 0.3s ease;
+            font-size: 0.8rem;
+        }
+        
+        .grid-item:hover .info-overlay {
+            transform: translateY(0);
+        }
+        
+        .species-name {
+            font-weight: bold;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .scientific-name {
+            font-style: italic;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .taxonomic-group {
+            opacity: 0.8;
+            font-size: 0.75rem;
+        }
+        
+        .quest-tag {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(255, 255, 255, 0.8);
+            color: #333;
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            z-index: 5;
+        }
+        
+        .no-results {
+            grid-column: 1 / -1;
+            padding: 40px;
+            text-align: center;
+            color: #666;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            
+            .search {
+                width: 100%;
+            }
+            
+            .grid-container {
+                grid-template-columns: repeat(3, 1fr);
+                margin-top: 120px;
+            }
+            
+            .title {
+                font-size: 1rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .grid-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            /* On small screens, ensure no item takes more than full width */
+            .grid-item.wide, .grid-item.large {
+                grid-column: span 1;
+            }
+        }
+        
+        @media (min-width: 1200px) {
+            .grid-container {
+                grid-template-columns: repeat(10, 1fr);
+            }
+        }
+        
+        @media (min-width: 1600px) {
+            .grid-container {
+                grid-template-columns: repeat(12, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="nav">
+            <a href="/dashboard/" class="back-button">← Back to Dashboard</a>
+            {% if filtered_quest_id %}
+                <a href="/images/" class="back-button">Show All Quests</a>
+            {% endif %}
+        </div>
+        
+        <div class="title">
+            {% if filtered_quest_id %}
+                Species Gallery: Quest {{ filtered_quest_id }}
+            {% else %}
+                Species Gallery: All Quests
+            {% endif %}
+        </div>
+        
+        <div class="search-container">
+            <input type="text" class="search" id="image-search" placeholder="Search by name, group..." oninput="filterImages()">
+        </div>
+        
+        <div class="stats">
+            <span id="displayed-count">{{ images|length }}</span> images from 
+            <span>{{ total_quests }}</span> quests
+        </div>
+    </div>
+    
+    <div class="grid-container" id="image-grid">
+        {% for image in images %}
+            {# Generate a random number based on unique_id if available, otherwise use a combination of other fields #}
+            {% if image.unique_id is defined %}
+                {% set random_seed = (image.unique_id|string|length * 13) % 10 %}
+            {% else %}
+                {% set random_seed = ((image.quest_id|string|length + image.image_filename|string|length + loop.index0) * 13) % 10 %}
+            {% endif %}
+            
+            {# Map to aspect ratio classes with varied probabilities #}
+            {% if random_seed < 4 %}
+                {% set aspect_class = "" %}  {# 40% chance of square (1x1) #}
+            {% elif random_seed < 7 %}
+                {% set aspect_class = "wide" %}  {# 30% chance of wide (2x1) #}
+            {% elif random_seed < 9 %}
+                {% set aspect_class = "tall" %}  {# 20% chance of tall (1x2) #}
+            {% else %}
+                {% set aspect_class = "large" %}  {# 10% chance of large (2x2) #}
+            {% endif %}
+            
+            <div class="grid-item {{ aspect_class }}" 
+                 data-quest="{{ image.quest_id }}"
+                 data-scientific="{{ image.scientific_name|default('') }}"
+                 data-common="{{ image.common_name|default('') }}"
+                 data-group="{{ image.taxonomic_group|default('') }}"
+                 data-id="{{ image.unique_id|default(image.image_filename) }}"
+                 onclick="window.location.href='/recap/{{ image.quest_id }}'">
+                <div class="quest-tag">Q-{{ image.quest_id }}</div>
+                <img src="{{ image.image_path }}" alt="{{ image.common_name|default('Species image') }}">
+                <div class="info-overlay">
+                    <div class="species-name">{{ image.common_name|default('Unnamed Species') }}</div>
+                    <div class="scientific-name">{{ image.scientific_name|default('No scientific name') }}</div>
+                    <div class="taxonomic-group">{{ image.taxonomic_group|default('') }}</div>
+                    <div class="timestamp">{{ image.timestamp|default('')|truncate(16, true, '') }}</div>
+                </div>
+            </div>
+        {% endfor %}
+        
+        {% if not images %}
+            <div class="no-results">No images found. Please check your filter criteria or add some species data.</div>
+        {% endif %}
+    </div>
+    
+    <script>
+        // For client-side randomization when not using server templating
+        function assignRandomAspectRatios() {
+            const gridItems = document.querySelectorAll('.grid-item');
+            const aspectClasses = ['', 'wide', 'tall', 'large'];
+            const weights = [40, 30, 20, 10]; // Probabilities in percent
+            
+            gridItems.forEach(item => {
+                // Generate a random number between 0 and 99
+                const rand = Math.floor(Math.random() * 100);
+                
+                // Select class based on weighted probability
+                let classIndex = 0;
+                let cumulativeWeight = 0;
+                
+                for (let i = 0; i < weights.length; i++) {
+                    cumulativeWeight += weights[i];
+                    if (rand < cumulativeWeight) {
+                        classIndex = i;
+                        break;
+                    }
+                }
+                
+                // Remove existing aspect classes first
+                item.classList.remove('wide', 'tall', 'large');
+                
+                // Add the randomly selected class (if not default)
+                if (classIndex > 0) {
+                    item.classList.add(aspectClasses[classIndex]);
+                }
+            });
+        }
+        
+        // Uncomment this line if you want client-side randomization
+        // document.addEventListener('DOMContentLoaded', assignRandomAspectRatios);
+        
+        function filterImages() {
+            const searchTerm = document.getElementById('image-search').value.toLowerCase();
+            const gridItems = document.querySelectorAll('.grid-item');
+            let visibleCount = 0;
+            
+            gridItems.forEach(item => {
+                const scientificName = item.getAttribute('data-scientific').toLowerCase();
+                const commonName = item.getAttribute('data-common').toLowerCase();
+                const group = item.getAttribute('data-group').toLowerCase();
+                const questId = item.getAttribute('data-quest').toLowerCase();
+                const imageId = item.getAttribute('data-id').toLowerCase();
+                
+                // Check if any of the fields match the search term
+                const isVisible = 
+                    scientificName.includes(searchTerm) || 
+                    commonName.includes(searchTerm) || 
+                    group.includes(searchTerm) ||
+                    questId.includes(searchTerm) ||
+                    imageId.includes(searchTerm);
+                
+                // Show or hide the grid item
+                item.style.display = isVisible ? 'block' : 'none';
+                
+                if (isVisible) {
+                    visibleCount++;
+                }
+            });
+            
+            // Update the displayed count
+            document.getElementById('displayed-count').textContent = visibleCount;
+            
+            // Show or hide the "no results" message
+            const noResults = document.querySelector('.no-results');
+            if (noResults) {
+                if (visibleCount === 0) {
+                    if (!document.querySelector('.no-results-dynamic')) {
+                        const noResultsDynamic = document.createElement('div');
+                        noResultsDynamic.className = 'no-results no-results-dynamic';
+                        noResultsDynamic.textContent = 'No results found for your search.';
+                        document.getElementById('image-grid').appendChild(noResultsDynamic);
+                    }
+                } else {
+                    const dynamicNoResults = document.querySelector('.no-results-dynamic');
+                    if (dynamicNoResults) {
+                        dynamicNoResults.remove();
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>

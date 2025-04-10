@@ -263,7 +263,7 @@ body {
     color: white;
 }
 
-#new-photo {
+#new-photo, #end-quest {
     border: none;
     padding: 1rem 2rem;
     border-radius: 12px;
@@ -274,8 +274,19 @@ body {
     margin-top: 1rem;
 }
 
-#new-photo:hover {
+#new-photo:hover, #end-quest:hover{
     transform: translateY(-1px);
+}
+
+#follow-up {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.8rem;
+    width: 100%;
+}
+
+#follow-up button {
+    margin-top: 0.8rem;
 }
 
 /* Ensure content is readable on any background */

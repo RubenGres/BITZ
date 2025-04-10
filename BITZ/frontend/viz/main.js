@@ -38,7 +38,7 @@ async function get_all_quests(url) {
 
     // Fetch image data for each quest
     const questPromises = questsList.map(async (quest) => {
-        const imgsResponse = await fetch(`${url}/explore/${quest.name}/imgs/raw`);
+        const imgsResponse = await fetch(`${url}/explore/images/${quest.name}/raw`);
         let imgsData;
         try {
             imgsData = await imgsResponse.json();
