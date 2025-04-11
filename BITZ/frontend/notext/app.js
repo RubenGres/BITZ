@@ -5,7 +5,6 @@ const API_URL = "https://scaling-space-carnival-qvvrrjxqgrp246pj-5000.app.github
 const app = {
     screens: {
         initial: document.getElementById('initial-screen'),
-        camera: document.getElementById('camera-screen'),
         analysis: document.getElementById('analysis-screen'),
         loading: document.getElementById('loading-screen')
     },
@@ -80,22 +79,10 @@ async function fetchLocationName(latitude, longitude) {
 
 // Camera Handling (fallback for devices without capture support)
 async function startCamera() {
-    // On modern mobile devices, we'll use the capture attribute
-    // This is just a fallback for browsers that don't support it
-    if (isMobile()) {
+    if(isMobile) {
         app.elements.cameraInput.click();
     } else {
-        try {
-            stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: 'environment' }, 
-                audio: false 
-            });
-            app.elements.video.srcObject = stream;
-            showScreen('camera');
-        } catch (err) {
-            console.error('Error accessing camera:', err);
-            alert('Unable to access camera. Please make sure you have granted camera permissions.');
-        }
+        app.element.fileInput.click();
     }
 }
 
@@ -406,11 +393,11 @@ app.elements.cameraButton.addEventListener('click', () => {
 });
 
 app.elements.cameraInput.addEventListener('change', handleFileUpload);
-app.elements.captureButton.addEventListener('click', captureImage);
-app.elements.cameraBackButton.addEventListener('click', () => {
-    stopCamera();
-    showScreen('initial');
-});
+// app.elements.captureButton.addEventListener('click', captureImage);
+// app.elements.cameraBackButton.addEventListener('click', () => {
+//     stopCamera();
+//     showScreen('initial');
+// });
 app.elements.uploadButton.addEventListener('click', () => {
     app.elements.fileInput.click();
 });
@@ -424,5 +411,5 @@ app.elements.newPhotoButton.addEventListener('click', () => {
 });
 app.elements.endQuestButton.addEventListener('click', () => {
     localStorage.removeItem('conversation_id');
-    window.open(API_URL + '/graph_view?quest_id=' + conversation_id);
+    window.open(API_URL + '/viz/graph/?id=' + conversation_id);
 });

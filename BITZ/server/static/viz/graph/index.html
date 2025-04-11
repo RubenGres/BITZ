@@ -187,7 +187,7 @@ button:hover {
 </div>
 
 <div id="ui-controls">
-<button id="add-circle">Add Circle</button>
+<button onclick="window.location.href='/'">Return to main menu</button>
 </div>
 
 <div id="edit-modal" class="modal">
@@ -583,7 +583,11 @@ class ConceptMap {
     this.dragOffsetX = 0;
     this.dragOffsetY = 0;
     this.selectedConnection = null;
-    
+    this.scale = 1;
+    this.minScale = 0.1;
+    this.maxScale = 5;
+    this.zoomIntensity = 0.1;
+        
     // Pan feature variables
     this.isPanning = false;
     this.panStartX = 0;
@@ -611,9 +615,63 @@ class ConceptMap {
     
     // Create connection between them
     // this.connectNodes(this.nodes[0], this.nodes[1], '');
+
+    canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length >= 2) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', (e) => {
+      if (e.touches.length >= 2) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    // Make sure the canvas can receive touch events
+    canvas.style.touchAction = "none"
   }
 
   
+  applyZoom(x, y, delta) {
+    // Calculate zoom factor based on delta
+    const zoomFactor = 1 - delta * this.zoomIntensity;
+    
+    // Calculate new scale
+    const newScale = this.scale * zoomFactor;
+    
+    // Clamp scale to min/max values
+    const clampedScale = Math.min(Math.max(newScale, this.minScale), this.maxScale);
+    
+    // Calculate the scale change
+    const scaleChange = clampedScale / this.scale;
+    
+    // Only proceed if the scale actually changed
+    if (scaleChange !== 1) {
+      // Get canvas center coordinates
+      const rect = canvas.getBoundingClientRect();
+      const canvasX = x - rect.left;
+      const canvasY = y - rect.top;
+      
+      // Update the scale
+      this.scale = clampedScale;
+      
+      // Move all nodes relative to the zoom point
+      for (const node of this.nodes) {
+        // Calculate distance from zoom point to node
+        const dx = node.x - canvasX;
+        const dy = node.y - canvasY;
+        
+        // Apply the scale change to that distance
+        node.x = canvasX + dx * scaleChange;
+        node.y = canvasY + dy * scaleChange;
+        
+        // Scale node size if needed (optional)
+        // node.size *= scaleChange;
+      }
+    }
+  }
+
   addNode(x, y, size, type = 'grey') {
     const node = new Node(x, y, size, type);
     this.nodes.push(node);
@@ -990,7 +1048,8 @@ class ConceptMap {
   draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Draw connections first
+    ctx.save();
+    
     for (const connection of this.connections) {
       connection.draw();
     }
@@ -999,6 +1058,8 @@ class ConceptMap {
     for (const node of this.nodes) {
       node.draw();
     }
+    
+    ctx.restore();
   }
   
   animate() {
@@ -1023,15 +1084,16 @@ class ConceptMap {
       const midY = (start.y + end.y) / 2;
       
       // Simple check if click is near the connection midpoint
+      // Adjust the threshold based on zoom level
       const distance = Math.sqrt((midX - x) ** 2 + (midY - y) ** 2);
-      if (distance < 20) {
+      const threshold = 20; // Could be adjusted based on this.scale if needed
+      if (distance < threshold) {
         return connection;
       }
     }
     
     return null;
   }
-  
   // Pan the entire map by moving all nodes
   panMap(dx, dy) {
     for (const node of this.nodes) {
@@ -1068,6 +1130,66 @@ class ConceptMap {
     //   }, 500);
     // });
     
+    // Mouse wheel zoom
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      
+      // Determine the direction of the scroll (normalize delta for cross-browser compatibility)
+      const delta = e.deltaY > 0 ? 1 : -1;
+      
+      // Apply zoom centered on the mouse position
+      this.applyZoom(e.clientX, e.clientY, delta);
+    });
+
+    // Touch events for pinch zoom
+    let initialTouchDistance = 0;
+    let lastTouchDistance = 0;
+
+    canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2) {
+        // Prevent default to disable scrolling
+        e.preventDefault();
+        
+        // Calculate initial distance between touch points
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        initialTouchDistance = Math.hypot(
+          touch2.clientX - touch1.clientX,
+          touch2.clientY - touch1.clientY
+        );
+        lastTouchDistance = initialTouchDistance;
+      }
+    });
+
+    canvas.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2) {
+        // Prevent default to disable scrolling
+        e.preventDefault();
+        
+        // Calculate current distance between touch points
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const currentDistance = Math.hypot(
+          touch2.clientX - touch1.clientX,
+          touch2.clientY - touch1.clientY
+        );
+        
+        // Calculate center point between the two touches
+        const centerX = (touch1.clientX + touch2.clientX) / 2;
+        const centerY = (touch1.clientY + touch2.clientY) / 2;
+        
+        // Calculate zoom delta based on the change in distance
+        const distanceChange = currentDistance / lastTouchDistance;
+        const zoomDelta = distanceChange > 1 ? -0.5 : 0.5;
+        
+        // Apply zoom centered on the touch center point
+        if (Math.abs(currentDistance - lastTouchDistance) > 1) {
+          this.applyZoom(centerX, centerY, zoomDelta);
+          lastTouchDistance = currentDistance;
+        }
+      }
+    });
+
     canvas.addEventListener('mousedown', (e) => {
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
