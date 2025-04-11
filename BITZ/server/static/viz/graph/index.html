@@ -34,15 +34,15 @@ canvas:active {
 
 #ui-controls {
   position: fixed;
-  bottom: 20px;
+  top: 20px;
   left: 20px;
   z-index: 10;
 }
 
 button {
-  background-color: #4caf4f00;
+  background-color: #4caf4f;
   border: none;
-  color: rgba(255, 255, 255, 0);
+  color: rgba(255, 255, 255);
   padding: 10px 20px;
   text-align: center;
   text-decoration: none;
@@ -56,7 +56,7 @@ button {
 }
 
 button:hover {
-  background-color: #45a04900;
+  background-color: #45a049;
 }
 
 .modal {
@@ -171,7 +171,6 @@ button:hover {
 </style>
 </head>
 <body>
-<video id="background-video" autoplay loop muted preload="auto"></video>
 <div id="canvas-container">
 <canvas id="concept-map"></canvas>
 </div>
@@ -189,7 +188,6 @@ button:hover {
 
 <div id="ui-controls">
 <button id="add-circle">Add Circle</button>
-<button id="rm-grey">Remove grey nodes</button>
 </div>
 
 <div id="edit-modal" class="modal">
@@ -221,6 +219,9 @@ button:hover {
 </div>
 
 <script>
+// const API_URL = "https://oaak.rubengr.es";
+const API_URL = "https://scaling-space-carnival-qvvrrjxqgrp246pj-5000.app.github.dev"
+
 // Initialize canvas and context
 const canvas = document.getElementById('concept-map');
 const ctx = canvas.getContext('2d');
@@ -247,6 +248,7 @@ class Node {
     this.size = size;
     this.type = type; // 'grey' or 'frame'
     this.image = null;
+    this.id = null;
     this.connections = [];
   }
   
@@ -377,16 +379,159 @@ class Connection {
   }
 }
 
+function autoSpawnGraph() {
+  if(!quests_data[quest_id]) {
+    alert("Quest id is invalid or does not exist");
+    return null;
+  }    
+
+  window.conceptMap.addFrameNodeFromQuest();
+  
+  const intervalId = setInterval(() => {
+    const node = window.conceptMap.addFrameNodeFromQuest();
+    if (node) {
+      populateSidePanel(node);
+    } else {
+      clearInterval(intervalId);
+      return;
+    }
+  }, 1000);
+}
+
+function isEmptyValue(value) {
+  return value === null || value === undefined || value.toString().trim() === '';
+}
+
+// Function to populate side panel with data from history JSON
+function populateSidePanel(node) {
+  if (!node || node.type !== 'frame' || !node.image) return;
+  
+  // Get panel elements
+  const panelTitle = document.getElementById('panel-title');
+  const panelContent = document.getElementById('panel-content');
+  const panelImage = document.getElementById('panel-image');
+  
+  // Set the image
+  panelImage.src = node.image.src;
+  
+  // Get the node index to match with the history entry
+  const framedNodes = window.conceptMap.getFramedNodes();
+  const nodeIndex = framedNodes.indexOf(node);
+  
+  // If we have valid quest data and this node index exists in the history
+  if (quests_data[quest_id].history['history']) {
+    
+    // Get the corresponding history entry
+    const historyEntry = quests_data[quest_id].history['history'][node.id];
+    
+    console.log("History Entry:", historyEntry["assistant"]);
+    const fixedString = historyEntry["assistant"]
+          .trim()
+          .replace(/'/g, '"')     // Replace single quotes with double quotes
+          .replace(/\n/g, '\\n'); // Properly escape newlines
+    resultData = JSON.parse(fixedString);
+    
+    // Set panel title with image filename or species name if available
+    if (resultData.species_identification && resultData.species_identification.name && 
+        !isEmptyValue(resultData.species_identification.name)) {
+      panelTitle.textContent = resultData.species_identification.name;
+    } else if (historyEntry.image_filename) {
+      panelTitle.textContent = historyEntry.image_filename;
+    } else {
+      panelTitle.textContent = "Node Details";
+    }
+    
+    // Build HTML content similar to displayResults function
+    let html = '';
+    
+    // Species identification section
+    if (resultData.species_identification) {
+      const speciesData = resultData.species_identification;
+      
+      // Only add name if not already in title and not empty
+      const name = speciesData.name;
+      if (name && !isEmptyValue(name) && panelTitle.textContent !== name) {
+        html += `<p><strong>${name}</strong></p>`;
+      }
+      
+      // Only add description if it's not empty
+      const description = speciesData.what_is_it;
+      if (description && !isEmptyValue(description)) {
+        html += `<p>${description}</p>`;
+      }
+      
+      // Only add ecological importance if it's not empty
+      const importance = speciesData.ecological_importance;
+      if (importance && !isEmptyValue(importance)) {
+        html += `<h3>Ecological Importance</h3>`;
+        html += `<p>${importance}</p>`;
+      }
+      
+      // Only add interactions if there are non-empty ones
+      const interactions = speciesData.species_interactions;
+      if (interactions && interactions.length > 0 && interactions.some(i => !isEmptyValue(i))) {
+        html += `<h3>Species Interactions</h3>`;
+        html += `<ul>`;
+        interactions.forEach(interaction => {
+          if (!isEmptyValue(interaction)) {
+            html += `<li>${interaction}</li>`;
+          }
+        });
+        html += `</ul>`;
+      }
+    }
+    
+    // Add location information if available
+    if (historyEntry.image_location) {
+      html += `<h3>Location</h3>`;
+      html += `<p>Latitude: ${historyEntry.image_location.latitude}</p>`;
+      html += `<p>Longitude: ${historyEntry.image_location.longitude}</p>`;
+    }
+    
+    // If there's no content, add a placeholder
+    if (html === '') {
+      html = '<p>No detailed information available for this node.</p>';
+    }
+    
+    // Set the HTML content
+    panelContent.innerHTML = html;
+  } else {
+    // Default content if no matching data found
+    panelTitle.textContent = "Node Details";
+    panelContent.innerHTML = "<p>No data available for this node.</p>";
+  }
+  
+  // Display the panel
+  const panel = document.getElementById('side-panel');
+  panel.style.display = 'block';
+  
+  // Trigger animation
+  setTimeout(() => {
+    panel.classList.add('active');
+  }, 10);
+  
+  // Adjust canvas container size based on orientation
+  const canvasContainer = document.getElementById('canvas-container');
+  const isLandscape = window.innerWidth > window.innerHeight;
+  
+  if (isLandscape) {
+    canvasContainer.style.width = '70vw';
+  } else {
+    canvasContainer.style.height = '70vh';
+  }
+}
+
 async function get_all_quests(url) {
-    // Fetch the JSON data from <url>/explore/raw
+    // Fetch the JSON data from <url>/explore/data/raw
     const response = await fetch(`${url}/explore/data/raw`);
     const questsList = await response.json();
 
     // Create an object to store all quests
     const questsObject = {};
 
-    // Fetch image data for each quest
+    // Create a single array of promises that handle both images and history
     const questPromises = questsList.map(async (quest) => {
+        // Fetch image data
         const imgsResponse = await fetch(`${url}/explore/images/${quest.name}/raw`);
         let imgsData;
         try {
@@ -396,11 +541,21 @@ async function get_all_quests(url) {
         }
 
         const images_url = imgsData.map(img => `${url}/explore/images/${quest.name}/${img.name}`);
-
-        // Add this quest directly to the object
+        
+        // Fetch history data
+        const historyResponse = await fetch(`${url}/explore/data/${quest.name}/history.json`);
+        let historyData;
+        try {
+            historyData = await historyResponse.json();
+        } catch (error) {
+            historyData = []; // Handle cases where there's no history data
+        }
+        
+        // Add this quest with both image and history data to the object
         questsObject[quest.name] = {
             ...quest,
-            "image_urls": images_url
+            "image_urls": images_url,
+            "history": historyData
         };
     });
 
@@ -412,14 +567,11 @@ async function get_all_quests(url) {
 }
 
 var quests_data; 
-get_all_quests("https://oaak.rubengr.es").then( (data) => {
-    console.log(data);
-    quests_data = data;
-  }
-);
 
-// let quest_id = prompt("Enter the quest id");
-const quest_id = 1739523711743455
+const params = new URLSearchParams(window.location.search);
+const quest_id = params.get("id");
+
+console.log("Quest ID:", quest_id);
 
 // Main app
 class ConceptMap {
@@ -574,10 +726,11 @@ class ConceptMap {
   }
 
   addFrameNodeFromQuest() {
-    if(this.getFramedNodes().length < 3) {
-      var imgs_url = ["images/1.jpg", "images/2.jpg", "images/3.jpg"]
-    } else {
-      var imgs_url = quests_data[quest_id]["image_urls"]
+    var imgs_url = quests_data[quest_id]["image_urls"]
+    // add try catch, if fails return an alert to say it doesnt't exist
+
+    if(this.getFramedNodes().length == imgs_url.length) {
+      return null
     }
 
     const minSize = 30;
@@ -589,21 +742,18 @@ class ConceptMap {
     // const node = this.addNode(x, y, size);
     const targetNode = this.findLastFramedNode()
 
-    if(this.nodes.length == 0) {
-      const centerX = canvas.width * 3 / 4;
-      const centerY = canvas.height / 2;
-      this.addNode(centerX, centerY, 40, 'grey');
-    }
+    const centerX = canvas.width * 3 / 4;
+    const centerY = canvas.height / 2;
+    var node = this.addNode(centerX, centerY, 40, 'grey');
 
-    const node = this.nodes[this.getFramedNodes().length]
     node.type = "frame"
-
     console.log(imgs_url.length)
 
     const img = new Image();
     const id = (this.getFramedNodes().length - 1) % imgs_url.length
     img.src = imgs_url[id];
     node.image = img;
+    node.id = id;
     
     if (targetNode) {
       this.connectNodes(node, targetNode, "linked");
@@ -789,6 +939,9 @@ class ConceptMap {
       // Set the image
       panelImage.src = node.image.src;
       
+      // Populate the panel with data from the quest history
+      populateSidePanel(node);
+      
       // Display the panel
       panel.style.display = 'block';
       
@@ -890,8 +1043,8 @@ class ConceptMap {
   }
   
   setupEventListeners() {
-    const addCircleBtn = document.getElementById('add-circle');
-    const rmGreyButton = document.getElementById('rm-grey');
+    // const addCircleBtn = document.getElementById('add-circle');
+    // const rmGreyButton = document.getElementById('rm-grey');
 
     const saveConnectionBtn = document.getElementById('save-connection');
     const editModal = document.getElementById('edit-modal');
@@ -902,23 +1055,18 @@ class ConceptMap {
     const capturePhotoBtn = document.getElementById('capture-photo');
     const panelCloseBtn = document.getElementById('panel-close');
     
-    rmGreyButton.addEventListener('click', () => {
-      this.removeGreyNodes();
-    });
+    // rmGreyButton.addEventListener('click', () => {
+    //   this.removeGreyNodes();
+    // });
 
-    addCircleBtn.addEventListener('click', () => {
-      // this.addRandomNode();
-      this.addFrameNodeFromQuest();
+    // addCircleBtn.addEventListener('click', () => {
+    //   this.addFrameNodeFromQuest();
       
-      setTimeout(() => {
-        this.addRandomNode();
-        
-        setTimeout(() => {
-          this.addRandomNode();
+    //   setTimeout(() => {
+    //     this.addRandomNode();
 
-        }, 500);
-      }, 500);
-    });
+    //   }, 500);
+    // });
     
     canvas.addEventListener('mousedown', (e) => {
       const rect = canvas.getBoundingClientRect();
@@ -1092,14 +1240,14 @@ class ConceptMap {
 }
 
 window.onload = () => {
-  const conceptMap = new ConceptMap();
-  
-  // Set up background video
-  const video = document.getElementById('background-video');
-  video.src = "video.mov";
-  video.load();
+  get_all_quests(API_URL).then((data) => {
+      console.log(data);
+      quests_data = data;
+      
+      window.conceptMap = new ConceptMap();
 
-  console.log(video)
+      autoSpawnGraph()
+  });
 };
 
 </script>
