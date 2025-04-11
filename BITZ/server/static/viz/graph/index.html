@@ -220,7 +220,8 @@ button:hover {
 
 <script>
 // const API_URL = "https://oaak.rubengr.es";
-const API_URL = "https://scaling-space-carnival-qvvrrjxqgrp246pj-5000.app.github.dev"
+// const API_URL = "https://scaling-space-carnival-qvvrrjxqgrp246pj-5000.app.github.dev"
+const API_URL = ""
 
 // Initialize canvas and context
 const canvas = document.getElementById('concept-map');
@@ -800,7 +801,7 @@ class ConceptMap {
     // const node = this.addNode(x, y, size);
     const targetNode = this.findLastFramedNode()
 
-    const centerX = canvas.width * 3 / 4;
+    const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
     var node = this.addNode(centerX, centerY, 40, 'grey');
 

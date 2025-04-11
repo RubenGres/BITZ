@@ -361,7 +361,7 @@ scene.add(spheresGroup);
 // Simplex noise instance for perlin noise generation
 const simplex = new SimplexNoise();
 
-const quests = await get_all_quests("https://oaak.rubengr.es");
+const quests = await get_all_quests("");
 
 for (let i = 0; i < quests.length; i++) {
     const radius = getRandomInRange(5, 10); // Random radius between 5 and 10

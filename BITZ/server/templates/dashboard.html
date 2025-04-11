@@ -31,6 +31,7 @@
             <div class="quest-actions">
                 <a href="{{ url_for('recap', id=quest.name) }}" class="action-btn quest-btn">View Quest</a>
                 <a href="{{ url_for('image_grid', id=quest.name) }}" class="action-btn images-btn">Images</a>
+                <a href="/viz/graph/?id={{quest.name}}" class="action-btn graph-btn">Graph</a>
                 <a href="{{ url_for('delete', id=quest.name) }}" class="action-btn delete-btn">Delete</a>
             </div>
         </div>
@@ -198,6 +199,10 @@ function sortQuests() {
     
     .delete-btn {
         background-color: #f44336;
+    }
+
+    .graph-btn {
+        background-color: #d436f4;
     }
     
     .no-quests {
