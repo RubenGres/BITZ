@@ -9,7 +9,6 @@ from flask_cors import CORS
 import mimetypes
 import oaak
 
-
 load_dotenv()
 
 app = Flask(__name__)
@@ -163,7 +162,6 @@ def explore(subpath=""):
     
     abort(404)
 
-
 @app.route("/delete/<id>", methods=["GET", "POST"])
 def delete(id=""):
     """
@@ -306,7 +304,6 @@ def map_view():
     # Render the quests overview template
     return render_template('map_view.html', quests=all_quests_data)
 
-
 @app.route("/recap/<id>")
 def recap(id):
     # Construct paths to the CSV file and images directory
@@ -342,7 +339,6 @@ def get_file(subpath):
         abort(403)
 
     return send_from_directory(BASE_DIR, subpath)
-
 
 @app.route("/load", methods=["POST"])
 def load_history():
@@ -564,7 +560,6 @@ def answer():
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

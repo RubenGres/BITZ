@@ -1,0 +1,373 @@
+
+#app {
+  min-height: 100vh;
+  position: relative;
+}
+
+/* Screen Styles */
+.screen {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #fff;
+}
+
+.screen.active {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Initial Screen */
+.prompt-container {
+  text-align: center;
+  padding: 2rem;
+  max-width: 600px;
+}
+
+.prompt-container h1 {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  color: #1a1a1a;
+}
+
+.prompt-container p {
+  font-size: 1.2rem;
+  color: #666;
+  margin-bottom: 2rem;
+}
+
+/* Button Styles */
+.button-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.primary-button, .secondary-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 100%;
+  border: none;
+}
+
+.primary-button {
+  background-color: #007AFF;
+  color: white;
+}
+
+.primary-button:hover {
+  background-color: #0066CC;
+}
+
+.secondary-button {
+  background-color: #E9ECEF;
+  color: #495057;
+}
+
+.secondary-button:hover {
+  background-color: #DEE2E6;
+}
+
+/* Camera Screen */
+#camera-screen {
+  background-color: #000;
+}
+
+#video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.camera-controls {
+  position: fixed;
+  bottom: 2rem;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  padding: 0 2rem;
+}
+
+/* Analysis Screen */
+.image-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+#captured-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.4));
+  overflow-y: auto;
+  z-index: 2;
+  -webkit-overflow-scrolling: touch;
+}
+
+.content-box {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 2rem;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+/* Text and Button Styling */
+.section {
+  margin-bottom: 1.5rem;
+  width: 100%;
+}
+
+.section h2, .section h3 {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 0.8rem;
+}
+
+.section h2 {
+  font-size: 1.5rem;
+  color: #2C5282;
+}
+
+.section h3 {
+  font-size: 1.2rem;
+  color: #2D3748;
+  margin-top: 1rem;
+}
+
+.section p {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 0.8rem;
+  line-height: 1.6;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem 0;
+  width: 100%;
+}
+
+.section li {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 0.8rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+}
+
+.section em {
+  color: #2C5282;
+  font-style: italic;
+  font-weight: 500;
+}
+
+.section strong {
+  color: #1A365D;
+  font-weight: 600;
+}
+
+.question-container {
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+  width: 100%;
+}
+
+.question-text {
+  font-weight: 500;
+  margin-bottom: 1rem;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 1rem;
+  border-radius: 8px;
+  display: block;
+  color: #2D3748;
+  font-size: 1.1rem;
+}
+
+.options-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.8rem;
+  width: 100%;
+}
+
+.option-button {
+  padding: 1rem;
+  border-radius: 8px;
+  border: none;
+  background: rgba(255, 255, 255, 0.95);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1rem;
+  text-align: left;
+  display: flex;
+  align-items: center;
+}
+
+.option-button:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.option-button.selected {
+  background: #2C5282;
+  color: white;
+}
+
+#new-photo, #end-quest {
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 1rem;
+}
+
+#new-photo:hover, #end-quest:hover{
+  transform: translateY(-1px);
+}
+
+#follow-up {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.8rem;
+  width: 100%;
+}
+
+#follow-up button {
+  margin-top: 0.8rem;
+}
+
+/* Ensure content is readable on any background */
+.section, .question-container {
+  text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* Loading Screen */
+#loading-screen {
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  text-align: center;
+}
+
+.loader {
+  width: 48px;
+  height: 48px;
+  border: 5px solid #FFF;
+  border-bottom-color: transparent;
+  border-radius: 50%;
+  display: inline-block;
+  box-sizing: border-box;
+  animation: rotation 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes rotation {
+  0% {
+      transform: rotate(0deg);
+  }
+  100% {
+      transform: rotate(360deg);
+  }
+}
+
+/* Responsive Design */
+@media (min-width: 768px) {
+  .button-container {
+      flex-direction: row;
+  }
+  
+  .primary-button, .secondary-button {
+      width: auto;
+  }
+}
+
+.yes-button, .no-button {
+  font-size: 1.1rem;
+  font-weight: 500;
+  padding: 0.8rem 1.5rem;
+  min-width: 100px;
+}
+
+.yes-button {
+  background-color: rgba(52, 199, 89, 0.9);
+  color: white;
+}
+
+.yes-button:hover {
+  background-color: rgba(52, 199, 89, 1);
+}
+
+.no-button {
+  background-color: rgba(255, 69, 58, 0.9);
+  color: white;
+}
+
+.no-button:hover {
+  background-color: rgba(255, 69, 58, 1);
+}
+
+.guidance-container {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 0.5rem;
+  width: 100%;
+}
+
+.guidance-text {
+  margin-bottom: 1rem;
+  color: #2D3748;
+  font-weight: 500;
+}
+
+.action-button {
+  margin-top: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.action-button:before {
+  content: "📸";
+  font-size: 1.2rem;
+} 

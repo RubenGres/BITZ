@@ -390,9 +390,7 @@ function autoSpawnGraph() {
   
   const intervalId = setInterval(() => {
     const node = window.conceptMap.addFrameNodeFromQuest();
-    if (node) {
-      populateSidePanel(node);
-    } else {
+    if (!node) {
       clearInterval(intervalId);
       return;
     }

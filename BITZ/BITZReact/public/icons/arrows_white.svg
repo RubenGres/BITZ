@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   id="Layer_1"
+   data-name="Layer 1"
+   viewBox="0 0 94.790001 38.73"
+   version="1.1"
+   width="94.790001"
+   height="38.73"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1">
+    <style
+       id="style1">
+      .cls-1, .cls-2, .cls-3, .cls-4, .cls-5, .cls-6, .cls-7, .cls-8, .cls-9, .cls-10, .cls-11 {
+        fill: #084529;
+      }
+
+      .cls-1, .cls-2, .cls-5, .cls-7, .cls-8 {
+        font-size: 42px;
+      }
+
+      .cls-1, .cls-12, .cls-13, .cls-14, .cls-15 {
+        font-variation-settings: 'wght' 400;
+      }
+
+      .cls-1, .cls-12, .cls-14, .cls-15 {
+        font-family: InclusiveSans-Regular, 'Inclusive Sans';
+      }
+
+      .cls-2 {
+        letter-spacing: -.08em;
+      }
+
+      .cls-3, .cls-16, .cls-17 {
+        letter-spacing: -.02em;
+      }
+
+      .cls-18, .cls-19 {
+        letter-spacing: -.01em;
+      }
+
+      .cls-4, .cls-20, .cls-21 {
+        letter-spacing: -.03em;
+      }
+
+      .cls-20, .cls-19, .cls-17, .cls-22, .cls-15, .cls-23, .cls-24, .cls-25 {
+        fill: #68623a;
+      }
+
+      .cls-26 {
+        letter-spacing: -.04em;
+      }
+
+      .cls-27 {
+        letter-spacing: -.04em;
+      }
+
+      .cls-28 {
+        letter-spacing: -.02em;
+      }
+
+      .cls-29, .cls-30, .cls-31, .cls-32, .cls-33 {
+        fill: none;
+      }
+
+      .cls-29, .cls-34, .cls-11, .cls-35, .cls-36, .cls-37 {
+        stroke-width: 0px;
+      }
+
+      .cls-38 {
+        letter-spacing: -.02em;
+      }
+
+      .cls-39 {
+        letter-spacing: -.52em;
+      }
+
+      .cls-40 {
+        opacity: .1;
+      }
+
+      .cls-41, .cls-5 {
+        letter-spacing: -.03em;
+      }
+
+      .cls-42 {
+        letter-spacing: -.03em;
+      }
+
+      .cls-17, .cls-13, .cls-14, .cls-15, .cls-23, .cls-43, .cls-25 {
+        font-size: 40px;
+      }
+
+      .cls-30 {
+        stroke: #f5f8ec;
+      }
+
+      .cls-30, .cls-31, .cls-32, .cls-44, .cls-33 {
+        stroke-miterlimit: 10;
+      }
+
+      .cls-30, .cls-44 {
+        stroke-width: 2.34px;
+      }
+
+      .cls-45 {
+        letter-spacing: .04em;
+      }
+
+      .cls-46 {
+        letter-spacing: .01em;
+      }
+
+      .cls-47, .cls-48 {
+        font-size: 42.12px;
+      }
+
+      .cls-47, .cls-48, .cls-49, .cls-50, .cls-9, .cls-43 {
+        font-family: SpaceMono-Regular, 'Space Mono';
+      }
+
+      .cls-47, .cls-13, .cls-50, .cls-43, .cls-35 {
+        fill: #f0522e;
+      }
+
+      .cls-48, .cls-49, .cls-44, .cls-36 {
+        fill: #f5f8ec;
+      }
+
+      .cls-7, .cls-51 {
+        letter-spacing: 0em;
+      }
+
+      .cls-13 {
+        font-family: InclusiveSans-Italic, 'Inclusive Sans';
+        font-style: italic;
+      }
+
+      .cls-52 {
+        clip-path: url(#clippath-3);
+      }
+
+      .cls-49 {
+        font-size: 50px;
+      }
+
+      .cls-53 {
+        letter-spacing: 0em;
+      }
+
+      .cls-31, .cls-32 {
+        stroke-width: 4px;
+      }
+
+      .cls-31, .cls-44, .cls-33 {
+        stroke: #f0522e;
+      }
+
+      .cls-32 {
+        stroke: #5abf8b;
+      }
+
+      .cls-50, .cls-9 {
+        font-size: 30px;
+      }
+
+      .cls-54 {
+        letter-spacing: -.1em;
+      }
+
+      .cls-55 {
+        letter-spacing: .02em;
+      }
+
+      .cls-56 {
+        letter-spacing: .02em;
+      }
+
+      .cls-57 {
+        letter-spacing: .19em;
+      }
+
+      .cls-10, .cls-24, .cls-58, .cls-25 {
+        letter-spacing: 0em;
+      }
+
+      .cls-59 {
+        letter-spacing: 0em;
+      }
+
+      .cls-33 {
+        stroke-width: 3.58px;
+      }
+
+      .cls-34 {
+        fill: #5abf8b;
+      }
+
+      .cls-37 {
+        fill: #69633a;
+      }
+    </style>
+  </defs>
+  <g
+     id="g253"
+     transform="translate(-759.59,-65.49)">
+    <path
+       class="cls-36"
+       d="m 768.84,104.2 -9.25,-9.25 10.15,-10.15 -10.15,-10.15 9.25,-9.16 19.41,19.32 -19.41,19.41 z"
+       id="path251" />
+    <path
+       class="cls-36"
+       d="m 801.91,104.2 -9.25,-9.25 10.15,-10.15 -10.15,-10.15 9.25,-9.16 19.41,19.32 -19.41,19.41 z"
+       id="path252" />
+    <path
+       class="cls-36"
+       d="m 834.97,104.2 -9.25,-9.25 10.15,-10.15 -10.15,-10.15 9.25,-9.16 19.41,19.32 -19.41,19.41 z"
+       id="path253" />
+  </g>
+</svg>
