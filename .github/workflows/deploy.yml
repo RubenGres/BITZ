@@ -6,57 +6,64 @@ on:
       environment:
         description: 'Environment to deploy to'
         required: true
-        default: 'prod'
+        default: 'production'
         type: choice
         options:
-          - prod
+          - production
           - staging
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    environment: prod
+    environment: ${{ github.event.inputs.environment }}
+    env:
+      WORKING_DIR: './BITZ/BITZReact'
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
       
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-        cache: 'npm'
-        
-    - name: Install dependencies
-      run: npm ci
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: '${{ env.WORKING_DIR }}/package-lock.json'
       
-    - name: Build Next.js app
-      run: npm run build
+      - name: Install dependencies
+        working-directory: ${{ env.WORKING_DIR }}
+        run: npm ci
       
-    - name: Setup SSH key
-      uses: webfactory/ssh-agent@v0.7.0
-      with:
-        ssh-private-key: ${{ env.SSH_PRIVATE_KEY }}
-        
-    - name: Add host key to known hosts
-      run: |
-        mkdir -p ~/.ssh
-        ssh-keyscan -H ${{ env.VPS_HOST }} >> ~/.ssh/known_hosts
-        
-    - name: Deploy to VPS
-      run: |
-        # Create a tarball of the build output
-        tar -czf nextjs-app.tar.gz .next public package.json package-lock.json next.config.js
-        
-        # Copy the tarball to the VPS
-        scp nextjs-app.tar.gz ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:~/
-        
-        # Execute deployment commands on the VPS
-        ssh ${{ env.VPS_USER }}@${{ env.VPS_HOST }} '
-          cd ~/bitz
-          mv ~/nextjs-app.tar.gz .
-          tar -xzf nextjs-app.tar.gz
-          npm ci --production
-          pm2 restart nextjs-app || pm2 start npm --name "nextjs-app" -- start
-          rm nextjs-app.tar.gz
-        '
+      - name: Build Next.js app
+        working-directory: ${{ env.WORKING_DIR }}
+        run: npm run build
+      
+      - name: Setup SSH key
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      
+      - name: Add host key to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+      
+      - name: Deploy to VPS
+        working-directory: ${{ env.WORKING_DIR }}
+        run: |
+          # Create a tarball of the build output
+          tar -czf nextjs-app.tar.gz .next public package.json package-lock.json next.config.js
+          
+          # Copy the tarball to the VPS
+          scp nextjs-app.tar.gz ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:~/
+          
+          # Execute deployment commands on the VPS
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} '
+            mkdir -p ~/bitz-app
+            cd ~/bitz-app
+            mv ~/nextjs-app.tar.gz .
+            tar -xzf nextjs-app.tar.gz
+            npm ci --production
+            pm2 restart bitz-app || pm2 start npm --name "bitz-app" -- start
+            rm nextjs-app.tar.gz
+          '
