@@ -52,7 +52,7 @@ jobs:
         working-directory: ${{ env.WORKING_DIR }}
         run: |
           # Create a tarball of the build output
-          tar -czf nextjs-app.tar.gz .next public package.json package-lock.json next.config.js
+          tar -czf nextjs-app.tar.gz .next public package.json package-lock.json next.config.ts
           
           # Copy the tarball to the VPS
           scp nextjs-app.tar.gz ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }}:~/
@@ -64,6 +64,6 @@ jobs:
             mv ~/nextjs-app.tar.gz .
             tar -xzf nextjs-app.tar.gz
             npm ci --production
-            pm2 restart bitz-app || pm2 start npm --name "bitz-app" -- start -- -p {{vars.PORT}}}
+            pm2 restart bitz-app || pm2 start npm --name "bitz-app" -- start -- -p ${{ vars.PORT }}
             rm nextjs-app.tar.gz
           '
