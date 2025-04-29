@@ -1,12 +1,21 @@
 name: Deploy to VPS
 
 on:
-  push:
-    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'prod'
+        type: choice
+        options:
+          - prod
+          - staging
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    environment: prod
     
     steps:
     - name: Checkout code
@@ -27,12 +36,12 @@ jobs:
     - name: Setup SSH key
       uses: webfactory/ssh-agent@v0.7.0
       with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+        ssh-private-key: ${{ env.SSH_PRIVATE_KEY }}
         
     - name: Add host key to known hosts
       run: |
         mkdir -p ~/.ssh
-        ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+        ssh-keyscan -H ${{ env.VPS_HOST }} >> ~/.ssh/known_hosts
         
     - name: Deploy to VPS
       run: |
@@ -40,10 +49,10 @@ jobs:
         tar -czf nextjs-app.tar.gz .next public package.json package-lock.json next.config.js
         
         # Copy the tarball to the VPS
-        scp nextjs-app.tar.gz ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:~/
+        scp nextjs-app.tar.gz ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:~/
         
         # Execute deployment commands on the VPS
-        ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} '
+        ssh ${{ env.VPS_USER }}@${{ env.VPS_HOST }} '
           cd ~/bitz
           mv ~/nextjs-app.tar.gz .
           tar -xzf nextjs-app.tar.gz
