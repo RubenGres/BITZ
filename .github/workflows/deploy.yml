@@ -46,7 +46,7 @@ jobs:
       - name: Add host key to known hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ env.VPS_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ vars.VPS_HOST }} >> ~/.ssh/known_hosts
       
       - name: Deploy to VPS
         working-directory: ${{ env.WORKING_DIR }}
@@ -55,15 +55,15 @@ jobs:
           tar -czf nextjs-app.tar.gz .next public package.json package-lock.json next.config.js
           
           # Copy the tarball to the VPS
-          scp nextjs-app.tar.gz ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:~/
+          scp nextjs-app.tar.gz ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }}:~/
           
           # Execute deployment commands on the VPS
-          ssh ${{ env.VPS_USER }}@${{ env.VPS_HOST }} '
+          ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} '
             mkdir -p ~/bitz-app
             cd ~/bitz-app
             mv ~/nextjs-app.tar.gz .
             tar -xzf nextjs-app.tar.gz
             npm ci --production
-            pm2 restart bitz-app || pm2 start npm --name "bitz-app" -- start
+            pm2 restart bitz-app || pm2 start npm --name "bitz-app" -- start -- -p {{vars.PORT}}}
             rm nextjs-app.tar.gz
           '
