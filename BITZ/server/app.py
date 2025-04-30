@@ -12,7 +12,13 @@ import oaak
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+
+CORS(app, resources={r"/*": {
+    "origins": [
+        "https://bitz.tools",
+        r"https://*.rubengr.es",
+    ]
+}})
 
 def _validate_chat_request(data):
     """Validates the chat request data."""
