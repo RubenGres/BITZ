@@ -6,11 +6,12 @@ import ChatView from './ChatView';
 
 interface InfoViewProps {
   uploadedImage?: string;
+  resultDict?: any;
   onNext?: () => void;
   onEndQuest?: () => void;
 }
 
-export const InfoView: React.FC<InfoViewProps> = ({ uploadedImage, onNext, onEndQuest }) => {
+export const InfoView: React.FC<InfoViewProps> = ({ uploadedImage, resultDict, onNext, onEndQuest }) => {
   const [questionAnswered, setQuestionAnswered] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -78,18 +79,24 @@ export const InfoView: React.FC<InfoViewProps> = ({ uploadedImage, onNext, onEnd
         {/* Species Identification */}
         <div className="bg-[#f6f9ec] bg-opacity-90 p-4 mb-10 mr-16" style={greenShadowStyle}>
           <div className="text-green-800 uppercase font-semibold">Species Identification</div>
-          <div className="text-red-500 font-medium">Mycena spp.</div>
+          <div className="text-red-500 font-medium">{resultDict?.species_identification?.name || 'Unknown Species'}</div>
           <div className="mt-2 text-gray-700">
-            A genus of small mushrooms generally growing on decaying plant matter.
+            {resultDict?.species_identification?.what_is_it || 'No species information available.'}
           </div>
         </div>
         
         {/* Ecological Information */}
         <div className="bg-[#f6f9ec] bg-opacity-90 p-4 mb-10 mr-16" style={greenShadowStyle}>
           <div className="text-gray-700">
-            <p>Ecological or cultural fact or relationship to previous species.</p>
-            <p className="mt-2">This can be written in a more chit-chatty or storytelling voice and take up more space.</p>
-            <p className="mt-2">This can be written in a more chit-chatty or storytelling voice.</p>
+            <p>{resultDict?.species_identification?.ecological_importance || 'No ecological information available.'}</p>
+            {resultDict?.species_identification?.species_interactions && resultDict.species_identification.species_interactions.length > 0 && (
+              <>
+                <p className="mt-2">{resultDict.species_identification.species_interactions[0]}</p>
+                {resultDict.species_identification.species_interactions.length > 1 && (
+                  <p className="mt-2">{resultDict.species_identification.species_interactions[1]}</p>
+                )}
+              </>
+            )}
           </div>
         </div>
         
@@ -107,15 +114,15 @@ export const InfoView: React.FC<InfoViewProps> = ({ uploadedImage, onNext, onEnd
         <div className="bg-[#f6f9ec] bg-opacity-90 p-4 mb-10 mr-16" style={coralShadowStyle}>
           <div className="text-[#ef5232] uppercase font-semibold">NEXT TARGET</div>
           <div className="mt-2">
-            <p className="font-semibold">Look for: Insects or other fungi</p>
-            <p className="mt-1">Where: Near the decaying wood</p>
-            <p className="mt-1">Why: Insects and fungi play vital roles in decomposition and nutrient cycles</p>
+            <p className="font-semibold">Look for: {resultDict?.next_target?.focus || 'Next interesting specimen'}</p>
+            <p className="mt-1">Where: {resultDict?.next_target?.location || 'Around your current area'}</p>
+            <p className="mt-1">Why: {resultDict?.next_target?.importance || 'To learn more about the ecosystem'}</p>
           </div>
         </div>
         
         {/* Interactive Question */}
         <div className="bg-[#f6f9ec] p-4 mb-10 mr-16" style={coralShadowStyle}>
-          <p className="text-green-800">Do you see any insects on the decaying wood?</p>
+          <p className="text-green-800">{resultDict?.sampling_guidance?.question || 'Do you see anything interesting?'}</p>
           
           <div className="mt-2 flex flex-col gap-2 text-[#ef5232]">
             <button 
@@ -143,7 +150,7 @@ export const InfoView: React.FC<InfoViewProps> = ({ uploadedImage, onNext, onEnd
         {questionAnswered && (
           <div className="bg-[#f6f9ec] p-4 mb-16 mr-16" style={coralShadowStyle} ref={bottomRef}>
             <p className="text-green-800">
-              That's okay: turn around and take a picture of the next green thing you see.
+              {resultDict?.sampling_guidance?.no_action || "That's okay: turn around and take a picture of the next interesting thing you see."}
             </p>
 
             <div className="flex justify-center"> {/* Centering container */}
