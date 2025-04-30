@@ -12,6 +12,7 @@ export default function HomePage() {
   const [inQuestLoop, setInQuestLoop] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<string | undefined>(undefined);
   const [resultDict, setResultDict] = useState<any>(null);
+  const [conversationId, setConversationId] = useState<string>("0");
   const [userLocation, setUserLocation] = useState<{
     name: string;
     coordinates: { latitude: number; longitude: number } | null;
@@ -19,8 +20,6 @@ export default function HomePage() {
     name: "unknown",
     coordinates: null
   });
-
-  const conversation_id = `${Date.now()}${Math.floor(performance.now())}`;
 
   const fetchLocationName = async (latitude: number, longitude: number) => {
     try {
@@ -44,11 +43,16 @@ export default function HomePage() {
   };
 
   async function processImage(imageData: string) {
+    if (conversationId == "0") {
+      const conv_id = `${Date.now()}${Math.floor(performance.now())}`
+      setConversationId(conv_id);
+    }
+
     try {
         // Prepare the request body with all needed parameters
         const requestBody = {
             image_data: imageData,
-            conversation_id: conversation_id,
+            conversation_id: conversationId,
             user_location: userLocation.name,
             image_location: userLocation.coordinates
         };
@@ -119,7 +123,11 @@ export default function HomePage() {
       setIsLoading(false);
     }
   };
-  
+
+  const handleEndQuest = (): void => {
+    window.location.href = API_URL + '/viz/graph/?id=' + conversationId;
+  };
+
   return (
     <div className="relative w-full h-screen overflow-hidden">
       <div className="absolute inset-0"
@@ -143,7 +151,7 @@ export default function HomePage() {
         {isLoading ? (
           <LoadingScreen />
         ) : inQuestLoop ? (
-          <InfoView uploadedImage={uploadedFile} resultDict={resultDict} />
+          <InfoView uploadedImage={uploadedFile} resultDict={resultDict} onEndQuest={handleEndQuest}/>
         ) : (
           <MainScreen/>
         )}
