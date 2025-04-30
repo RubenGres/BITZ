@@ -6,8 +6,8 @@ import { MainScreen } from './MainScreen';
 import { InfoView } from './InfoView';
 
 export default function HomePage() {
-  const API_URL = "https://scaling-space-carnival-qvvrrjxqgrp246pj-5000.app.github.dev"
-  // const API_URL = "https://oaak.rubengr.es"
+  // const API_URL = "https://scaling-space-carnival-qvvrrjxqgrp246pj-5000.app.github.dev"
+  const API_URL = "https://oaak.rubengr.es"
   const [isLoading, setIsLoading] = useState(false);
   const [inQuestLoop, setInQuestLoop] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<string | undefined>(undefined);
