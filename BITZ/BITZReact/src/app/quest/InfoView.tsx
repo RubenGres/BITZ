@@ -72,7 +72,7 @@ export const InfoView: React.FC<InfoViewProps> = ({ uploadedImage, resultDict, o
       </div>
       
       {/* Chat View Component */}
-      <ChatView isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+      <ChatView isOpen={isChatOpen} analysisReply={resultDict} onClose={() => setIsChatOpen(false)} />
       
       {/* Content - with padding to account for fixed header */}
       <div className="relative z-10 flex flex-col h-full pt-20 pb-20">
@@ -88,15 +88,7 @@ export const InfoView: React.FC<InfoViewProps> = ({ uploadedImage, resultDict, o
         {/* Ecological Information */}
         <div className="bg-[#f6f9ec] bg-opacity-90 p-4 mb-10 mr-16" style={greenShadowStyle}>
           <div className="text-gray-700">
-            <p>{resultDict?.species_identification?.ecological_importance || 'No ecological information available.'}</p>
-            {resultDict?.species_identification?.species_interactions && resultDict.species_identification.species_interactions.length > 0 && (
-              <>
-                <p className="mt-2">{resultDict.species_identification.species_interactions[0]}</p>
-                {resultDict.species_identification.species_interactions.length > 1 && (
-                  <p className="mt-2">{resultDict.species_identification.species_interactions[1]}</p>
-                )}
-              </>
-            )}
+            <p>{resultDict?.species_identification?.information || 'No ecological information available.'}</p>
           </div>
         </div>
         
@@ -115,8 +107,7 @@ export const InfoView: React.FC<InfoViewProps> = ({ uploadedImage, resultDict, o
           <div className="text-[#ef5232] uppercase font-semibold">NEXT TARGET</div>
           <div className="mt-2">
             <p className="font-semibold">Look for: {resultDict?.next_target?.focus || 'Next interesting specimen'}</p>
-            <p className="mt-1">Where: {resultDict?.next_target?.location || 'Around your current area'}</p>
-            <p className="mt-1">Why: {resultDict?.next_target?.importance || 'To learn more about the ecosystem'}</p>
+            <p className="mt-1"> {resultDict?.next_target?.location || 'Around your current area'}</p>
           </div>
         </div>
         

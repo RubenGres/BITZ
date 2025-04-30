@@ -4,7 +4,7 @@ import datetime
 import markdown
 from dotenv import load_dotenv
 from image_analyzer import ImageAnalyzer
-from flask import Flask, send_from_directory, abort, request, jsonify, url_for, render_template, make_response, redirect
+from flask import Flask, send_from_directory, abort, request, jsonify, url_for, render_template, make_response, redirect, Response, stream_with_context
 from flask_cors import CORS
 import mimetypes
 import oaak
@@ -563,3 +563,49 @@ def answer():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
+
+from openai import OpenAI
+@app.route('/question', methods=['POST'])
+def question():
+    """
+    Route for asking additional questions about an already analyzed image.
+    Uses standard (non-streaming) response with GPT-4o Mini.
+    """
+    openai_client = OpenAI(os.getenv('OPENAI_API_KEY'))
+    try:
+        data = request.json
+        user_message = data.get('question')
+        history = data.get('history')
+        analysis_reply = data.get('analysis_reply')
+                    
+        # Prepare system prompt for GPT-4o Mini
+        system_prompt = f"""You are a helpful assistant that answers questions about biodiversity. 
+        Use the provided analysis context to answer the user's question. 
+        Be concise and informative. If you don't know the answer, say so.
+        Context from image analysis: {json.dumps(analysis_reply)}"""
+        
+        # Start with system prompt
+        messages = [{"role": "system", "content": system_prompt}]
+        
+        # Add the conversation history if available
+        if history and isinstance(history, list):
+            # Filter out any potential duplicate of the current message
+            history_messages = [msg for msg in history 
+                              if not (msg.get('role') == 'user' and msg.get('content') == user_message)]
+            messages.extend(history_messages)
+        
+        # Always add the current user message at the end to ensure it's processed
+        messages.append({"role": "user", "content": user_message})
+        
+        # Create the API call without streaming
+        response = openai_client.chat.completions.create(
+            model="gpt-4o-mini",  # Using GPT-4o Mini as requested
+            messages=messages
+        )
+        
+        # Return the response content
+        return response.choices[0].message.content
+        
+    except Exception as e:
+        app.logger.error(f"Error in question route: {str(e)}")
+        return jsonify({"error": str(e)}), 500
