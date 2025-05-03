@@ -4,15 +4,15 @@ import React, { useState } from 'react';
 import { LoadingScreen } from './LoadingScreen';
 import { MainScreen } from './MainScreen';
 import { InfoView } from './InfoView';
+import { API_URL } from '../Constants';
 
 export default function HomePage() {
-  // const API_URL = "https://scaling-space-carnival-qvvrrjxqgrp246pj-5000.app.github.dev"
-  const API_URL = "https://oaak.rubengr.es"
+  const conversationId = `${Date.now()}${Math.floor(performance.now())}`
+  
   const [isLoading, setIsLoading] = useState(false);
   const [inQuestLoop, setInQuestLoop] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<string | undefined>(undefined);
   const [resultDict, setResultDict] = useState<any>(null);
-  const [conversationId, setConversationId] = useState<string>("0");
   const [userLocation, setUserLocation] = useState<{
     name: string;
     coordinates: { latitude: number; longitude: number } | null;
@@ -43,11 +43,6 @@ export default function HomePage() {
   };
 
   async function processImage(imageData: string) {
-    if (conversationId == "0") {
-      const conv_id = `${Date.now()}${Math.floor(performance.now())}`
-      setConversationId(conv_id);
-    }
-
     try {
         // Prepare the request body with all needed parameters
         const requestBody = {

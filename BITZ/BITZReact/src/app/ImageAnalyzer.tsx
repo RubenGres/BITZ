@@ -2,9 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Camera, Upload } from 'lucide-react';
-
-// const API_URL = "https://scaling-space-carnival-qvvrrjxqgrp246pj-5000.app.github.dev"
-const API_URL = "https://oaak.rubengr.es"
+import { API_URL } from './Constants';
 
 const ImageAnalyzer: React.FC = () => {
   // State

@@ -1,9 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-
-// const API_URL = "https://scaling-space-carnival-qvvrrjxqgrp246pj-5000.app.github.dev"
-const API_URL = "https://oaak.rubengr.es"
+import { API_URL } from '../Constants';
 
 interface Message {
   sender: 'YOU' | 'BITZ';
