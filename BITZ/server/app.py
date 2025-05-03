@@ -8,6 +8,8 @@ from flask import Flask, send_from_directory, abort, request, jsonify, url_for, 
 from flask_cors import CORS
 import mimetypes
 import oaak
+from openai import OpenAI
+
 
 BASE_DIR = os.path.abspath("history")  # Base directory
 analyzers = {}
@@ -560,6 +562,10 @@ def analyze():
 def answer():
     try:
         data = request.json
+        conversation_id = data.get("conversation_id")
+
+        analyzer = analyzers.setdefault(conversation_id, ImageAnalyzer())
+
         result = analyzer.process_user_response(
             answer=data['answer']
         )
@@ -567,17 +573,13 @@ def answer():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
-
-from openai import OpenAI
 @app.route('/question', methods=['POST'])
 def question():
     """
     Route for asking additional questions about an already analyzed image.
     Uses standard (non-streaming) response with GPT-4o Mini.
     """
-    openai_client = OpenAI(os.getenv('OPENAI_API_KEY'))
+    openai_client = OpenAI()
     try:
         data = request.json
         user_message = data.get('question')
@@ -592,7 +594,7 @@ def question():
         
         # Start with system prompt
         messages = [{"role": "system", "content": system_prompt}]
-        
+
         # Add the conversation history if available
         if history and isinstance(history, list):
             # Filter out any potential duplicate of the current message
@@ -615,3 +617,6 @@ def question():
     except Exception as e:
         app.logger.error(f"Error in question route: {str(e)}")
         return jsonify({"error": str(e)}), 500
+        
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
