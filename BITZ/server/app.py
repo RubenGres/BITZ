@@ -23,7 +23,9 @@ CORS(app, resources={r"/*": {
         "https://bitz.tools",
         r"https://*.rubengr.es",
         "*" # Allow all origins for development purposes
-    ]
+    ],
+    "methods": ["GET", "POST", "OPTIONS", "PUT", "DELETE"],  # Allow all common methods
+    "allow_headers": ["Content-Type", "Authorization", "X-Requested-With", "Accept"]  # Common headers
 }})
 
 def _validate_chat_request(data):
