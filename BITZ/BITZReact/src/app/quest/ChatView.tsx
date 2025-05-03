@@ -2,6 +2,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { API_URL } from '../Constants';
+import ReactMarkdown from 'react-markdown';
+import './ChatView.css';
 
 interface Message {
   sender: 'YOU' | 'BITZ';
@@ -101,6 +103,27 @@ const ChatView: React.FC<ChatViewProps> = ({ isOpen, analysisReply, onClose }) =
     }
   };
   
+  // Function to render message content with markdown support
+  const renderMessageContent = (content: string, sender: string) => {
+    if (sender === 'BITZ') {
+      return (
+        <div className="markdown-content">
+          <ReactMarkdown>{content}</ReactMarkdown>
+        </div>
+      );
+    } else {
+      // For user messages, just display the plain text
+      return <div>{content}</div>;
+    }
+  };
+
+  // Loading animation component
+  const LoadingDots = () => (
+    <div className="loading-animation">
+      <span>.</span><span>.</span><span>.</span>
+    </div>
+  );
+  
   return (
     <div 
       className={`fixed top-0 left-0 h-full w-full sm:w-80 bg-[#f6f9ec] z-30 transform transition-transform duration-300 ${
@@ -116,26 +139,36 @@ const ChatView: React.FC<ChatViewProps> = ({ isOpen, analysisReply, onClose }) =
             alt="Arrow"
             className="h-[15px] mr-8" 
           />
-          <span className="uppercase">ASK A QUESTION...</span>
+          <span className="uppercase font-bold tracking-wider">ASK A QUESTION...</span>
         </div>
-        <button onClick={onClose} className="text-white text-2xl">
+        <button onClick={onClose} className="text-white text-2xl hover:bg-[#d64a2d] p-1 rounded transition-colors">
           X
         </button>
       </div>
       
       {/* Messages Container */}
-      <div className="flex flex-col h-[calc(100%-128px)] overflow-y-auto p-4">
+      <div className="flex flex-col h-[calc(100%-128px)] overflow-y-auto p-4 bg-[#f6f9ec]">
         {messages.map((message, index) => (
-          <div key={index} className="mb-6">
-            <div className={`text-sm ${
-              message.sender === 'YOU' ? 'text-green-500' : 'text-gray-700'
+          <div 
+            key={index} 
+            className={`mb-6 p-3 rounded-lg shadow-sm ${
+              message.sender === 'YOU' 
+              ? 'bg-[#e1f5e1] border-l-4 border-green-500 ml-8' 
+              : 'bg-white border-l-4 border-[#ef5232] mr-8'
+            } transition-all duration-300 ease-in-out hover:shadow-md`}
+          >
+            <div className={`text-sm font-bold mb-2 ${
+              message.sender === 'YOU' ? 'text-green-600' : 'text-[#ef5232]'
             }`}>
               {message.sender}
             </div>
-            <div className={`mt-1 ${
-              message.sender === 'BITZ' ? 'text-gray-800' : 'text-green-700'
+            <div className={`${
+              message.sender === 'BITZ' ? 'text-gray-800' : 'text-green-800 font-medium'
             }`}>
-              {message.content || (isLoading && index === messages.length - 1 ? '...' : '')}
+              {isLoading && index === messages.length - 1 
+                ? <LoadingDots /> 
+                : renderMessageContent(message.content, message.sender)
+              }
             </div>
           </div>
         ))}
@@ -143,25 +176,30 @@ const ChatView: React.FC<ChatViewProps> = ({ isOpen, analysisReply, onClose }) =
       </div>
       
       {/* Input Area */}
-      <div className="absolute bottom-0 left-0 right-0 bg-white p-4">
+      <div className="absolute bottom-0 left-0 right-0 bg-white p-4 shadow-lg border-t border-gray-200">
         <form onSubmit={handleSubmit} className="flex">
           <input
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             placeholder="Type your question..."
-            className="flex-grow px-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="flex-grow px-4 py-3 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
             disabled={isLoading}
           />
           <button
             type="submit"
-            className={`ml-2 ${isLoading ? 'bg-gray-400' : 'bg-green-800'} text-white px-4 py-2`}
+            className={`px-6 py-3 rounded-r-lg transition-colors duration-200 font-medium ${
+              isLoading 
+              ? 'bg-gray-400 text-gray-100' 
+              : 'bg-green-700 text-white hover:bg-green-800'
+            }`}
             disabled={isLoading}
           >
             {isLoading ? 'Loading...' : 'Send'}
           </button>
         </form>
       </div>
+
     </div>
   );
 };
