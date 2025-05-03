@@ -82,8 +82,7 @@ def process_image(image_b64, conversation_id, history_length, history_directory=
     """Processes and saves an uploaded image."""
     image_path = save_image(image_b64, conversation_id, history_length, history_directory)
     extract_species_from_images(image_path, conversation_id, history_directory)
-    image_filename = os.path.basename(image_path)
-    return image_filename
+    return image_path
 
 def prepare_messages(system_prompt, history, current_message, image_b64):
     """Prepares the message list for the model."""

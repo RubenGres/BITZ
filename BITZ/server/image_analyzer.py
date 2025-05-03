@@ -4,12 +4,12 @@ import os
 import base64
 import re
 from typing import Dict, List, Optional, Union
+from oaak_classify import identify_chatgpt
 
 class ImageAnalyzer:
     def __init__(self, api_key: Optional[str] = None):
         """Initialize the ImageAnalyzer with an optional API key."""
         self.client = OpenAI(api_key=api_key or os.getenv('OPENAI_API_KEY'))
-        self.previous_image = None
         self.conversation_history = []
         self.system_prompt = self._load_system_prompt()
 
@@ -87,6 +87,8 @@ class ImageAnalyzer:
     def analyze_image(self, image_input: Union[str, dict]) -> Dict:
         """
         Analyze an image using OpenAI's model for biodiversity sampling.
+        This is a two step process, first the species identification and then the full analysis text.
+        The image can be provided as a local file path or a URL.
         
         Args:
             image_input: Either a local file path (str) or a dict containing image URL
@@ -96,21 +98,8 @@ class ImageAnalyzer:
             Dict containing the biodiversity analysis results
         """
         try:
-            # Prepare the image content
-            if isinstance(image_input, str):
-                # Local file path
-                with open(image_input, "rb") as image_file:
-                    image_data = base64.b64encode(image_file.read()).decode()
-                    image_content = {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}
-                    }
-            else:
-                # URL input
-                image_content = {
-                    "type": "image_url",
-                    "image_url": image_input["image_url"]
-                }
+            language = "en"  # Default language, adjust as needed
+            species_csv_lines = identify_chatgpt(image_input, language)
 
             messages = [
                 {
@@ -125,10 +114,7 @@ class ImageAnalyzer:
             # Add the current image
             messages.append({
                 "role": "user",
-                "content": [
-                    {"type": "text", "text": "Analyze this sample and provide biodiversity insights in valid JSON."},
-                    image_content
-                ]
+                "content": f"Here are the species found on the image: \n\n {species_csv_lines}",
             })
 
             response = self.client.chat.completions.create(
@@ -150,7 +136,6 @@ class ImageAnalyzer:
                     result = self._extract_json_from_text(response_content)
                 
                 # Store the response in conversation history
-                self.previous_image = image_input
                 self.conversation_history.append({
                     "role": "assistant",
                     "content": json.dumps(result)  # Store the parsed result to ensure valid JSON in history
@@ -248,26 +233,3 @@ class ImageAnalyzer:
 
         except Exception as e:
             return self._create_fallback_response(f"Failed to process response: {str(e)}")
-
-def main():
-    # Example usage
-    analyzer = ImageAnalyzer()  # Will use OPENAI_API_KEY environment variable
-    
-    # Example with URL
-    image_url = {
-        "type": "image_url",
-        "image_url": {
-            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg"
-        }
-    }
-    result = analyzer.analyze_image(image_url)
-    print("Image Analysis:")
-    print(json.dumps(result, indent=2))
-    
-    # Example user response to a question
-    response = analyzer.process_user_response("I see a bird")
-    print("\nResponse to user answer:")
-    print(json.dumps(response, indent=2))
-
-if __name__ == "__main__":
-    main() 

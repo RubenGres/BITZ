@@ -9,6 +9,9 @@ from flask_cors import CORS
 import mimetypes
 import oaak
 
+BASE_DIR = os.path.abspath("history")  # Base directory
+analyzers = {}
+
 load_dotenv()
 
 app = Flask(__name__)
@@ -17,6 +20,7 @@ CORS(app, resources={r"/*": {
     "origins": [
         "https://bitz.tools",
         r"https://*.rubengr.es",
+        "*" # Allow all origins for development purposes
     ]
 }})
 
@@ -32,8 +36,6 @@ def _validate_chat_request(data):
         return jsonify({"error": "Please provide a user location."}), 400
     
     return None
-
-BASE_DIR = os.path.abspath("history")  # Base directory
 
 def human_readable_size(size, decimal_places=1):
     """Convert bytes to human-readable format (KB, MB, GB, etc.)"""
@@ -376,7 +378,8 @@ def chat():
     # Process image if provided
     image_filename = None
     if image_b64: 
-        image_filename = oaak.process_image(image_b64, conversation_id, len(history))
+        image_path = oaak.process_image(image_b64, conversation_id, len(history))
+        image_filename = os.path.basename(image_path)
     
     messages = oaak.prepare_messages(formatted_system_prompt, history, message, image_b64)
     ai_response = oaak.get_model().invoke(messages)
@@ -518,7 +521,6 @@ def image_grid(quest_id=None):
                           total_quests=len(set(img['quest_id'] for img in all_images)),
                           total_images=len(all_images))
 
-analyzer = ImageAnalyzer()
 @app.route('/analyze', methods=['POST'])
 def analyze():
     data = request.json
@@ -527,34 +529,32 @@ def analyze():
     user_location = data.get("user_location")
     image_b64 = data['image_data']
     image_location = data.get("image_location", None)
-
-    print(conversation_id)
-
     history = oaak.load_conversation(conversation_id)    
 
-    print(image_b64[:10])
-    print(history)
+    print("conversation_id:", conversation_id)
+    print("image_b64[:10]:", image_b64[:10])
+    print("history:", history)
 
-    if image_b64: 
-        image_filename = oaak.process_image(image_b64, conversation_id, len(history))
-        
-        image_input = {
-            "type": "image_url",
-            "image_url": {"url": f"data:image/jpeg;base64,{data['image_data']}"}
-        }
-        
-        result = analyzer.analyze_image(image_input)
+    if not image_b64:
+        return
+    
+    analyzer = analyzers.setdefault(conversation_id, ImageAnalyzer())
+    
+    image_path = oaak.process_image(image_b64, conversation_id, len(history))
+    image_filename = os.path.basename(image_path)
 
-        print(result)
-        
-        # Create user message entry
-        timestamp = datetime.datetime.utcnow().isoformat()
-        user_message = oaak.create_user_message("", timestamp, image_filename, image_location, str(result))
-        history.append(user_message)
-        
-        oaak.save_conversation("Bernat's system prompt", conversation_id, history)
+    result = analyzer.analyze_image(image_path)
 
-        return jsonify(result)
+    print(result)
+    
+    # Create user message entry
+    timestamp = datetime.datetime.utcnow().isoformat()
+    user_message = oaak.create_user_message("", timestamp, image_filename, image_location, str(result))
+    history.append(user_message)
+    
+    oaak.save_conversation("Bernat's system prompt", conversation_id, history)
+
+    return jsonify(result)
 
 @app.route('/answer', methods=['POST'])
 def answer():
