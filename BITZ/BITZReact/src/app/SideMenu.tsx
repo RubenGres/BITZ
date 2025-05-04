@@ -60,11 +60,11 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose }) => {
               </button>
               {visualizationsDropdownOpen && (
                 <ul className="mt-2 ml-8 space-y-2">
-                  <li><a href="#" className="text-green-600 hover:text-green-800 capitalize">Spreadsheet</a></li>
-                  <li><a href="#" className="text-green-600 hover:text-green-800 capitalize">Images</a></li>
-                  <li><a href="#" className="text-green-600 hover:text-green-800 capitalize">Graph View</a></li>
-                  <li><a href="#" className="text-green-600 hover:text-green-800 capitalize">Map View</a></li>
-                  <li><a href="#" className="text-green-600 hover:text-green-800 capitalize">3D View</a></li>
+                  <li><a href="https://oaak.rubengr.es/dashboard/" className="text-green-600 hover:text-green-800 capitalize">Spreadsheet</a></li>
+                  <li><a href="https://oaak.rubengr.es/images/" className="text-green-600 hover:text-green-800 capitalize">Images</a></li>
+                  <li><a href="https://oaak.rubengr.es/viz/graph/" className="text-green-600 hover:text-green-800 capitalize">Graph View</a></li>
+                  <li><a href="https://oaak.rubengr.es/map" className="text-green-600 hover:text-green-800 capitalize">Map View</a></li>
+                  <li><a href="https://oaak.rubengr.es/viz/3d/" className="text-green-600 hover:text-green-800 capitalize">3D View</a></li>
                 </ul>
               )}
             </div>
