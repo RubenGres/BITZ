@@ -48,8 +48,8 @@ export default function Page() {
         </div>
       </div>
       
-      {/* Main Content */}
-      <div className="absolute inset-0 bg-gray-100"
+      {/* Main Content - changed to flexible layout */}
+      <div className="absolute inset-0 flex flex-col"
         style={{
           backgroundImage: `url('/background/home.svg')`,
           backgroundColor: '#f6f9ec',
@@ -59,7 +59,10 @@ export default function Page() {
       >
         <Header menuColor="text-green-500" logoSrc="/logo/bitz_green.svg" />
         
-        <Home />
+        {/* Make Home component grow to fill available space */}
+        <div className="flex-grow">
+          <Home />
+        </div>
         
         <Footer />
       </div>

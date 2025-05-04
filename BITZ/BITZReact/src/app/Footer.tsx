@@ -4,7 +4,7 @@ import React from 'react';
 
 const Footer: React.FC = () => {
   return (
-    <footer className="absolute bottom-0 w-full bg-[#68623d] p-4 text-xs text-[#3ec488]">
+    <footer className="w-full bg-[#68623d] p-4 text-xs text-[#3ec488] mt-auto">
       <div className="flex justify-between items-center">
         <img 
           src="/logo/bitz_green.svg" 
