@@ -18,15 +18,16 @@ load_dotenv()
 
 app = Flask(__name__)
 
-CORS(app, resources={r"/*": {
-    "origins": [
-        "https://bitz.tools",
-        r"https://*.rubengr.es",
-        "*" # Allow all origins for development purposes
-    ],
-    "methods": ["GET", "POST", "OPTIONS", "PUT", "DELETE"],  # Allow all common methods
-    "allow_headers": ["Content-Type", "Authorization", "X-Requested-With", "Accept"]  # Common headers
-}})
+# CORS is handled at the nginx level now
+# CORS(app, resources={r"/*": {
+#     "origins": [
+#         "https://bitz.tools",
+#         r"https://*.rubengr.es",
+#         "*" # Allow all origins for development purposes
+#     ],
+#     "methods": ["GET", "POST", "OPTIONS", "PUT", "DELETE"],  # Allow all common methods
+#     "allow_headers": ["Content-Type", "Authorization", "X-Requested-With", "Accept"]  # Common headers
+# }})
 
 def _validate_chat_request(data):
     """Validates the chat request data."""
