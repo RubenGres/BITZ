@@ -10,3 +10,4 @@ flask-cors
 python-dotenv
 markdown
 google-cloud-storage
+gunicorn
