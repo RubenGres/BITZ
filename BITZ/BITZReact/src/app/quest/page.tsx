@@ -77,7 +77,6 @@ export default function HomePage() {
       const reader = new FileReader();
       reader.onload = () => {
         const imageData = reader.result;
-        console.log(imageData);
   
         if (imageData === null) {
           console.error('Error: imageData is null');
