@@ -6,7 +6,7 @@ import { MainScreen } from './MainScreen';
 import { InfoView } from './InfoView';
 import { API_URL } from '../Constants';
 
-export default function HomePage() {
+export default function QuestPage() {
   const conversationId = `${Date.now()}${Math.floor(performance.now())}`
   
   const [isLoading, setIsLoading] = useState(false);

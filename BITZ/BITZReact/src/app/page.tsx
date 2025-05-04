@@ -1,24 +1,18 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Menu } from 'lucide-react';
-import SideMenu from '@/app/SideMenu';
 import Footer from '@/app/Footer';
-import Link from 'next/link';
+import Header from '@/app/Header';
+import Home from '@/app/Home';
 
-export default function Home() {
+export default function Page() {
   const [isMovingUp, setIsMovingUp] = useState<boolean>(false);
-  const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   
   const handleClick = (): void => {
     setIsMovingUp(true);
     setTimeout(() => {
       console.log("Navigated to next page");
     }, 600);
-  };
-
-  const toggleMenu = (): void => {
-    setIsMenuOpen(!isMenuOpen);
   };
 
   return (
@@ -63,47 +57,10 @@ export default function Home() {
           backgroundPosition: 'center'
         }}
       >
-        {/* Header with Logo and Menu */}
-        <header className="flex justify-between items-center p-4">
-          <img 
-            src="/logo/bitz_green.svg" 
-            alt="Bitz Logo green"
-            className="w-16 h-auto" 
-          />
-          <button 
-            onClick={toggleMenu} 
-            className="text-green-500 p-2 rounded-full hover:bg-[#3ec488]-50"
-          >
-            <Menu size={45} />
-          </button>
-        </header>
+        <Header menuColor="text-green-500" logoSrc="/logo/bitz_green.svg" />
         
-        {/* Side Menu Component */}
-        <SideMenu isOpen={isMenuOpen} onClose={toggleMenu} />
+        <Home />
         
-        {/* Main Content */}
-        <main className="flex flex-col items-center justify-center h-3/4">
-          <div className="text-left mb-32 p-6">
-            <p className="text-gray-600 text-2xl">Use BITZ to take photos of species and learn about the biodiversity around you.</p>
-            <div className="mt-4">
-            <button className="text-orange-500 font-medium">
-              LEARN MORE {">>>"}
-            </button>
-          </div>
-          </div>
-          
-          <Link href="/quest" className="w-full">
-            <div className="bg-[#3ec488] text-white p-6 w-full text-center">
-              <img src="text/start_quest.svg" alt="Start quest" className="w-[200px] h-auto mb-8 mx-auto" />
-              <div className="flex justify-center">
-                <img src="/icons/arrows_bicolor.svg" alt="Start Arrows" className="w-12 h-auto" />
-              </div>
-            </div>
-          </Link>
-          
-        </main>
-        
-        {/* Footer Component */}
         <Footer />
       </div>
     </div>
