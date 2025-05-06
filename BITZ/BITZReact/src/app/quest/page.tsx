@@ -1,27 +1,34 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LoadingScreen } from './LoadingScreen';
 import { MainScreen } from './MainScreen';
 import { InfoView } from './InfoView';
 import { API_URL } from '../Constants';
+import { userId, conversationId, makeNewConversationId} from '../User';
 
-export default function QuestPage() {
-  const conversationId = `${Date.now()}${Math.floor(performance.now())}`
-  
+export default function QuestPage() {  
   const [isLoading, setIsLoading] = useState(false);
   const [inQuestLoop, setInQuestLoop] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState<string | undefined>(undefined);
-  const [resultDict, setResultDict] = useState<any>(null);
-  const [userLocation, setUserLocation] = useState<{
-    name: string;
-    coordinates: { latitude: number; longitude: number } | null;
-  }>({
+  const [uploadedFile, setUploadedFile] = useState(undefined);
+  const [resultDict, setResultDict] = useState(null);
+  const [flavor, setFlavor] = useState(null);
+  const [userLocation, setUserLocation] = useState({
     name: "unknown",
     coordinates: null
   });
 
-  const fetchLocationName = async (latitude: number, longitude: number) => {
+  // Extract flavor from URL query parameters when component mounts
+  useEffect(() => {
+    // Check if window is defined (client-side)
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const flavorParam = urlParams.get('flavor');
+      setFlavor(flavorParam); // Will be null if not found
+    }
+  }, []);
+
+  const fetchLocationName = async (latitude, longitude) => {
     try {
       const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`;
       const response = await fetch(url);
@@ -42,14 +49,16 @@ export default function QuestPage() {
     }
   };
 
-  async function processImage(imageData: string) {
+  async function processImage(imageData) {
     try {
-        // Prepare the request body with all needed parameters
+        // Prepare the request body with all needed parameters including flavor
         const requestBody = {
             image_data: imageData,
+            user_id: userId,
             conversation_id: conversationId,
             user_location: userLocation.name,
-            image_location: userLocation.coordinates
+            image_location: userLocation.coordinates,
+            flavor: flavor
         };
         
         const response = await fetch(API_URL + '/analyze', {
@@ -72,6 +81,7 @@ export default function QuestPage() {
     const file = event.target.files?.[0];
   
     console.log('File:', file);
+    console.log('Flavor:', flavor); // Log flavor for debugging
   
     if (file) {
       const reader = new FileReader();
@@ -104,22 +114,22 @@ export default function QuestPage() {
         }
       };
   
-      // This line was missing - it actually starts the file reading process
       reader.readAsDataURL(file);
       
-      // Add error handling for the FileReader
       reader.onerror = () => {
         console.error('FileReader error:', reader.error);
         setIsLoading(false);
       };
     } else {
-      // No file selected
       setIsLoading(false);
     }
   };
 
-  const handleEndQuest = (): void => {
-    window.location.href = API_URL + '/viz/graph/?id=' + conversationId;
+  const handleEndQuest = () => {
+    // stop this conversation
+    let conversation_graph_url = API_URL + '/viz/graph/?id=' + conversationId;
+    makeNewConversationId();
+    window.location.href = conversation_graph_url;
   };
 
   return (
