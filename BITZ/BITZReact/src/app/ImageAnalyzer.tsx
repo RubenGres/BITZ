@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Camera, Upload } from 'lucide-react';
 import { API_URL } from './Constants';
+import { userId, conversationId, makeNewConversationId} from './User';
 
 const ImageAnalyzer: React.FC = () => {
   // State
@@ -19,14 +20,6 @@ const ImageAnalyzer: React.FC = () => {
   
   // Refs
   const cameraInputRef = useRef<HTMLInputElement>(null);
-
-  // Get conversation ID from localStorage or create a new one
-  const conversationId = localStorage.getItem('conversation_id') || `${Date.now()}${Math.floor(performance.now())}`;
-  
-  // Save conversation ID to localStorage
-  useEffect(() => {
-    localStorage.setItem('conversation_id', conversationId);
-  }, [conversationId]);
 
   // Get user's location on component mount
   useEffect(() => {
