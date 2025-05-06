@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Camera, Upload } from 'lucide-react';
 import { API_URL } from './Constants';
-import { getUserId, getConversationId, createNewConversationId} from './User';
+import { getUserId, getConversationId} from './User';
 
 const ImageAnalyzer: React.FC = () => {
   // State

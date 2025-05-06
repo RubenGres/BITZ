@@ -41,11 +41,11 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose }) => {
               </button>
               {questDropdownOpen && (
                 <ul className="mt-2 ml-8 space-y-2">
-                  <li><a href="#" className="text-green-600 hover:text-green-800 capitalize">Basic</a></li>
-                  <li><a href="#" className="text-green-600 hover:text-green-800 capitalize">Noob</a></li>
-                  <li><a href="#" className="text-green-600 hover:text-green-800 capitalize">Expert</a></li>
-                  <li><a href="#" className="text-green-600 hover:text-green-800 capitalize">Chain Reaction</a></li>
-                  <li><a href="#" className="text-green-600 hover:text-green-800 capitalize">Myth & Culture</a></li>
+                  <li><a href="/quest?flavor=basic" className="text-green-600 hover:text-green-800 capitalize">Basic</a></li>
+                  <li><a href="/quest?flavor=noob" className="text-green-600 hover:text-green-800 capitalize">Noob</a></li>
+                  <li><a href="/quest?flavor=expert" className="text-green-600 hover:text-green-800 capitalize">Expert</a></li>
+                  <li><a href="/quest?flavor=chain" className="text-green-600 hover:text-green-800 capitalize">Chain Reaction</a></li>
+                  <li><a href="/quest?flavor=myths" className="text-green-600 hover:text-green-800 capitalize">Myth & Culture</a></li>
                 </ul>
               )}
             </div>

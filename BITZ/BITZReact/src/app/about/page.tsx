@@ -46,6 +46,8 @@ export default function AboutPage() {
           <p className="mb-8">
             BITZ was created by Nicetails & Genomic Gastronomy in 2025 with support from MUSAE, an EU S+T+ARTS program.
           </p>
+
+          <img src="logo/starts_eu.png"></img>
         </section>
         
         {/* THE DATA Section */}

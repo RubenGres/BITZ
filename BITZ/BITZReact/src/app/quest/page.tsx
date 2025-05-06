@@ -5,14 +5,14 @@ import { LoadingScreen } from './LoadingScreen';
 import { MainScreen } from './MainScreen';
 import { InfoView } from './InfoView';
 import { API_URL } from '../Constants';
-import { userId, conversationId, makeNewConversationId} from '../User';
+import { getUserId, getConversationId, createNewConversationId} from '../User';
 
 export default function QuestPage() {  
   const [isLoading, setIsLoading] = useState(false);
   const [inQuestLoop, setInQuestLoop] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState(undefined);
+  const [uploadedFile, setUploadedFile] = useState<string | undefined>(undefined);
   const [resultDict, setResultDict] = useState(null);
-  const [flavor, setFlavor] = useState(null);
+  const [flavor, setFlavor] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState({
     name: "unknown",
     coordinates: null
@@ -49,13 +49,13 @@ export default function QuestPage() {
     }
   };
 
-  async function processImage(imageData) {
+  async function processImage(imageData: string) {
     try {
         // Prepare the request body with all needed parameters including flavor
         const requestBody = {
             image_data: imageData,
-            user_id: userId,
-            conversation_id: conversationId,
+            user_id: getUserId(),
+            conversation_id: getConversationId(),
             user_location: userLocation.name,
             image_location: userLocation.coordinates,
             flavor: flavor
@@ -127,8 +127,8 @@ export default function QuestPage() {
 
   const handleEndQuest = () => {
     // stop this conversation
-    let conversation_graph_url = API_URL + '/viz/graph/?id=' + conversationId;
-    makeNewConversationId();
+    let conversation_graph_url = API_URL + '/viz/graph/?id=' + getConversationId();
+    createNewConversationId();
     window.location.href = conversation_graph_url;
   };
 
