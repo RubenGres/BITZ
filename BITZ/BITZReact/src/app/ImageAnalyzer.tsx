@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Camera, Upload } from 'lucide-react';
 import { API_URL } from './Constants';
-import { userId, conversationId, makeNewConversationId} from './User';
+import { getUserId, getConversationId, createNewConversationId} from './User';
 
 const ImageAnalyzer: React.FC = () => {
   // State
@@ -132,7 +132,7 @@ const ImageAnalyzer: React.FC = () => {
         
         const requestBody = {
           image_data: base64Data, // Use the local variable, not the state
-          conversation_id: conversationId,
+          conversation_id: getConversationId(),
           user_location: userLocation.name,
           image_location: userLocation.coordinates
         };

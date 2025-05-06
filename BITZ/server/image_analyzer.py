@@ -11,17 +11,25 @@ class ImageAnalyzer:
         """Initialize the ImageAnalyzer with an optional API key."""
         self.client = OpenAI(api_key=api_key or os.getenv('OPENAI_API_KEY'))
         self.conversation_history = []
-        self.system_prompt = self._load_system_prompt()
+        self.system_prompts = self._load_system_prompts()
 
-    def _load_system_prompt(self) -> str:
-        """Load the system prompt from role.txt file."""
-        try:
-            with open('role.txt', 'r') as file:
-                return file.read()
-        except FileNotFoundError:
-            # Default prompt if file not found
-            return """You are BITZ, a specialized biodiversity sampling assistant. 
-            Analyze the image and provide biodiversity information in JSON format."""
+    def _load_system_prompts(self) -> dict:
+        import os
+        prompts = {}
+        
+        # Get all .txt files in the prompts/analyze directory
+        prompt_dir = "prompts/analyze"
+        for filename in os.listdir(prompt_dir):
+            if filename.endswith(".txt"):
+                filepath = os.path.join(prompt_dir, filename)
+                # Remove the .txt extension to use as key
+                key = os.path.splitext(filename)[0]
+                
+                # Read the file content
+                with open(filepath, 'r') as file:
+                    prompts[key] = file.read()
+        
+        return prompts
 
     def _extract_json_from_text(self, text: str) -> Dict:
         """
@@ -84,7 +92,7 @@ class ImageAnalyzer:
             "raw_response": text[:500] + ("..." if len(text) > 500 else "")
         }
 
-    def analyze_image(self, image_input: Union[str, dict]) -> Dict:
+    def analyze_image(self, image_input: Union[str, dict], flavor: str) -> Dict:
         """
         Analyze an image using OpenAI's model for biodiversity sampling.
         This is a two step process, first the species identification and then the full analysis text.
@@ -93,10 +101,13 @@ class ImageAnalyzer:
         Args:
             image_input: Either a local file path (str) or a dict containing image URL
                         Format for URL: {"type": "image_url", "image_url": {"url": "https://..."}}
+            flavor: The flavor of the analysis
         
         Returns:
             Dict containing the biodiversity analysis results
         """
+        flavor = "default" if flavor not in self.system_prompts else flavor
+
         try:
             language = "en"  # Default language, adjust as needed
             species_csv_lines = identify_chatgpt(image_input, language)
@@ -104,7 +115,7 @@ class ImageAnalyzer:
             messages = [
                 {
                     "role": "system",
-                    "content": self.system_prompt
+                    "content": self.system_prompts[flavor]
                 }
             ]
 
@@ -192,7 +203,7 @@ class ImageAnalyzer:
             messages = [
                 {
                     "role": "system", 
-                    "content": self.system_prompt
+                    "content": self.system_prompts["default"]
                 }
             ]
             
