@@ -9,7 +9,7 @@ const Home: React.FC = () => {
       <div className="text-left mb-32 p-6">
         <p className="text-gray-600 text-2xl">Use BITZ to take photos of species and learn about the biodiversity around you.</p>
         <div className="mt-4">
-          <button className="text-orange-500 font-medium">
+          <button className="text-orange-500 font-medium" onClick={() => window.location.href = '/info'}>
             LEARN MORE {">>>"}
           </button>
         </div>
