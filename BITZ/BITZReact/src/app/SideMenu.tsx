@@ -31,6 +31,9 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose }) => {
           <li className="border border-green-500 p-4">
             <a href="/about" className="text-black uppercase font-medium block">About</a>
           </li>
+          <li className="border border-green-500 p-4">
+            <a href="/explore" className="text-black uppercase font-medium block">Explore</a>
+          </li>
           
           <li className="border border-green-500 p-4">
             <div>
