@@ -1,9 +1,28 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Header from '@/app/Header';
+import { getConversationId } from '../User';
 
 export function MainScreen() {
+  const [flavor, setFlavor] = useState<string | null>(null);
+  const [conversationPrefix, setConversationPrefix] = useState<string>('');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const flavorParam = urlParams.get('flavor');
+      setFlavor(flavorParam);
+      
+      // Get conversation ID prefix
+      const conversationId = getConversationId();
+      if (conversationId) {
+        const prefix = conversationId.split('-')[0];
+        setConversationPrefix(prefix);
+      }
+    }
+  }, []);
+
   return (
     <>
     <Header menuColor="text-white" logoSrc="/logo/bitz_white.svg" />
@@ -16,6 +35,11 @@ export function MainScreen() {
           className="w-[300px] h-auto mb-4 mx-auto"
           />
         <p className="text-white text-xl mb-8">BIODIVERSITY WITH BITZ</p>
+      </div>
+
+      <div className="text-white text-center mb-4">
+        <p className="text-lg mb-1">Quest Flavor: {flavor || 'default'}</p>
+        <p className="text-lg">Conversation ID: {conversationPrefix || 'N/A'}</p>
       </div>
 
       <div className="relative">
