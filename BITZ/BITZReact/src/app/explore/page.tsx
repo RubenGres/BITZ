@@ -3,7 +3,7 @@
 import React from 'react';
 import Header from '@/app/Header';
 import Footer from '@/app/Footer';
-import QuestExplorer from './tabbed_panel';
+import QuestExplorer from './QuestExplorer';
 
 export default function AboutPage() {
   return (

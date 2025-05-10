@@ -1,56 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { API_URL } from '@/app/Constants';
+import StatsTab from './StatsTab';
+import ListTab from './ListTab';
+import { QuestData } from './QuestTypes';
 
 const QuestExplorer = ({ questId = "XXXXXXXX" }) => {
   const [activeTab, setActiveTab] = useState('stats');
-  
-  // Mock data - you would replace this with your actual data
-  const questData = {
-    questId: questId,
-    dateTime: "XXXXX",
-    speciesCount: "XXXXX",
-    speciesTypes: ["XXXXX", "XXXXX", "XXXXX"],
-    questLength: "XXXXX"
-  };
-  
-  // Tab content components
-  const StatsTab = () => (
-    <div className="p-4">
-      <h2 className="text-2xl font-bold text-green-800">STATS</h2>
-      <div className="text-orange-500">QUEST #{questData.questId}</div>
-      
-      <div className="mt-6">
-        <div className="mb-4">
-          <div className="text-green-800 font-medium">DATE / TIME</div>
-          <div>{questData.dateTime}</div>
-        </div>
-        
-        <div className="mb-4">
-          <div className="text-green-800 font-medium">SPECIES COUNT</div>
-          <div>{questData.speciesCount}</div>
-        </div>
-        
-        <div className="mb-4">
-          <div className="text-green-800 font-medium">SPECIES TYPES</div>
-          {questData.speciesTypes.map((type, index) => (
-            <div key={index}>{type}</div>
-          ))}
-        </div>
-        
-        <div className="mb-4">
-          <div className="text-green-800 font-medium">LENGTH OF QUEST</div>
-          <div>{questData.questLength}</div>
-        </div>
-      </div>
-    </div>
-  );
-  
-  const ListTab = () => (
-    <div className="p-4">
-      <h2 className="text-2xl font-bold text-green-800">LIST</h2>
-      <p className="text-gray-600">Species list view will go here</p>
-      {/* You would add your list view implementation here */}
-    </div>
-  );
+  const [questData, setQuestData] = useState<QuestData>();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentQuestId, setCurrentQuestId] = useState<string>(questId);
+
+  useEffect(() => {
+    // Get the id parameter from the URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const id = urlParams.get('id') || questId;
+    setCurrentQuestId(id);
+
+    // Make the GET request
+    fetch(`${API_URL}/quest_info?id=${id}`)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log(data);
+        if (data) {
+          setQuestData(data);
+        } else {
+          throw new Error('Invalid data structure');
+        }
+        setLoading(false);
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        setError(error.message);
+        setLoading(false);
+      });
+  }, [questId]);
+
+  // Tab content components (only define the tabs that aren't in separate files)
   
   const NetworkTab = () => (
     <div className="p-4">
@@ -71,24 +62,21 @@ const QuestExplorer = ({ questId = "XXXXXXXX" }) => {
   // Render the appropriate tab content based on activeTab state
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'stats': return <StatsTab />;
-      case 'list': return <ListTab />;
-      case 'network': return <NetworkTab />;
-      case 'map': return <MapTab />;
-      default: return <StatsTab />;
+      case 'stats': 
+        return <StatsTab questData={questData} loading={loading} error={error} />;
+      case 'list': 
+        return <ListTab questData={questData} questId={currentQuestId} loading={loading} error={error} />;
+      case 'network': 
+        return <NetworkTab />;
+      case 'map': 
+        return <MapTab />;
+      default: 
+        return <StatsTab questData={questData} loading={loading} error={error} />;
     }
   };
   
   return (
     <div className="w-full h-full flex flex-col">
-      <div className="p-6">
-        <h1 className="text-2xl font-bold text-green-800">
-          Explore your quest through visualizations and datasets.
-        </h1>
-        <div className="text-orange-500 mt-2">
-          YOUR UNIQUE QUEST NUMBER: {questData.questId}
-        </div>
-      </div>
       
       {/* Tabs - Scrollable container */}
       <div className="mt-4 px-6">

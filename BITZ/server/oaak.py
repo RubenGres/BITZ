@@ -22,7 +22,7 @@ class ModelSingleton:
 def get_model(model_name="gpt-4o"):
     return ModelSingleton.get_instance(model_name)
 
-def save_conversation(system_prompt, conversation_id, history, history_directory="./history"):
+def save_conversation(flavor, user_location, conversation_id, history, history_directory="./history"):
     """Save conversation history and images."""
     history_data_dir = os.path.join(history_directory, "data")
     
@@ -37,7 +37,9 @@ def save_conversation(system_prompt, conversation_id, history, history_directory
     history_file = os.path.join(convo_dir, "history.json")
     with open(history_file, "w") as f:
         conversation_data = {
-            "system_prompt": system_prompt,
+            "flavor": flavor,
+            "conversation_id": conversation_id,
+            "location": user_location,
             "history": history  # Ensure it's saved as a list of dictionaries
         }
 

@@ -1,6 +1,5 @@
 import os
 import json
-import datetime
 import markdown
 from dotenv import load_dotenv
 from image_analyzer import ImageAnalyzer
@@ -9,6 +8,8 @@ from flask_cors import CORS
 import mimetypes
 import oaak
 from openai import OpenAI
+from datetime import datetime
+from collections import Counter
 
 
 BASE_DIR = os.path.abspath("history")  # Base directory
@@ -21,8 +22,6 @@ app = Flask(__name__)
 # CORS is handled at the nginx level now
 # CORS(app, resources={r"/*": {
 #     "origins": [
-#         "https://bitz.tools",
-#         r"https://*.rubengr.es",
 #         "*" # Allow all origins for development purposes
 #     ],
 #     "methods": ["GET", "POST", "OPTIONS", "PUT", "DELETE"],  # Allow all common methods
@@ -98,7 +97,68 @@ def serve_viz(path):
     except Exception as e:
         app.logger.error(f"Error serving {path}: {str(e)}")
         return f"File not found: {path}", 404
+
+@app.route("/quest_info", methods=["GET"])
+def quest_info():
+    data = request.args
+    quest_id = data.get("id")
+
+    if not quest_id:
+        return jsonify({"error": "No quest ID provided"}), 400
     
+    # Construct paths to the CSV file and history JSON
+    csv_path = os.path.join(BASE_DIR, "data", quest_id, "species_data_english.csv")
+    history_path = os.path.join(BASE_DIR, "data", quest_id, "history.json")
+
+    if not os.path.isfile(history_path):
+        return jsonify({"error": f"Quest {quest_id} not found"}), 404
+    
+    # Read the CSV file
+    csv_string = ""
+    if os.path.isfile(csv_path):
+        with open(csv_path, 'r', encoding='utf-8') as f:
+            csv_string = f.read()
+    else:
+        return jsonify({"error": f"CSV file for quest {quest_id} not found"}), 404
+
+    # load the history JSON
+    with open(history_path, 'r', encoding='utf-8') as f:
+        history_json = json.load(f)
+        history_json['species_data_csv'] = csv_string
+    
+    flavor = history_json.get('flavor', 'unknown')
+
+    location = history_json.get('location', None)
+
+    quest_timestamp = history_json['history'][0]['timestamp']
+
+    start_time = datetime.fromisoformat(quest_timestamp)
+    end_time = datetime.fromisoformat(history_json['history'][-1]['timestamp'])
+    duration = (end_time - start_time).total_seconds()
+
+    nb_images = len(history_json.get('history', 0))
+
+    # lines in csv_string -1 for header
+    species_count = len(csv_string.split('\n')) - 1
+
+    # taxonomic_groups is second column in csv 
+    taxonomic_groups = [line.split(',')[1] for line in csv_string.strip().split('\n')[1:]]
+    taxonomic_groups_count = dict(Counter(taxonomic_groups))
+
+    history_json['metadata'] = {
+        'quest_id': quest_id,
+        'flavor': flavor,
+        'location': location,
+        'date_time': quest_timestamp,
+        'duration': duration,
+        'nb_images': nb_images,
+        'species_count': species_count,
+        'taxonomic_groups': taxonomic_groups_count
+    }
+
+    # Return the JSON response
+    return jsonify(history_json)
+
 @app.route("/explore/raw", methods=["GET"])
 @app.route("/explore/<path:subpath>/raw", methods=["GET"])
 def explore_raw(subpath=""):
@@ -120,7 +180,7 @@ def explore_raw(subpath=""):
                 "name": item,
                 "type": "DIR" if is_dir else "FILE",
                 "size": None if is_dir else os.path.getsize(item_path),
-                "modified": datetime.datetime.fromtimestamp(os.path.getmtime(item_path)).strftime('%Y-%m-%d %H:%M')
+                "modified": datetime.fromtimestamp(os.path.getmtime(item_path)).strftime('%Y-%m-%d %H:%M')
             }
             file_list.append(file_info)
 
@@ -154,7 +214,7 @@ def explore(subpath=""):
                 'full_path': full_path,
                 'is_dir': is_dir,
                 'size': "-" if is_dir else human_readable_size(os.path.getsize(item_path)),
-                'mod_time': datetime.datetime.fromtimestamp(os.path.getmtime(item_path)).strftime('%Y-%m-%d %H:%M'),
+                'mod_time': datetime.fromtimestamp(os.path.getmtime(item_path)).strftime('%Y-%m-%d %H:%M'),
                 'icon': "📁" if is_dir else "📄"
             }
             
@@ -270,7 +330,7 @@ def dashboard():
             'full_path': item,
             'is_dir': True,
             'size': human_readable_size(total_size),
-            'mod_time': datetime.datetime.fromtimestamp(os.path.getmtime(item_path)).strftime('%Y-%m-%d %H:%M'),
+            'mod_time': datetime.fromtimestamp(os.path.getmtime(item_path)).strftime('%Y-%m-%d %H:%M'),
             'icon': "📁"
         }
         
@@ -359,51 +419,6 @@ def load_history():
     conversation_id = data.get("conversation_id")
     conversation = oaak.load_conversation(conversation_id)
     return conversation
-
-@app.route("/chat", methods=["POST"])
-def chat():
-    """Handles text and image input for biodiversity exploration."""
-    data = request.json
-    
-    if validation_result := _validate_chat_request(data):
-        return validation_result
-    
-    # Extract data from request
-    conversation_id = data.get("conversation_id")
-    message = data.get("message", "")
-    user_location = data.get("user_location")
-    system_prompt = data.get("system_prompt")
-    image_b64 = data.get("image_b64", None)
-    image_location = data.get("image_location", None)
-    
-    formatted_system_prompt = system_prompt.format(user_location=user_location)
-    
-    history = oaak.load_conversation(conversation_id)
-    
-    # Process image if provided
-    image_filename = None
-    if image_b64: 
-        image_path = oaak.process_image(image_b64, conversation_id, len(history))
-        image_filename = os.path.basename(image_path)
-    
-    messages = oaak.prepare_messages(formatted_system_prompt, history, message, image_b64)
-    ai_response = oaak.get_model().invoke(messages)
-    
-    # Create user message entry
-    timestamp = datetime.datetime.utcnow().isoformat()
-    user_message = oaak.create_user_message(message, timestamp, image_filename, image_location, ai_response.content)
-    
-    # Update and save conversation history
-    history.append(user_message)
-    oaak.save_conversation(formatted_system_prompt, conversation_id, history)
-    
-    markdown_to_html = markdown.markdown(ai_response.content)
-    
-    return jsonify({
-        "response": markdown_to_html, 
-        "timestamp": timestamp, 
-        "image_filename": image_filename
-    })
 
 @app.route("/images/")
 def image_grid(quest_id=None):
@@ -534,6 +549,7 @@ def analyze():
     user_location = data.get("user_location")
     image_b64 = data['image_data']
     image_location = data.get("image_location", None)
+    flavor = data.get("flavor", None)
     history = oaak.load_conversation(conversation_id)    
 
     print("conversation_id:", conversation_id)
@@ -548,16 +564,16 @@ def analyze():
     image_path = oaak.process_image(image_b64, conversation_id, len(history))
     image_filename = os.path.basename(image_path)
 
-    result = analyzer.analyze_image(image_path)
+    result = analyzer.analyze_image(image_path, flavor)
 
     print(result)
     
     # Create user message entry
-    timestamp = datetime.datetime.utcnow().isoformat()
+    timestamp = datetime.utcnow().isoformat()
     user_message = oaak.create_user_message("", timestamp, image_filename, image_location, str(result))
     history.append(user_message)
     
-    oaak.save_conversation("Bernat's system prompt", conversation_id, history)
+    oaak.save_conversation(flavor, user_location, conversation_id, history)
 
     return jsonify(result)
 
@@ -620,6 +636,6 @@ def question():
     except Exception as e:
         app.logger.error(f"Error in question route: {str(e)}")
         return jsonify({"error": str(e)}), 500
-        
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
