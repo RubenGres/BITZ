@@ -104,9 +104,7 @@ const ListTab: React.FC<ListTabProps> = ({ questData, questId, loading, error })
   }
 
   return (
-    <div className="p-4">
-      <h2 className="text-2xl font-bold text-green-800 mb-4">LIST</h2>
-      
+    <div className="p-4">     
       {speciesData.length === 0 ? (
         <p className="text-gray-600">No species data found</p>
       ) : (
@@ -118,22 +116,22 @@ const ListTab: React.FC<ListTabProps> = ({ questData, questId, loading, error })
                   Image
                 </th>
                 <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-700">
-                  common_name
+                  Common Name
                 </th>
                 <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-700">
-                  scientific_name
+                  Scientific Name
                 </th>
                 <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-700">
-                  taxonomic_group
+                  Taxonomic Group
                 </th>
                 <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-700">
-                  discovery_timestamp
+                  Discovery Timestamp
                 </th>
                 <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-700">
-                  confidence
+                  Confidence
                 </th>
                 <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-700">
-                  notes
+                  Notes
                 </th>
               </tr>
             </thead>

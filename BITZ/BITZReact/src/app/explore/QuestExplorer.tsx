@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { API_URL } from '@/app/Constants';
 import StatsTab from './StatsTab';
 import ListTab from './ListTab';
+import NetworkTab from './NetworkTab';
 import { QuestData } from './QuestTypes';
 
 const QuestExplorer = ({ questId = "XXXXXXXX" }) => {
@@ -40,16 +41,6 @@ const QuestExplorer = ({ questId = "XXXXXXXX" }) => {
         setLoading(false);
       });
   }, [questId]);
-
-  // Tab content components (only define the tabs that aren't in separate files)
-  
-  const NetworkTab = () => (
-    <div className="p-4">
-      <h2 className="text-2xl font-bold text-green-800">NETWORK</h2>
-      <p className="text-gray-600">Network visualization will go here</p>
-      {/* You would add your network visualization here */}
-    </div>
-  );
   
   const MapTab = () => (
     <div className="p-4">
@@ -67,7 +58,7 @@ const QuestExplorer = ({ questId = "XXXXXXXX" }) => {
       case 'list': 
         return <ListTab questData={questData} questId={currentQuestId} loading={loading} error={error} />;
       case 'network': 
-        return <NetworkTab />;
+        return <NetworkTab questData={questData} questId={currentQuestId} loading={loading} error={error} />;
       case 'map': 
         return <MapTab />;
       default: 
