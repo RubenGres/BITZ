@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  bitz-app:
+    build: .
+    container_name: bitz-app
+    restart: unless-stopped
+    ports:
+      - "${PORT}:3000"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - app-network
+    volumes:
+      - app-data:/app/data
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  app-data:
