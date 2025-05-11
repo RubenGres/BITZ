@@ -7,25 +7,43 @@ import ChatView from './ChatView';
 interface InfoViewProps {
   uploadedImage?: string;
   resultDict?: any;
-  onNext?: () => void;
   onEndQuest?: () => void;
+  onGPSCoordinatesChange?: (coordinates: string) => void;
 }
 
-export const InfoView: React.FC<InfoViewProps> = ({ uploadedImage, resultDict, onNext, onEndQuest }) => {
+export const InfoView: React.FC<InfoViewProps> = ({ uploadedImage, resultDict, onEndQuest, onGPSCoordinatesChange }) => {
   const [questionAnswered, setQuestionAnswered] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const handleAnswer = (answer: string) => {
-    setQuestionAnswered(true);
-    // We'll use setTimeout to ensure the DOM has updated with the new element before scrolling
-    setTimeout(() => {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
-  };
+    if (answer === 'yes') {
 
-  const handleNextPhoto = () => {
-    if (onNext) onNext();
+      // set GPS coordinates if the user has allowed location access
+      if (onGPSCoordinatesChange) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const { latitude, longitude } = position.coords;
+            const coords = `${latitude}, ${longitude}`;
+            onGPSCoordinatesChange(coords);
+          },
+          (error) => {
+            console.error('Error getting GPS coordinates:', error);
+            onGPSCoordinatesChange('N/A');
+          });
+      }
+
+      const cameraInput = document.getElementById('camera-input');
+      if (cameraInput) {
+        cameraInput.click();
+      }
+    } else {
+      setQuestionAnswered(true);
+      // We'll use setTimeout to ensure the DOM has updated with the new element before scrolling
+      setTimeout(() => {
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
   };
 
   const toggleChat = () => {
@@ -55,8 +73,8 @@ export const InfoView: React.FC<InfoViewProps> = ({ uploadedImage, resultDict, o
   return (
     <div className="relative w-full h-full overflow-y-auto">
       {/* Fixed Background Image - Lower z-index */}
-      <div 
-        className="fixed inset-0 z-0" 
+      <div
+        className="fixed inset-0 z-0"
         style={{
           backgroundImage: uploadedImage ? `url(${uploadedImage})` : 'none',
           backgroundSize: 'cover',
@@ -65,15 +83,15 @@ export const InfoView: React.FC<InfoViewProps> = ({ uploadedImage, resultDict, o
           filter: 'brightness(0.8)'
         }}
       />
-      
+
       {/* Fixed Header - Higher z-index and positioned at the top */}
       <div className="fixed top-0 left-0 right-0 z-20">
         <Header logoSrc="/logo/bitz_white.svg" onEndQuest={onEndQuest} />
       </div>
-      
+
       {/* Chat View Component */}
       <ChatView isOpen={isChatOpen} analysisReply={resultDict} onClose={() => setIsChatOpen(false)} />
-      
+
       {/* Content - with padding to account for fixed header */}
       <div className="relative z-10 flex flex-col h-full pt-20 pb-20">
         {/* Species Identification */}
@@ -84,24 +102,24 @@ export const InfoView: React.FC<InfoViewProps> = ({ uploadedImage, resultDict, o
             {resultDict?.species_identification?.what_is_it || 'No species information available.'}
           </div>
         </div>
-        
+
         {/* Ecological Information */}
         <div className="bg-[#f6f9ec] bg-opacity-90 p-4 mb-10 mr-16" style={greenShadowStyle}>
           <div className="text-gray-700">
             <p>{resultDict?.species_identification?.information || 'No ecological information available.'}</p>
           </div>
         </div>
-        
+
         {/* Ask Question Button */}
         <div className="bg-[#ef5232] p-4 mb-10 mr-16" style={whiteShadowStyle}>
-          <button 
+          <button
             className="text-white flex items-center w-full"
             onClick={toggleChat}
           >
             <span className="mr-2">▶▶▶</span> ASK A QUESTION...
           </button>
         </div>
-        
+
         {/* Next Target */}
         <div className="bg-[#f6f9ec] bg-opacity-90 p-4 mb-10 mr-16" style={coralShadowStyle}>
           <div className="text-[#ef5232] uppercase font-semibold">NEXT TARGET</div>
@@ -110,25 +128,20 @@ export const InfoView: React.FC<InfoViewProps> = ({ uploadedImage, resultDict, o
             <p className="mt-1"> {resultDict?.next_target?.location || 'Around your current area'}</p>
           </div>
         </div>
-        
+
         {/* Interactive Question */}
         <div className="bg-[#f6f9ec] p-4 mb-10 mr-16" style={coralShadowStyle}>
           <p className="text-green-800">{resultDict?.sampling_guidance?.question || 'Do you see anything interesting?'}</p>
-          
+
           <div className="mt-2 flex flex-col gap-2 text-[#ef5232]">
-            <button 
-              onClick={() => {
-                const cameraInput = document.getElementById('camera-input');
-                if (cameraInput) {
-                  cameraInput.click();
-                }
-              }}
+            <button
+              onClick={() => handleAnswer('yes')}
               className="border border-[#ef5232] p-2 rounded flex items-center justify-center"
             >
               YES <img src="/icons/camera.svg" alt="Camera" className="h-[18px] ml-2" />
             </button>
-            
-            <button 
+
+            <button
               onClick={() => handleAnswer('no')}
               className="bg-green-800 text-white p-2 rounded flex items-center justify-center"
             >
@@ -136,7 +149,7 @@ export const InfoView: React.FC<InfoViewProps> = ({ uploadedImage, resultDict, o
             </button>
           </div>
         </div>
-        
+
         {/* Next Photo Instruction */}
         {questionAnswered && (
           <div className="bg-[#f6f9ec] p-4 mb-16 mr-16" style={coralShadowStyle} ref={bottomRef}>
@@ -145,14 +158,9 @@ export const InfoView: React.FC<InfoViewProps> = ({ uploadedImage, resultDict, o
             </p>
 
             <div className="flex justify-center"> {/* Centering container */}
-              <button 
+              <button
                 className="flex items-center justify-center bg-[#f6f9ec] text-[#f44928] border-2 border-[#f44928] py-4 px-8 mt-4 tracking-widest"
-                onClick={() => {
-                  const cameraInput = document.getElementById('camera-input');
-                  if (cameraInput) {
-                    cameraInput.click();
-                  }
-                }}
+                onClick={() => handleAnswer('yes')}
               >
                 <img src="/icons/camera.svg" alt="Camera" className="h-[18px] ml-2 mr-4" />
                 take next photo

@@ -10,6 +10,7 @@ import oaak
 from openai import OpenAI
 from datetime import datetime
 from collections import Counter
+import time
 
 
 BASE_DIR = os.path.abspath("history")  # Base directory
@@ -20,26 +21,13 @@ load_dotenv()
 app = Flask(__name__)
 
 # CORS is handled at the nginx level now
-# CORS(app, resources={r"/*": {
-#     "origins": [
-#         "*" # Allow all origins for development purposes
-#     ],
-#     "methods": ["GET", "POST", "OPTIONS", "PUT", "DELETE"],  # Allow all common methods
-#     "allow_headers": ["Content-Type", "Authorization", "X-Requested-With", "Accept"]  # Common headers
-# }})
-
-def _validate_chat_request(data):
-    """Validates the chat request data."""
-    conversation_id = data.get("conversation_id")
-    user_location = data.get("user_location")
-    
-    if not conversation_id:
-        return jsonify({"error": "Please provide a conversation_id."}), 400
-    
-    if not user_location:
-        return jsonify({"error": "Please provide a user location."}), 400
-    
-    return None
+CORS(app, resources={r"/*": {
+    "origins": [
+        "*" # Allow all origins for development purposes
+    ],
+    "methods": ["GET", "POST", "OPTIONS", "PUT", "DELETE"],  # Allow all common methods
+    "allow_headers": ["Content-Type", "Authorization", "X-Requested-With", "Accept"]  # Common headers
+}})
 
 def human_readable_size(size, decimal_places=1):
     """Convert bytes to human-readable format (KB, MB, GB, etc.)"""
@@ -417,7 +405,7 @@ def get_file(subpath):
 def load_history():
     data = request.json
     conversation_id = data.get("conversation_id")
-    conversation = oaak.load_conversation(conversation_id)
+    conversation = oaak.load_conversation(conversation_id).get('history', [])
     return conversation
 
 @app.route("/images/")
@@ -546,34 +534,40 @@ def analyze():
     data = request.json
     
     conversation_id = data.get("conversation_id")
-    user_location = data.get("user_location")
+    user_id = data.get("user_id")
     image_b64 = data['image_data']
     image_location = data.get("image_location", None)
+    image_coordinates = data.get("image_coordinates", None)
     flavor = data.get("flavor", None)
-    history = oaak.load_conversation(conversation_id)    
 
-    print("conversation_id:", conversation_id)
-    print("image_b64[:10]:", image_b64[:10])
-    print("history:", history)
-
+    # Check if the image data is provided
     if not image_b64:
-        return
-    
-    analyzer = analyzers.setdefault(conversation_id, ImageAnalyzer())
-    
-    image_path = oaak.process_image(image_b64, conversation_id, len(history))
-    image_filename = os.path.basename(image_path)
+        return jsonify({"error": "No image data provided"}), 400
 
+    conversation = oaak.load_conversation(conversation_id)
+
+    # If this is not the first message on this conversation, get the coordinates and location from history
+    if conversation:
+        conversation_coordinates = conversation.get('coordinates', None)
+        conversation_location = conversation.get('location', None)
+        history = conversation.get('history', [])
+    else:
+        conversation_coordinates = image_coordinates
+        conversation_location = image_location
+        history = []
+
+    analyzer = analyzers.setdefault(conversation_id, ImageAnalyzer())
+    image_path = oaak.process_image(image_b64, conversation_id, len(history))
     result = analyzer.analyze_image(image_path, flavor)
 
-    print(result)
-    
     # Create user message entry
-    timestamp = datetime.utcnow().isoformat()
-    user_message = oaak.create_user_message("", timestamp, image_filename, image_location, str(result))
-    history.append(user_message)
+    timestamp = str(int(time.time()))
+    image_filename = os.path.basename(image_path)
+    user_message = oaak.create_user_message("", timestamp, image_filename, image_coordinates, str(result))
     
-    oaak.save_conversation(flavor, user_location, conversation_id, history)
+    history.append(user_message)
+
+    oaak.save_conversation(flavor, conversation_coordinates, conversation_location, conversation_id, user_id, history)
 
     return jsonify(result)
 

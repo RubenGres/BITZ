@@ -13,10 +13,8 @@ export default function QuestPage() {
   const [uploadedFile, setUploadedFile] = useState<string | undefined>(undefined);
   const [resultDict, setResultDict] = useState(null);
   const [flavor, setFlavor] = useState<string | null>(null);
-  const [userLocation, setUserLocation] = useState({
-    name: "unknown",
-    coordinates: null
-  });
+  const [location, setLocation] = useState<string>('');
+  const [gpsCoordinates, setGpsCoordinates] = useState<string>('');
 
   // Extract flavor from URL query parameters when component mounts
   useEffect(() => {
@@ -28,37 +26,24 @@ export default function QuestPage() {
     }
   }, []);
 
-  const fetchLocationName = async (latitude, longitude) => {
-    try {
-      const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`;
-      const response = await fetch(url);
-            
-      if (response.ok) {
-        const data = await response.json();
-        const locationName = data.display_name || "Location not found";
-        
-        // Update state with location name
-        setUserLocation(prev => ({
-          ...prev,
-          name: locationName
-        }));
-      }
-    } catch (error) {
-      console.error("Error fetching location name:", error);
-      throw error;
-    }
+  const handleLocationChange = (newLocation: string) => {
+    setLocation(newLocation);
+  };
+
+  const handleGPSCoordinatesChange = (newCoordinates: string) => {
+    setGpsCoordinates(newCoordinates);
   };
 
   async function processImage(imageData: string) {
     try {
         // Prepare the request body with all needed parameters including flavor
         const requestBody = {
-            image_data: imageData,
-            user_id: getUserId(),
-            conversation_id: getConversationId(),
-            user_location: userLocation.name,
-            image_location: userLocation.coordinates,
-            flavor: flavor
+          conversation_id: getConversationId(),
+          user_id: getUserId(),
+          image_data: imageData,
+          image_location: location,
+          image_coordinates: gpsCoordinates,
+          flavor: flavor
         };
         
         const response = await fetch(API_URL + '/analyze', {
@@ -99,12 +84,11 @@ export default function QuestPage() {
           setUploadedFile(imageData);
           
           console.log('Starting image processing...');
-          console.log('User Location:', userLocation);
+          console.log('User Location:', location, gpsCoordinates);
   
           processImage(base64Data).then((result) => {
             console.log('Result:', result);
             setResultDict(result);
-  
             setIsLoading(false);
             setInQuestLoop(true);
           });
@@ -155,9 +139,17 @@ export default function QuestPage() {
         {isLoading ? (
           <LoadingScreen />
         ) : inQuestLoop ? (
-          <InfoView uploadedImage={uploadedFile} resultDict={resultDict} onEndQuest={handleEndQuest}/>
+          <InfoView
+            uploadedImage={uploadedFile}
+            resultDict={resultDict}
+            onEndQuest={handleEndQuest}
+            onGPSCoordinatesChange={handleGPSCoordinatesChange}
+          />
         ) : (
-          <MainScreen/>
+          <MainScreen 
+            onLocationChange={handleLocationChange}
+            onGPSCoordinatesChange={handleGPSCoordinatesChange}
+          />
         )}
       </div>
     </div>

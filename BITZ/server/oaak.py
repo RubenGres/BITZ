@@ -1,6 +1,7 @@
 import os
 import base64
 import json
+import time
 
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_openai import ChatOpenAI
@@ -22,7 +23,7 @@ class ModelSingleton:
 def get_model(model_name="gpt-4o"):
     return ModelSingleton.get_instance(model_name)
 
-def save_conversation(flavor, user_location, conversation_id, history, history_directory="./history"):
+def save_conversation(flavor, coordinates, location_name, conversation_id, user_id, history, history_directory="./history"):
     """Save conversation history and images."""
     history_data_dir = os.path.join(history_directory, "data")
     
@@ -39,7 +40,10 @@ def save_conversation(flavor, user_location, conversation_id, history, history_d
         conversation_data = {
             "flavor": flavor,
             "conversation_id": conversation_id,
-            "location": user_location,
+            "timestamp": str(int(time.time())),
+            "user_id": user_id,
+            "coordinates": coordinates,
+            "location": location_name,
             "history": history  # Ensure it's saved as a list of dictionaries
         }
 
@@ -52,9 +56,9 @@ def load_conversation(conversation_id, history_directory="./history"):
     if os.path.exists(history_file):
         with open(history_file, "r") as f:
             data = json.load(f)
-            return data.get("history", [])
+            return data
     
-    return []
+    return None
 
 def save_image(image_b64, conversation_id, history_length, history_directory):
     history_data_dir = os.path.join(history_directory, "images")
