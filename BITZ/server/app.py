@@ -120,8 +120,8 @@ def quest_info():
 
     quest_timestamp = history_json['history'][0]['timestamp']
 
-    start_time = datetime.fromisoformat(quest_timestamp)
-    end_time = datetime.fromisoformat(history_json['history'][-1]['timestamp'])
+    start_time = datetime.fromtimestamp(int(quest_timestamp))
+    end_time = datetime.fromtimestamp(int(history_json['history'][-1]['timestamp']))
     duration = (end_time - start_time).total_seconds()
 
     nb_images = len(history_json.get('history', 0))
@@ -137,7 +137,7 @@ def quest_info():
         'quest_id': quest_id,
         'flavor': flavor,
         'location': location,
-        'date_time': quest_timestamp,
+        'date_time': datetime.fromtimestamp(int(quest_timestamp)),
         'duration': duration,
         'nb_images': nb_images,
         'species_count': species_count,
@@ -492,7 +492,7 @@ def image_grid(quest_id=None):
                                 'quest_id': qid,
                                 'image_path': f"{relative_imgs_path}{image_filename}",
                                 'image_filename': image_filename,
-                                'timestamp': entry.get('timestamp'),
+                                'timestamp': datetime.fromtimestamp(int(entry.get('timestamp'))).strftime('%Y-%m-%d %H:%M'),
                                 'location': entry.get('image_location'),
                                 # Add a unique ID combining filename and entry ID for proper randomization
                                 'unique_id': f"{image_filename}_{species_entry['entry_id']}"
@@ -508,7 +508,7 @@ def image_grid(quest_id=None):
                             'quest_id': qid,
                             'image_path': f"{relative_imgs_path}{image_filename}",
                             'image_filename': image_filename,
-                            'timestamp': entry.get('timestamp'),
+                            'timestamp': datetime.fromtimestamp(int(entry.get('timestamp'))).strftime('%Y-%m-%d %H:%M'),
                             'location': entry.get('image_location'),
                             'unique_id': f"{image_filename}_0"
                         }
@@ -557,7 +557,7 @@ def analyze():
         history = []
 
     analyzer = analyzers.setdefault(conversation_id, ImageAnalyzer())
-    image_path = oaak.process_image(image_b64, conversation_id, len(history))
+    image_path = oaak.process_image(image_b64, conversation_id, len(history), image_coordinates)
     result = analyzer.analyze_image(image_path, flavor)
 
     # Create user message entry

@@ -456,7 +456,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, er
 
     // Touch event handlers
     const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
-        e.preventDefault();
+        //e.preventDefault();
         const canvas = canvasRef.current;
         if (!canvas) return;
 
@@ -509,7 +509,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, er
     };
 
     const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
-        e.preventDefault();
+        //e.preventDefault();
         const canvas = canvasRef.current;
         if (!canvas) return;
 
@@ -575,7 +575,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, er
     };
 
     const handleTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
-        e.preventDefault();
+        //e.preventDefault();
         setIsTouching(false);
         setIsDragging(false);
         setIsPanning(false);
@@ -586,7 +586,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, er
 
     // Mouse wheel zoom from cursor position
     const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
-        e.preventDefault();
+        //e.preventDefault();
         const canvas = canvasRef.current;
         if (!canvas) return;
 

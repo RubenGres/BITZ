@@ -75,19 +75,19 @@ def save_image(image_b64, conversation_id, history_length, history_directory):
 
     return image_path
 
-def extract_species_from_images(image_path, conversation_id, history_directory):
+def extract_species_from_images(image_path, conversation_id, history_directory, image_coordinates):
     # run this in parallel to avoid slowing down
     classify_thread = threading.Thread(
         target=oaak_classify.identify_and_populate,
-        args=(image_path, conversation_id, history_directory),
+        args=(image_path, conversation_id, history_directory, image_coordinates),
         daemon=True  # Ensures the thread is killed if the main program exits
     )
     classify_thread.start()
 
-def process_image(image_b64, conversation_id, history_length, history_directory="./history"):
+def process_image(image_b64, conversation_id, history_length, image_coordinates, history_directory="./history"):
     """Processes and saves an uploaded image."""
     image_path = save_image(image_b64, conversation_id, history_length, history_directory)
-    extract_species_from_images(image_path, conversation_id, history_directory)
+    extract_species_from_images(image_path, conversation_id, history_directory, image_coordinates)
     return image_path
 
 def prepare_messages(system_prompt, history, current_message, image_b64):

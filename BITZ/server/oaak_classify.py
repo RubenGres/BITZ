@@ -106,9 +106,9 @@ def identify_chatgpt(image_path, language):
 
     return species_csv_lines
 
-def identify_and_populate(image, quest_id, history_directory, language="english"):
+def identify_and_populate(image, quest_id, history_directory, image_coordinates, language="english"):
     # Define species_csv_header before using it
-    species_csv_header = ["image_name", "taxonomic_group", "scientific_name", "common_name", "confidence", "notes"]
+    species_csv_header = ["image_name", "taxonomic_group", "scientific_name", "common_name", "confidence", "notes", "latitude", "longitude"]
     
     csv_filename = os.path.join(history_directory, "data", quest_id, f"species_data_{language}.csv")
     
@@ -127,4 +127,5 @@ def identify_and_populate(image, quest_id, history_directory, language="english"
         
         # Get the species data and write to CSV
         species_csv_lines = identify_chatgpt(image, language=language)
+        species_csv_lines.append(image_coordinates)
         writer.writerows(species_csv_lines)
