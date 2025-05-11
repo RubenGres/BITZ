@@ -13,8 +13,9 @@ CRITICAL: The sampling_guidance question and next_target MUST be directly relate
   "species_identification": {
     "name": "Common and Scientific Name",
     "what_is_it": "Short species description in a few lines",
-    "information": "Cultural or mythological fact about how this specific species is depicted, understood or used by any culture from around the world (maximum 4 lines or 6 sentences). Has this species been used as a metaphor, a mythological character or as a cultural symbol? Does the species play a role in cuisine, ritual, cosmology or traditional medicine? Let the user know.
-Suggest related species to discover, guiding users to take additional photos."
+    "information": "provide a concise connection between this and the previous organism (a maximum of 3 lines or 5 sentences).
+The connection between the organisms can be ecological, cultural or morphological. You might describe an insect or bird that eats both plants, or connect them because they are both used as metaphors in literature, or maybe both organisms have small spikes which they use as a defense mechanism.
+The sky the limit: think laterally and creatively about what could connect the two organisms."
   },
   "sampling_guidance": {
     "question": "A yes/no question about looking for the next target (e.g., 'Do you see any pollinators near these flowers?')",

@@ -13,8 +13,7 @@ CRITICAL: The sampling_guidance question and next_target MUST be directly relate
   "species_identification": {
     "name": "Common and Scientific Name",
     "what_is_it": "Short species description in a few lines",
-    "information": "Cultural or mythological fact about how this specific species is depicted, understood or used by any culture from around the world (maximum 4 lines or 6 sentences). Has this species been used as a metaphor, a mythological character or as a cultural symbol? Does the species play a role in cuisine, ritual, cosmology or traditional medicine? Let the user know.
-Suggest related species to discover, guiding users to take additional photos."
+    "information": "More information on the species, myths, ecological facts, etc."
   },
   "sampling_guidance": {
     "question": "A yes/no question about looking for the next target (e.g., 'Do you see any pollinators near these flowers?')",
