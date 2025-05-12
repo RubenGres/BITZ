@@ -111,7 +111,7 @@ export default function QuestPage() {
 
   const handleEndQuest = () => {
     // stop this conversation
-    let conversation_graph_url = API_URL + '/viz/graph/?id=' + getConversationId();
+    let conversation_graph_url = '/explore?id=' + getConversationId();
     createNewConversationId();
     window.location.href = conversation_graph_url;
   };
