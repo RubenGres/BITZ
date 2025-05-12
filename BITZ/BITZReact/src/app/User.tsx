@@ -21,6 +21,14 @@ export const getConversationId = () => {
   if (!isBrowser) return null;
   
   const conversationId = localStorage.getItem('conversation_id');
+
+  //if conversationId is null, create a new one
+  if (!conversationId) {
+    const newConversationId = uuidv4();
+    localStorage.setItem('conversation_id', newConversationId);
+    return newConversationId;
+  }
+  
   return conversationId;
 };
 
