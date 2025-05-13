@@ -10,6 +10,8 @@ interface SpeciesRow {
   'discovery_timestamp': string;
   'confidence': string;
   'notes': string;
+  'latitude': string;  // Added latitude
+  'longitude': string; // Added longitude
 }
 
 interface ListTabProps {
@@ -26,6 +28,8 @@ const ListTab: React.FC<ListTabProps> = ({ questData, questId, loading, error })
   const [fullscreenImage, setFullscreenImage] = useState<{
     src: string;
     alt: string;
+    lat?: string;
+    lng?: string;
   } | null>(null);
 
   useEffect(() => {
@@ -39,10 +43,27 @@ const ListTab: React.FC<ListTabProps> = ({ questData, questId, loading, error })
         skipEmptyLines: true,
         complete: (results) => {
           if (results.errors.length > 0) {
-            setParseError(results.errors[0].message);
-          } else {
-            setSpeciesData(results.data as SpeciesRow[]);
+            console.warn("CSV parsing errors:", results.errors);
+            // Try to continue despite errors
           }
+          
+          // Process the data to ensure all required fields exist
+          const processedData = results.data.map((row: any) => {
+            // Ensure all fields exist, even if empty
+            return {
+              'image_name': row['image_name'] || '',
+              'taxonomic_group': row['taxonomic_group'] || '',
+              'scientific_name': row['scientific_name'] || '',
+              'common_name': row['common_name'] || '',
+              'discovery_timestamp': row['discovery_timestamp'] || '',
+              'confidence': row['confidence'] || '',
+              'notes': row['notes'] || '',
+              'latitude': row['latitude'] || '', // Default to empty string if missing
+              'longitude': row['longitude'] || '' // Default to empty string if missing
+            };
+          });
+          
+          setSpeciesData(processedData as SpeciesRow[]);
           setParsedLoading(false);
         },
         error: (error: Error) => {
@@ -71,8 +92,8 @@ const ListTab: React.FC<ListTabProps> = ({ questData, questId, loading, error })
     }
   };
 
-  const openFullscreen = (src: string, alt: string) => {
-    setFullscreenImage({ src, alt });
+  const openFullscreen = (src: string, alt: string, lat?: string, lng?: string) => {
+    setFullscreenImage({ src, alt, lat, lng });
   };
 
   const closeFullscreen = () => {
@@ -148,7 +169,9 @@ const ListTab: React.FC<ListTabProps> = ({ questData, questId, loading, error })
                           loading="lazy"
                           onClick={() => openFullscreen(
                             `${API_URL}/explore/images/${questId}/${row.image_name}`,
-                            row['common_name'] || row['scientific_name'] || 'Species image'
+                            row['common_name'] || row['scientific_name'] || 'Species image',
+                            row.latitude,
+                            row.longitude
                           )}
                         />
                       </div>

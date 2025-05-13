@@ -125,7 +125,18 @@ def identify_and_populate(image, quest_id, history_directory, image_coordinates,
         if not file_exists:
             writer.writerow(species_csv_header)
         
-        # Get the species data and write to CSV
+        # Get the species data 
         species_csv_lines = identify_chatgpt(image, language=language)
-        species_csv_lines.append(image_coordinates)
-        writer.writerows(species_csv_lines)
+        
+        # Extract latitude and longitude from image_coordinates
+        try:
+            latitude, longitude = image_coordinates.split(',')
+            latitude = latitude.strip()
+            longitude = longitude.strip()
+        except:
+            latitude, longitude = "", ""
+        
+        # Add coordinates to each row of species data
+        for line in species_csv_lines:
+            line.extend([latitude, longitude])
+            writer.writerow(line)
