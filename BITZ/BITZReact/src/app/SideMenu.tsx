@@ -32,7 +32,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose }) => {
             <a href="/about" className="text-black uppercase font-medium block">About</a>
           </li>
           <li className="border border-green-500 p-4">
-            <a href="/explore" className="text-black uppercase font-medium block">Explore</a>
+            <a href="/list" className="text-black uppercase font-medium block">Explore</a>
           </li>
           
           <li className="border border-green-500 p-4">
@@ -63,7 +63,6 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose }) => {
               </button>
               {visualizationsDropdownOpen && (
                 <ul className="mt-2 ml-8 space-y-2">
-                  <li><a href="https://oaak.rubengr.es/dashboard/" className="text-green-600 hover:text-green-800 capitalize">Spreadsheet</a></li>
                   <li><a href="https://oaak.rubengr.es/images/" className="text-green-600 hover:text-green-800 capitalize">Images</a></li>
                   <li><a href="https://oaak.rubengr.es/viz/graph/" className="text-green-600 hover:text-green-800 capitalize">Graph View</a></li>
                   <li><a href="https://oaak.rubengr.es/map" className="text-green-600 hover:text-green-800 capitalize">Map View</a></li>

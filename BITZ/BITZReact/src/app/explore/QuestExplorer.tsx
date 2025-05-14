@@ -4,6 +4,7 @@ import StatsTab from './StatsTab';
 import ListTab from './ListTab';
 import NetworkTab from './NetworkTab';
 import { QuestData } from './QuestTypes';
+import MapTab from './MapTab';
 
 const QuestExplorer = ({ questId = "XXXXXXXX" }) => {
   const [activeTab, setActiveTab] = useState('stats');
@@ -42,14 +43,6 @@ const QuestExplorer = ({ questId = "XXXXXXXX" }) => {
       });
   }, [questId]);
   
-  const MapTab = () => (
-    <div className="p-4">
-      <h2 className="text-2xl font-bold text-green-800">MAP</h2>
-      <p className="text-gray-600">Map visualization will go here</p>
-      {/* You would add your map visualization here */}
-    </div>
-  );
-  
   // Render the appropriate tab content based on activeTab state
   const renderTabContent = () => {
     switch (activeTab) {
@@ -60,7 +53,7 @@ const QuestExplorer = ({ questId = "XXXXXXXX" }) => {
       case 'network': 
         return <NetworkTab questData={questData} questId={currentQuestId} loading={loading} error={error} />;
       case 'map': 
-        return <MapTab />;
+        return <MapTab questData={questData} questId={currentQuestId} loading={loading} error={error} />;
       default: 
         return <StatsTab questData={questData} loading={loading} error={error} />;
     }

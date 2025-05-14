@@ -86,20 +86,28 @@ def serve_viz(path):
         app.logger.error(f"Error serving {path}: {str(e)}")
         return f"File not found: {path}", 404
 
-@app.route("/quest_info", methods=["GET"])
-def quest_info():
-    data = request.args
-    quest_id = data.get("id")
-
-    if not quest_id:
-        return jsonify({"error": "No quest ID provided"}), 400
+def get_quest_metadata(quest_id, force_reload=False):
+    """Extract and return metadata for a specific quest.
+    
+    Args:
+        quest_id: The ID of the quest to get metadata for
+        force_reload: If True, bypass cache and reload metadata from disk
+        
+    Returns:
+        Metadata dictionary or None if files are missing
+    """
+    global quest_metadata_cache
+    
+    # Return cached metadata if available and force_reload is False
+    if not force_reload and quest_id in quest_metadata_cache:
+        return quest_metadata_cache[quest_id]
     
     # Construct paths to the CSV file and history JSON
     csv_path = os.path.join(BASE_DIR, "data", quest_id, "species_data_english.csv")
     history_path = os.path.join(BASE_DIR, "data", quest_id, "history.json")
 
     if not os.path.isfile(history_path):
-        return jsonify({"error": f"Quest {quest_id} not found"}), 404
+        return None
     
     # Read the CSV file
     csv_string = ""
@@ -107,15 +115,13 @@ def quest_info():
         with open(csv_path, 'r', encoding='utf-8') as f:
             csv_string = f.read()
     else:
-        return jsonify({"error": f"CSV file for quest {quest_id} not found"}), 404
+        return None
 
     # load the history JSON
     with open(history_path, 'r', encoding='utf-8') as f:
         history_json = json.load(f)
-        history_json['species_data_csv'] = csv_string
     
     flavor = history_json.get('flavor', 'unknown')
-
     location = history_json.get('location', None)
 
     quest_timestamp = history_json['history'][0]['timestamp']
@@ -133,19 +139,135 @@ def quest_info():
     taxonomic_groups = [line.split(',')[1] for line in csv_string.strip().split('\n')[1:]]
     taxonomic_groups_count = dict(Counter(taxonomic_groups))
 
-    history_json['metadata'] = {
+    # Create metadata dictionary
+    metadata = {
         'quest_id': quest_id,
-        'flavor': flavor,
+        'user_id': history_json.get('user_id', 'N/A'),
         'location': location,
+        'coordinates': history_json.get('coordinates', 'N/A'),
+        'flavor': flavor,
         'date_time': datetime.fromtimestamp(int(quest_timestamp)),
         'duration': duration,
         'nb_images': nb_images,
         'species_count': species_count,
-        'taxonomic_groups': taxonomic_groups_count
+        'taxonomic_groups': taxonomic_groups_count,
+        'last_updated': datetime.now().isoformat()  # Add timestamp when this metadata was generated
     }
+    
+    # Update cache
+    quest_metadata_cache[quest_id] = metadata
+    
+    return metadata
 
+@app.route("/quest_info", methods=["GET"])
+def quest_info():
+    data = request.args
+    quest_id = data.get("id")
+    force_reload = request.args.get("force_reload", "false").lower() == "true"
+
+    if not quest_id:
+        return jsonify({"error": "No quest ID provided"}), 400
+    
+    # Get metadata for the quest, with option to force reload
+    metadata = get_quest_metadata(quest_id, force_reload)
+    if metadata is None:
+        return jsonify({"error": f"Quest {quest_id} not found or CSV file missing"}), 404
+    
+    # Construct paths to the CSV file and history JSON
+    csv_path = os.path.join(BASE_DIR, "data", quest_id, "species_data_english.csv")
+    history_path = os.path.join(BASE_DIR, "data", quest_id, "history.json")
+    
+    # Read the CSV file
+    with open(csv_path, 'r', encoding='utf-8') as f:
+        csv_string = f.read()
+    
+    # load the history JSON
+    with open(history_path, 'r', encoding='utf-8') as f:
+        history_json = json.load(f)
+        history_json['species_data_csv'] = csv_string
+        history_json['metadata'] = metadata
+    
     # Return the JSON response
     return jsonify(history_json)
+
+# Create a global cache for quest metadata
+quest_metadata_cache = {}
+cached_quest_ids = set()  # Track which quest IDs have been cached
+cache_last_updated = None  # Track when the quest list was last fully updated
+
+def check_cache_freshness():
+    """Check if the cache needs to be refreshed based on file system changes"""
+    global cache_last_updated
+    
+    # If cache has never been initialized or it's been more than 5 minutes since last full update
+    if cache_last_updated is None or (datetime.now() - cache_last_updated).total_seconds() > 300:
+        return False
+    
+    return True
+
+@app.route("/quest_list", methods=["GET"])
+def quest_list():
+    """List all quests with their metadata, using caching for efficiency."""
+    global quest_metadata_cache, cached_quest_ids, cache_last_updated
+    
+    # Check if we should force a refresh based on query parameter
+    # force_refresh = request.args.get("force_refresh", "false").lower() == "true"
+    
+    # Get current list of all quest IDs
+    current_quest_ids = get_quest_ids()
+    current_quest_ids_set = set(current_quest_ids)
+    
+    # Determine if we need to refresh the cache
+    cache_is_fresh = check_cache_freshness()
+    
+    if cache_is_fresh and cached_quest_ids == current_quest_ids_set:
+        # Cache is fresh and no quests have been added or removed
+        response_data = {
+            "quests": quest_metadata_cache,
+            "cache_info": {
+                "timestamp": datetime.now().isoformat(),
+                "last_full_update": cache_last_updated.isoformat() if cache_last_updated else None,
+                "status": "cached",
+                "total_cached": len(quest_metadata_cache)
+            }
+        }
+        return jsonify(response_data)
+    
+    # Find new quests that aren't in the cache
+    new_quest_ids = current_quest_ids_set - cached_quest_ids
+    
+    # Find quests that have been deleted and should be removed from cache
+    removed_quest_ids = cached_quest_ids - current_quest_ids_set
+    
+    # Remove deleted quests from cache
+    for quest_id in removed_quest_ids:
+        if quest_id in quest_metadata_cache:
+            del quest_metadata_cache[quest_id]
+    
+    # Update cache with new quests
+    for quest_id in new_quest_ids:
+        metadata = get_quest_metadata(quest_id)
+        if metadata:  # Only add if metadata was successfully retrieved
+            quest_metadata_cache[quest_id] = metadata
+    
+    # Update the cached set of quest IDs and timestamp
+    cached_quest_ids = current_quest_ids_set
+    cache_last_updated = datetime.now()
+    
+    # Add cache timestamp for debugging/monitoring
+    response_data = {
+        "quests": quest_metadata_cache,
+        "cache_info": {
+            "timestamp": datetime.now().isoformat(),
+            "last_full_update": cache_last_updated.isoformat(),
+            "status": "updated",
+            "total_cached": len(quest_metadata_cache),
+            "new_quests_added": len(new_quest_ids),
+            "quests_removed": len(removed_quest_ids)
+        }
+    }
+    
+    return jsonify(response_data)
 
 @app.route("/explore/raw", methods=["GET"])
 @app.route("/explore/<path:subpath>/raw", methods=["GET"])

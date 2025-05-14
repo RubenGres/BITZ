@@ -106,7 +106,11 @@ class ImageAnalyzer:
         Returns:
             Dict containing the biodiversity analysis results
         """
+        # print(f"Analyzing image with flavor: {flavor}")
+        # print(self.system_prompts.keys())
+        # print(self.system_prompts[flavor])
         flavor = "default" if flavor not in self.system_prompts else flavor
+        # print(f"Using flavor: {flavor}")
 
         try:
             language = "en"  # Default language, adjust as needed
