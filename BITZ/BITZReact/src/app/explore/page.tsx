@@ -1,24 +1,38 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { Suspense } from 'react';
 import Header from '@/app/Header';
 import Footer from '@/app/Footer';
 import QuestExplorer from './QuestExplorer';
-import { API_URL } from '@/app/Constants';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function ExplorePage() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+// Client component that uses search params
+function ExploreContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const questId = searchParams.get('id');
 
+  // Use React's useEffect for navigation instead of directly modifying window.location
+  React.useEffect(() => {
+    if (!questId) {
+      router.push('/list');
+    }
+  }, [questId, router]);
+
+  // Return null during the redirect check
   if (!questId) {
-    // If no ID is provided, redirect to the list page
-    window.location.href = '/list';
     return null;
   }
 
+  return (
+    <div className="flex-grow container mx-auto px-4 py-6">
+      <QuestExplorer questId={questId} />
+    </div>
+  );
+}
+
+// Main page component
+export default function ExplorePage() {
   return (
     <div className="min-h-screen bg-[#f6f9ec] flex flex-col">
       {/* Background */}
@@ -35,10 +49,10 @@ export default function ExplorePage() {
       {/* Header */}
       <Header menuColor="text-green-500" logoSrc="/logo/bitz_green.svg" />
       
-      {/* Main content */}
-      <div className="flex-grow container mx-auto px-4 py-6">
-        <QuestExplorer questId={questId} />
-      </div>
+      {/* Main content with Suspense boundary */}
+      <Suspense fallback={<div className="flex-grow container mx-auto px-4 py-6">Loading...</div>}>
+        <ExploreContent />
+      </Suspense>
       
       {/* Footer */}
       <Footer />
