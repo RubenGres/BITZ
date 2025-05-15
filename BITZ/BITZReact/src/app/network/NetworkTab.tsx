@@ -13,7 +13,7 @@ interface SpeciesRow {
 }
 
 interface NetworkTabProps {
-    questData: any;
+    questDataDict: Record<string, any>;
     questId: string;
     loading: boolean;
     error: string | null;
@@ -40,9 +40,10 @@ class Node {
     imageSrc: string;
     connections: Connection[];
     id: string;
-    image_filename: string; // Added to store the image filename
+    image_filename: string;
+    quest_id: string;
 
-    constructor(x: number, y: number, size: number, name: string, scientificName: string, taxonomicGroup: string, imageSrc: string, image_filename: string) {
+    constructor(x: number, y: number, size: number, name: string, scientificName: string, taxonomicGroup: string, imageSrc: string, image_filename: string, quest_id: string) {
         this.x = x;
         this.y = y;
         this.vx = 0;
@@ -56,6 +57,7 @@ class Node {
         this.connections = [];
         this.id = Date.now().toString() + Math.random();
         this.image_filename = image_filename;
+        this.quest_id = quest_id;
 
         // Load image
         if (imageSrc) {
@@ -251,7 +253,7 @@ const SpeciesInfoPanel = ({ questId, species, isOpen, onClose, isMobile = false 
     );
 };
 
-const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, error }) => {
+const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [nodes, setNodes] = useState<Node[]>([]);
     const [connections, setConnections] = useState<Connection[]>([]);
@@ -266,10 +268,12 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, er
     const [isTouching, setIsTouching] = useState(false);
     const [lastPosition, setLastPosition] = useState({ x: 0, y: 0 });
     const [touchCenter, setTouchCenter] = useState({ x: 0, y: 0 });
+    
     const animationRef = useRef<number>(0);
     
     // State for the sliding info panel
     const [selectedSpecies, setSelectedSpecies] = useState<SpeciesInfo | null>(null);
+    const [questId, setQuestId] = useState("")
     const [isPanelOpen, setIsPanelOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
 
@@ -277,7 +281,39 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, er
     const panOffsetRef = useRef({ x: 0, y: 0 });
     const zoomRef = useRef(1);
 
-    // Update the refs whenever panOffset or zoom changes
+    // Process CSV data when questData is available
+    useEffect(() => {
+        let allNodes: Node[] = [];
+        Object.entries(questDataDict).forEach(([questId, questData]) => {
+            if (questData?.species_data_csv && canvasRef.current) {
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+
+                Papa.parse(questData.species_data_csv, {
+                    header: true,
+                    dynamicTyping: true,
+                    skipEmptyLines: true,
+                    complete: (results) => {
+                        const speciesData = results.data as SpeciesRow[];
+                        const newNodes = createNodes(speciesData, questId);
+                        if (newNodes) {
+                            allNodes = [...allNodes, ...newNodes];
+                        }
+                    }
+                });
+            }
+        });
+
+        console.log('All nodes count:', allNodes.length);
+
+        const connections = createConnections(allNodes);
+
+        console.log('Connections count:', connections.length);
+
+        startAnimation(allNodes, connections);
+
+    }, [questDataDict]);
+
     useEffect(() => {
         panOffsetRef.current = panOffset;
         zoomRef.current = zoomLevel;
@@ -297,45 +333,20 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, er
         };
     }, []);
 
-    // Initialize the network when questData is loaded
-    useEffect(() => {
-        if (questData?.species_data_csv && canvasRef.current) {
-            const canvas = canvasRef.current;
-            if (!canvas) return;
-
-            Papa.parse(questData.species_data_csv, {
-                header: true,
-                dynamicTyping: true,
-                skipEmptyLines: true,
-                complete: (results) => {
-                    const speciesData = results.data as SpeciesRow[];
-                    createNodes(speciesData);
-                }
-            });
-        }
-    }, [questData, questId]);
-
-    // Function to find species info from history data
-    const findSpeciesInfo = (image_filename: string): SpeciesInfo | null => {
-        console.log('Finding species info for image:', image_filename);
-        console.log('History data available:', !!questData?.history);
+    const findSpeciesInfo = (image_filename: string, quest_id: string): SpeciesInfo | null => {
+        const questData = questDataDict[quest_id]
         
         if (!questData?.history || !image_filename) {
             console.warn('No history data or image filename');
             return null;
         }
         
-        console.log('History data length:', questData.history.length);
-        
         // Debug: Log all image filenames in history
         const historyFiles = questData.history.map(item => item.image_filename);
-        console.log('All image filenames in history:', historyFiles);
-        
+
         const historyItem = questData.history.find(item => 
             item.image_filename === image_filename
         );
-        
-        console.log('Found history item:', !!historyItem);
         
         if (!historyItem || !historyItem.assistant) {
             console.warn('No matching history item or assistant data');
@@ -343,9 +354,6 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, er
         }
         
         try {
-            console.log('Assistant data type:', typeof historyItem.assistant);
-            console.log('Assistant data preview:', historyItem.assistant.substring(0, 100) + '...');
-            
             // Fix the JSON format by replacing single quotes with double quotes
             // This is necessary because the data appears to be using JavaScript object literal syntax
             // rather than strict JSON format
@@ -353,14 +361,10 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, er
                 .replace(/'/g, '"')
                 .replace(/\\"/g, '\\"');
             
-            console.log('Fixed JSON preview:', fixedJsonStr.substring(0, 100) + '...');
-            
             // Parse the fixed JSON string
             const assistantData = JSON.parse(fixedJsonStr);
-            console.log('Parsed assistant data:', assistantData);
-            
+
             if (assistantData.species_identification) {
-                console.log('Found species identification data');
                 return {
                     name: assistantData.species_identification.name,
                     what_is_it: assistantData.species_identification.what_is_it,
@@ -380,9 +384,9 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, er
         return null;
     };
 
-    // Updated createNodes function
-    const createNodes = (speciesData: SpeciesRow[]) => {
-        console.log('Creating nodes from species data:', speciesData);
+    const createNodes = (speciesData: SpeciesRow[], questId: string) => {
+        console.log('Creating nodes for quest id:', questId);
+        console.log('Species data len:', speciesData.length);
         
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -406,8 +410,6 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, er
                 imageFilename = imageFilename.split('/').pop() || '';
             }
             
-            console.log(`Image filename for species ${index}:`, imageFilename);
-
             const node = new Node(
                 x,
                 y,
@@ -416,15 +418,14 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, er
                 species['scientific_name'] || '',
                 species['taxonomic_group'] || '',
                 imageSrc,
-                imageFilename
+                imageFilename,
+                questId
             );
             
             newNodes.push(node);
         });
 
-        let connections = createConnections(newNodes);
-
-        startAnimation(newNodes, connections);
+        return newNodes;
     };
 
     // Updated createConnections function with parameter
@@ -548,14 +549,13 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, er
 
     // Handle node click to show info panel
     const handleNodeClick = (node: Node) => {
-        console.log('Node clicked:', node);
-        console.log('Image filename:', node.image_filename);
+        console.log('Node clicked:', node.quest_id);
         
-        const speciesInfo = findSpeciesInfo(node.image_filename);
-        console.log('Species info found:', speciesInfo);
-        
+        // const speciesInfo = findSpeciesInfo(node.image_filename, node.quest_id);
+        const speciesInfo = null;
+
         if (speciesInfo) {
-            console.log('Setting selected species and opening panel');
+            setQuestId(node.quest_id);
             setSelectedSpecies(speciesInfo);
             setIsPanelOpen(true);
         } else {
@@ -632,20 +632,15 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, er
         }
     };
 
-    const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
-        console.log('Mouse up event');
-        console.log('Selected node:', selectedNode);
-        console.log('Is panning:', isPanning);
-        console.log('Is dragging:', isDragging);
-        
+    const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {      
         const canvas = canvasRef.current;
         if (!canvas) return;
         
         const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
         
-        if (selectedNode) {
-            let hasMovedSinceClick = (dragOffset.x !== (selectedNode.x - x)) || (dragOffset.y !== (selectedNode.y - y));
-            if(!hasMovedSinceClick) {
+        if (selectedNode && !isPanning) {
+            var hasMovedSinceClick = (dragOffset.x !== (selectedNode.x - x)) || (dragOffset.y !== (selectedNode.y - y));
+            if (!hasMovedSinceClick) {
                 handleNodeClick(selectedNode);
             }
         }
@@ -741,7 +736,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, er
 
             if (touchDistance > 0) {
                 const scale = distance / touchDistance;
-                const newZoom = Math.max(0.5, Math.min(3, zoomLevel * scale));
+                const newZoom = Math.max(0.1, Math.min(4, zoomLevel * scale));
                 
                 // Get canvas coordinates for pinch center
                 const canvas = canvasRef.current;
@@ -800,7 +795,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, er
         
         // Calculate zoom factor
         const delta = e.deltaY * -0.01;
-        const newZoom = Math.max(0.5, Math.min(3, zoomLevel + delta));
+        const newZoom = Math.max(0.1, Math.min(4, zoomLevel + delta));
         const scaleChange = newZoom / zoomLevel;
         
         // Calculate new pan offset to zoom from mouse position
@@ -845,7 +840,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, er
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
         
-        const newZoom = Math.max(0.5, zoomLevel * 0.8);
+        const newZoom = Math.max(0.1, zoomLevel * 0.8);
         const scaleChange = newZoom / zoomLevel;
         
         // Zoom from center
@@ -863,12 +858,6 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, er
         setZoomLevel(1);
         setPanOffset({ x: 0, y: 0 });
     };
-
-    useEffect(() => {
-        if (nodes.length > 0) {
-            createConnections();
-        }
-    }, [nodes]);
 
     // Set canvas size
     useEffect(() => {
@@ -918,10 +907,6 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, er
 
     if (error) {
         return <div className="p-4 text-red-500">Error: {error}</div>;
-    }
-
-    if (!questData?.species_data_csv) {
-        return <div className="p-4">No species data available for network visualization</div>;
     }
 
     return (

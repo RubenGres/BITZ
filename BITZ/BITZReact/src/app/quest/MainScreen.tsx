@@ -228,6 +228,21 @@ export const MainScreen: React.FC<MainScreenProps> = ({ onLocationChange, onGPSC
           <p className="text-white text-xl">BIODIVERSITY WITH BITZ</p>
         </div>
 
+        <div className="relative mt-10">
+          <button 
+            className="flex items-center justify-center bg-white text-[#f44928] border-2 border-[#f44928] py-4 px-[90px]"
+            onClick={() => {
+              const cameraInput = document.getElementById('camera-input');
+              if (cameraInput) {
+                cameraInput.click();
+              }
+            }}
+          >
+            <img src="/icons/camera.svg" alt="Camera" className="w-6 h-6 mr-3" />
+            <span className="text-xl tracking-widest">take photo</span>
+          </button>
+        </div>
+
         <div className="bg-[#00000011] text-white p-10 mx-10 my-16 max-w-md mx-auto">
           <div className="text-left mb-3">
             <p className="text-lg mb-4">Quest Flavor: <b>{flavor || 'default'}</b></p>
@@ -310,20 +325,6 @@ export const MainScreen: React.FC<MainScreenProps> = ({ onLocationChange, onGPSC
         </div>
         </div>
 
-        <div className="relative">
-          <button 
-            className="flex items-center justify-center bg-white text-[#f44928] border-2 border-[#f44928] py-4 px-[90px]"
-            onClick={() => {
-              const cameraInput = document.getElementById('camera-input');
-              if (cameraInput) {
-                cameraInput.click();
-              }
-            }}
-          >
-            <img src="/icons/camera.svg" alt="Camera" className="w-6 h-6 mr-3" />
-            <span className="text-xl tracking-widest">take photo</span>
-          </button>
-        </div>
       </main>
     </>
   );

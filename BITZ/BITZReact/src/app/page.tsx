@@ -60,7 +60,7 @@ export default function Page() {
         <Header menuColor="text-green-500" logoSrc="/logo/bitz_green.svg" />
         
         {/* Make Home component grow to fill available space */}
-        <div className="flex-grow">
+        <div className="flex-grow mt-20">
           <Home />
         </div>
         

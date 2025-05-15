@@ -43,6 +43,10 @@ const QuestExplorer = ({ questId = "XXXXXXXX" }) => {
       });
   }, [questId]);
   
+  const questDataDict = {
+    [currentQuestId]: questData
+  }
+
   // Render the appropriate tab content based on activeTab state
   const renderTabContent = () => {
     switch (activeTab) {

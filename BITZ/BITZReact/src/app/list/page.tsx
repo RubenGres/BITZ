@@ -180,7 +180,7 @@ export default function QuestListPage() {
                     <div className="flex flex-wrap gap-2">
                       {Object.entries(metadata.taxonomic_groups).map(([group, count]) => (
                         <div key={group} className="text-sm bg-green-50 px-2 py-1 rounded-md text-green-700">
-                          {group}: {count}
+                          {group}: {count as number}
                         </div>
                       ))}
                     </div>

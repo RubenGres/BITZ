@@ -96,7 +96,7 @@ export const InfoView: React.FC<InfoViewProps> = ({ uploadedImage, resultDict, o
       <div className="relative z-10 flex flex-col h-full pt-20 pb-20">
         {/* Species Identification */}
         <div className="bg-[#f6f9ec] bg-opacity-90 p-4 mb-10 mr-16" style={greenShadowStyle}>
-          <div className="text-green-800 uppercase font-semibold">Species Identification</div>
+          <div className="text-green-800 uppercase font-semibold">This is probably</div>
           <div className="text-red-500 font-medium">{resultDict?.species_identification?.name || 'Unknown Species'}</div>
           <div className="mt-2 text-gray-700">
             {resultDict?.species_identification?.what_is_it || 'No species information available.'}
@@ -105,7 +105,8 @@ export const InfoView: React.FC<InfoViewProps> = ({ uploadedImage, resultDict, o
 
         {/* Ecological Information */}
         <div className="bg-[#f6f9ec] bg-opacity-90 p-4 mb-10 mr-16" style={greenShadowStyle}>
-          <div className="text-gray-700">
+          <div className="text-green-800 uppercase font-semibold">More info</div>
+          <div className="mt-2 text-gray-700">
             <p>{resultDict?.species_identification?.information || 'No ecological information available.'}</p>
           </div>
         </div>

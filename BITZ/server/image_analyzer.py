@@ -106,11 +106,9 @@ class ImageAnalyzer:
         Returns:
             Dict containing the biodiversity analysis results
         """
-        # print(f"Analyzing image with flavor: {flavor}")
-        # print(self.system_prompts.keys())
-        # print(self.system_prompts[flavor])
-        flavor = "default" if flavor not in self.system_prompts else flavor
-        # print(f"Using flavor: {flavor}")
+
+        # default flavor to "basic" if not found
+        flavor = "basic" if flavor not in self.system_prompts else flavor
 
         try:
             language = "en"  # Default language, adjust as needed
@@ -142,15 +140,11 @@ class ImageAnalyzer:
             response_content = response.choices[0].message.content
             
             try:
-                # First try direct parsing
                 result = json.loads(response_content)
                 
-                # Validate that the result has the expected structure
                 if not all(key in result for key in ["species_identification", "sampling_guidance", "next_target"]):
-                    # If missing required fields, try to extract from the response
                     result = self._extract_json_from_text(response_content)
                 
-                # Store the response in conversation history
                 self.conversation_history.append({
                     "role": "assistant",
                     "content": json.dumps(result)  # Store the parsed result to ensure valid JSON in history
