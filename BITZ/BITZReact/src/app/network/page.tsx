@@ -26,7 +26,7 @@ export default function NetworkPage() {
         }
        
         // Get all quest IDs from the quests object keys
-        const questIds = Object.keys(data.quests).splice(0, 2);
+        const questIds = Object.keys(data.quests);
        
         // If no selectedQuestId is set, use the first one
         if (questIds.length > 0 && !selectedQuestId) {

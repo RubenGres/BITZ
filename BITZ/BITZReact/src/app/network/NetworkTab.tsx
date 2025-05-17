@@ -90,7 +90,7 @@ class Node {
     draw(ctx: CanvasRenderingContext2D) {
         ctx.beginPath();
 
-        const radius = this.selected ? this.size * 1.1 : this.size;
+        const radius = this.selected ? this.size * 1.01 : this.size;
         ctx.arc(this.x, this.y, radius, 0, Math.PI * 2);
 
         if (this.image) {
@@ -295,6 +295,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
     const nodesRef = useRef<Node[]>([]);
     const connectionsRef = useRef<Connection[]>([]);
 
+
     useEffect(() => {
         console.log("Processing quest data");
 
@@ -308,7 +309,10 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
         hasProcessedData.current = true;
 
         // Function to add nodes with delay
-        const addNodesWithDelay = (sortedNodes: Node[]) => {
+        const addNodesWithDelay = (
+            sortedNodes: Node[],
+            onComplete?: () => void
+        ) => {
             setNodes([]); // Clear existing nodes
 
             if (sortedNodes.length === 0) return;
@@ -323,12 +327,14 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
 
                     if (same_species_node) {
                         const older_node_userid = sortedNodes.slice(0, currentIndex).filter(node => node.user_id === new_node.user_id).pop();
-                        const connection = new Connection(same_species_node, older_node_userid, "");
-
+                        
                         same_species_node.update_image(new_node.imageSrc)
-                        older_node_userid.connections.push(connection);
-                        same_species_node.connections.push(connection);
-                        setConnections(prevConnections => [...prevConnections, connection]);
+                        if(older_node_userid) {
+                            const connection = new Connection(same_species_node, older_node_userid, "");
+                            older_node_userid.connections.push(connection);
+                            same_species_node.connections.push(connection);
+                            setConnections(prevConnections => [...prevConnections, connection]);
+                        }
 
                         same_species_node.size += 30;
                     } else {
@@ -339,22 +345,93 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                     currentIndex++;
 
                     // Calculate delay based on timestamps
-                    let delay = 20; // Default delay
+                    let delay = 0; // Default delay
 
                     if (currentIndex < sortedNodes.length) {
                         // Get timestamp of next node
                         const nextTimestamp_ms = sortedNodes[currentIndex].timestamp * 1000;
                         const currentTimestamp_ms = new_node.timestamp * 1000;
                         const timeDiff = nextTimestamp_ms - currentTimestamp_ms;
-                        delay = timeDiff / 100;
+
+                        // 10 times more slown, don't wait more than 1 minute 
+                        delay = Math.min(timeDiff / 10, 60000);
+                        // delay = 20
                     }
 
                     setTimeout(addNextNode, delay);
+                } else if(onComplete) {
+                    onComplete();
                 }
             };
 
             // Start adding nodes
             addNextNode();
+        };
+
+        // Function to remove nodes with delay
+        const removeNodesWithDelay = (
+            nodesToRemove: Node[],
+            onComplete?: () => void
+        ) => {
+            if (nodesToRemove.length === 0) {
+                if (onComplete) onComplete();
+                return;
+            }
+
+            let currentIndex = nodesToRemove.length - 1;
+
+            const removeNextNode = () => {
+                if (currentIndex >= 0) {
+                    const nodeToRemove = nodesToRemove[currentIndex];
+
+                    // Reset size
+                    nodeToRemove.size = 50
+
+                    // First, remove all connections associated with this node
+                    setConnections(prevConnections =>
+                        prevConnections.filter(connection =>
+                            connection.node1 !== nodeToRemove &&
+                            connection.node2 !== nodeToRemove
+                        )
+                    );
+
+                    // Also update the connections array in each connected node
+                    nodesToRemove.forEach(node => {
+                        if (node !== nodeToRemove) {
+                            node.connections = node.connections.filter(
+                                connection =>
+                                    connection.node1 !== nodeToRemove &&
+                                    connection.node2 !== nodeToRemove
+                            );
+                        }
+                    });
+
+                    // Then remove the node itself
+                    setNodes(prevNodes => prevNodes.filter(node => node !== nodeToRemove));
+
+                    currentIndex--;
+
+                    // Calculate delay based on timestamps if available or use default
+                    let delay = 100; // Default delay
+
+                    // if (currentIndex >= 0) {
+                    //     // If we have timestamps, use them to calculate a natural delay
+                    //     const currentTimestamp = nodeToRemove.timestamp || 0;
+                    //     const prevTimestamp = nodesToRemove[currentIndex].timestamp || 0;
+
+                    //     // Use a fraction of the original time difference (just like in addNodesWithDelay)
+                    //     const timeDiff = Math.abs(currentTimestamp - prevTimestamp);
+                    //     delay = 20;
+                    // }
+
+                    setTimeout(removeNextNode, delay);
+                } else if (onComplete) {
+                    onComplete();
+                }
+            };
+
+            // Start removing nodes
+            removeNextNode();
         };
 
         // Process the data from all CSVs
@@ -374,7 +451,14 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
         });
 
         allNodes.sort((a, b) => a.timestamp - b.timestamp);
-        addNodesWithDelay(allNodes);
+
+        function startCycle() {
+            addNodesWithDelay(allNodes, function() {
+                removeNodesWithDelay(allNodes, startCycle);
+            });
+        }
+
+        startCycle();
 
     }, []); // Only depends on questDataDict
 
@@ -606,6 +690,10 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
             const connection = connections[i];
             const nodeA = connection.node1;
             const nodeB = connection.node2;
+
+            if(!nodeA || !nodeB) {
+                continue;
+            }
 
             const dx = nodeB.x - nodeA.x;
             const dy = nodeB.y - nodeA.y;
