@@ -40,7 +40,7 @@ class Node {
     imageSrc: string;
     connections: Connection[];
     id: string;
-    image_filename: string; // Added to store the image filename
+    image_filename: string;
 
     constructor(x: number, y: number, size: number, name: string, scientificName: string, taxonomicGroup: string, imageSrc: string, image_filename: string) {
         this.x = x;
@@ -263,8 +263,6 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, er
     const [panStart, setPanStart] = useState({ x: 0, y: 0 });
     const [zoomLevel, setZoomLevel] = useState(1);
     const [touchDistance, setTouchDistance] = useState(0);
-    const [isTouching, setIsTouching] = useState(false);
-    const [lastPosition, setLastPosition] = useState({ x: 0, y: 0 });
     const [touchCenter, setTouchCenter] = useState({ x: 0, y: 0 });
     const animationRef = useRef<number>(0);
     
@@ -276,6 +274,24 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, er
     // Create a ref to hold the current pan offset and zoom
     const panOffsetRef = useRef({ x: 0, y: 0 });
     const zoomRef = useRef(1);
+
+    // Initialize the network when questData is loaded
+    useEffect(() => {
+        if (questData?.species_data_csv && canvasRef.current) {
+            const canvas = canvasRef.current;
+            if (!canvas) return;
+
+            Papa.parse(questData.species_data_csv, {
+                header: true,
+                dynamicTyping: true,
+                skipEmptyLines: true,
+                complete: (results) => {
+                    const speciesData = results.data as SpeciesRow[];
+                    createNodes(speciesData);
+                }
+            });
+        }
+    }, [questData, questId]);
 
     // Update the refs whenever panOffset or zoom changes
     useEffect(() => {
@@ -296,24 +312,6 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, er
             window.removeEventListener('resize', checkIfMobile);
         };
     }, []);
-
-    // Initialize the network when questData is loaded
-    useEffect(() => {
-        if (questData?.species_data_csv && canvasRef.current) {
-            const canvas = canvasRef.current;
-            if (!canvas) return;
-
-            Papa.parse(questData.species_data_csv, {
-                header: true,
-                dynamicTyping: true,
-                skipEmptyLines: true,
-                complete: (results) => {
-                    const speciesData = results.data as SpeciesRow[];
-                    createNodes(speciesData);
-                }
-            });
-        }
-    }, [questData, questId]);
 
     // Function to find species info from history data
     const findSpeciesInfo = (image_filename: string): SpeciesInfo | null => {
@@ -633,10 +631,10 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, er
     };
 
     const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
-        console.log('Mouse up event');
-        console.log('Selected node:', selectedNode);
-        console.log('Is panning:', isPanning);
-        console.log('Is dragging:', isDragging);
+        // console.log('Mouse up event');
+        // console.log('Selected node:', selectedNode);
+        // console.log('Is panning:', isPanning);
+        // console.log('Is dragging:', isDragging);
         
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -741,7 +739,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, er
 
             if (touchDistance > 0) {
                 const scale = distance / touchDistance;
-                const newZoom = Math.max(0.5, Math.min(3, zoomLevel * scale));
+                const newZoom = Math.max(0.1, Math.min(4, zoomLevel * scale));
                 
                 // Get canvas coordinates for pinch center
                 const canvas = canvasRef.current;
@@ -864,12 +862,6 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, er
         setPanOffset({ x: 0, y: 0 });
     };
 
-    useEffect(() => {
-        if (nodes.length > 0) {
-            createConnections();
-        }
-    }, [nodes]);
-
     // Set canvas size
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -918,10 +910,6 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, er
 
     if (error) {
         return <div className="p-4 text-red-500">Error: {error}</div>;
-    }
-
-    if (!questData?.species_data_csv) {
-        return <div className="p-4">No species data available for network visualization</div>;
     }
 
     return (

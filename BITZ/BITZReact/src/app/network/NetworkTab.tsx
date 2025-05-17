@@ -42,8 +42,12 @@ class Node {
     id: string;
     image_filename: string;
     quest_id: string;
+    user_id: string;
+    species_info: SpeciesInfo;
+    timestamp: number;
+    selected: boolean;
 
-    constructor(x: number, y: number, size: number, name: string, scientificName: string, taxonomicGroup: string, imageSrc: string, image_filename: string, quest_id: string) {
+    constructor(x: number, y: number, size: number, name: string, scientificName: string, taxonomicGroup: string, imageSrc: string, image_filename: string, quest_id: string, user_id: string, species_info: SpeciesInfo, timestamp: number) {
         this.x = x;
         this.y = y;
         this.vx = 0;
@@ -58,6 +62,10 @@ class Node {
         this.id = Date.now().toString() + Math.random();
         this.image_filename = image_filename;
         this.quest_id = quest_id;
+        this.user_id = user_id;
+        this.species_info = species_info;
+        this.timestamp = timestamp;
+        this.selected = false;
 
         // Load image
         if (imageSrc) {
@@ -81,50 +89,54 @@ class Node {
 
     draw(ctx: CanvasRenderingContext2D) {
         ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+
+        const radius = this.selected ? this.size * 1.1 : this.size;
+        ctx.arc(this.x, this.y, radius, 0, Math.PI * 2);
 
         if (this.image) {
             // Create circular clipping
             ctx.save();
-            ctx.clip();
+            ctx.clip(); // Clip to the circle path
 
-            // Draw the image
-            const imageSize = this.size * 2;
-            ctx.drawImage(this.image, this.x - this.size, this.y - this.size, imageSize, imageSize);
-            ctx.restore();
+            // Draw image within the clipped area
+            const imageSize = radius * 2;
+            ctx.drawImage(this.image, this.x - radius, this.y - radius, imageSize, imageSize);
+            ctx.restore(); // Restore context after clipping and image drawing
 
-            // Draw circle border
+            // Draw stroke around the circle
             ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2;
+            ctx.lineWidth = this.selected ? 10 : 2;
             ctx.stroke();
         } else {
             // Default appearance
-            ctx.fillStyle = '#4caf4f';
-            ctx.fill();
             ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2;
+            ctx.fillStyle = '#000000';
+            ctx.lineWidth = this.selected ? 10 : 2;
             ctx.stroke();
+            ctx.fill();
         }
 
         // Draw label
-        ctx.fillStyle = '#000';
+        ctx.fillStyle = '#fff';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
         ctx.font = '12px Arial';
-
-        // Background for text
-        const textWidth = ctx.measureText(this.name).width;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.fillRect(this.x - textWidth / 2 - 5, this.y + this.size + 5, textWidth + 10, 15);
-
-        // Draw text
-        ctx.fillStyle = '#000';
-        ctx.fillText(this.name, this.x, this.y + this.size + 10);
+        ctx.fillText(this.name, this.x, this.y + radius + 10);
     }
 
     contains(x: number, y: number): boolean {
         const distance = Math.sqrt((this.x - x) ** 2 + (this.y - y) ** 2);
         return distance <= this.size;
+    }
+
+    update_image(imageSrc: string) {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = imageSrc;
+        this.imageSrc = imageSrc;
+        img.onload = () => {
+            this.image = img;
+        };
     }
 }
 
@@ -162,7 +174,7 @@ class Connection {
         ctx.moveTo(startX, startY);
         ctx.lineTo(endX, endY);
         ctx.strokeStyle = '#888';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 10;
         ctx.stroke();
 
         // Draw text
@@ -202,9 +214,9 @@ const SpeciesInfoPanel = ({ questId, species, isOpen, onClose, isMobile = false 
     if (!species) return null;
 
     return (
-        <div 
-            className={`fixed bg-white shadow-xl transition-all duration-300 ease-in-out z-50 
-                ${isMobile 
+        <div
+            className={`fixed bg-black text-white shadow-xl transition-all duration-300 ease-in-out z-50 border-l border-white
+                ${isMobile
                     ? `bottom-0 left-0 right-0 rounded-t-xl ${isOpen ? 'h-4/5' : 'h-0'}`
                     : `top-0 right-0 h-full ${isOpen ? 'w-96' : 'w-0'}`
                 }`}
@@ -212,11 +224,11 @@ const SpeciesInfoPanel = ({ questId, species, isOpen, onClose, isMobile = false 
             {isOpen && (
                 <div className="flex flex-col h-full">
                     {/* Header with close button */}
-                    <div className="flex justify-between items-center p-4 border-b">
+                    <div className="flex justify-between items-center p-4 border-b border-white">
                         <h2 className="text-xl font-bold truncate">{species.name}</h2>
-                        <button 
-                            onClick={onClose} 
-                            className="p-1 rounded-full hover:bg-gray-100"
+                        <button
+                            onClick={onClose}
+                            className="p-1 rounded-full hover:bg-gray-800 text-white"
                             aria-label="Close panel"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -224,27 +236,27 @@ const SpeciesInfoPanel = ({ questId, species, isOpen, onClose, isMobile = false 
                             </svg>
                         </button>
                     </div>
-                    
+
                     {/* Panel content */}
                     <div className="flex-1 overflow-y-auto p-4">
                         {species.image_filename && (
                             <div className="mb-4">
-                                <img 
-                                    src={`${API_URL}/explore/images/${questId}/${species.image_filename}`} 
+                                <img
+                                    src={`${API_URL}/explore/images/${questId}/${species.image_filename}`}
                                     alt={species.name}
-                                    className="w-full h-48 object-cover rounded-lg mb-2"
+                                    className="w-full object-cover rounded-lg mb-2"
                                 />
                             </div>
                         )}
-                        
+
                         <div className="mb-4">
                             <h3 className="font-semibold text-lg mb-1">Description</h3>
-                            <p className="text-gray-800">{species.what_is_it}</p>
+                            <p className="text-white">{species.what_is_it}</p>
                         </div>
-                        
+
                         <div className="mb-4">
                             <h3 className="font-semibold text-lg mb-1">Additional Information</h3>
-                            <p className="text-gray-800">{species.information}</p>
+                            <p className="text-white">{species.information}</p>
                         </div>
                     </div>
                 </div>
@@ -261,16 +273,16 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
     const [isDragging, setIsDragging] = useState(false);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
     const [isPanning, setIsPanning] = useState(false);
-    const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+    const [panOffset, setPanOffset] = useState({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
     const [panStart, setPanStart] = useState({ x: 0, y: 0 });
-    const [zoomLevel, setZoomLevel] = useState(1);
+    const [zoomLevel, setZoomLevel] = useState(0.5);
     const [touchDistance, setTouchDistance] = useState(0);
-    const [isTouching, setIsTouching] = useState(false);
-    const [lastPosition, setLastPosition] = useState({ x: 0, y: 0 });
     const [touchCenter, setTouchCenter] = useState({ x: 0, y: 0 });
-    
+
     const animationRef = useRef<number>(0);
-    
+    const isAnimationRunningRef = useRef<boolean>(false);
+    const hasProcessedData = useRef(false);
+
     // State for the sliding info panel
     const [selectedSpecies, setSelectedSpecies] = useState<SpeciesInfo | null>(null);
     const [questId, setQuestId] = useState("")
@@ -280,92 +292,170 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
     // Create a ref to hold the current pan offset and zoom
     const panOffsetRef = useRef({ x: 0, y: 0 });
     const zoomRef = useRef(1);
+    const nodesRef = useRef<Node[]>([]);
+    const connectionsRef = useRef<Connection[]>([]);
 
-    // Process CSV data when questData is available
     useEffect(() => {
-        let allNodes: Node[] = [];
-        Object.entries(questDataDict).forEach(([questId, questData]) => {
-            if (questData?.species_data_csv && canvasRef.current) {
-                const canvas = canvasRef.current;
-                if (!canvas) return;
+        console.log("Processing quest data");
 
-                Papa.parse(questData.species_data_csv, {
-                    header: true,
-                    dynamicTyping: true,
-                    skipEmptyLines: true,
-                    complete: (results) => {
-                        const speciesData = results.data as SpeciesRow[];
-                        const newNodes = createNodes(speciesData, questId);
-                        if (newNodes) {
-                            allNodes = [...allNodes, ...newNodes];
-                        }
+        // Create temporary array to hold all nodes before sorting
+        let allNodes: Node[] = [];
+
+        if (hasProcessedData.current) {
+            return;
+        }
+
+        hasProcessedData.current = true;
+
+        // Function to add nodes with delay
+        const addNodesWithDelay = (sortedNodes: Node[]) => {
+            setNodes([]); // Clear existing nodes
+
+            if (sortedNodes.length === 0) return;
+
+            let currentIndex = 0;
+
+            const addNextNode = () => {
+                if (currentIndex < sortedNodes.length) {
+                    const new_node = sortedNodes[currentIndex];
+
+                    const same_species_node = checkForExistingNode(new_node);
+
+                    if (same_species_node) {
+                        const older_node_userid = sortedNodes.slice(0, currentIndex).filter(node => node.user_id === new_node.user_id).pop();
+                        const connection = new Connection(same_species_node, older_node_userid, "");
+
+                        same_species_node.update_image(new_node.imageSrc)
+                        older_node_userid.connections.push(connection);
+                        same_species_node.connections.push(connection);
+                        setConnections(prevConnections => [...prevConnections, connection]);
+
+                        same_species_node.size += 30;
+                    } else {
+                        addConnectionsUserId(new_node);
+                        setNodes(prevNodes => [...prevNodes, new_node]);
                     }
-                });
-            }
+
+                    currentIndex++;
+
+                    // Calculate delay based on timestamps
+                    let delay = 20; // Default delay
+
+                    if (currentIndex < sortedNodes.length) {
+                        // Get timestamp of next node
+                        const nextTimestamp_ms = sortedNodes[currentIndex].timestamp * 1000;
+                        const currentTimestamp_ms = new_node.timestamp * 1000;
+                        const timeDiff = nextTimestamp_ms - currentTimestamp_ms;
+                        delay = timeDiff / 100;
+                    }
+
+                    setTimeout(addNextNode, delay);
+                }
+            };
+
+            // Start adding nodes
+            addNextNode();
+        };
+
+        // Process the data from all CSVs
+        Object.entries(questDataDict).forEach(([questId, questData]) => {
+            Papa.parse(questData.species_data_csv, {
+                header: true,
+                dynamicTyping: true,
+                skipEmptyLines: true,
+                complete: (results) => {
+                    const speciesData = results.data as SpeciesRow[];
+                    const newNodes = createNodes(speciesData, questId);
+                    if (newNodes) {
+                        allNodes = [...allNodes, ...newNodes];
+                    }
+                }
+            });
         });
 
-        console.log('All nodes count:', allNodes.length);
+        allNodes.sort((a, b) => a.timestamp - b.timestamp);
+        addNodesWithDelay(allNodes);
 
-        const connections = createConnections(allNodes);
+    }, []); // Only depends on questDataDict
 
-        console.log('Connections count:', connections.length);
+    useEffect(() => {
+        startAnimation();
 
-        startAnimation(allNodes, connections);
-
-    }, [questDataDict]);
+        // Cleanup animation on unmount
+        return () => {
+            isAnimationRunningRef.current = false;
+            if (animationRef.current) {
+                cancelAnimationFrame(animationRef.current);
+            }
+        };
+    }, []);
 
     useEffect(() => {
         panOffsetRef.current = panOffset;
         zoomRef.current = zoomLevel;
     }, [panOffset, zoomLevel]);
 
+    useEffect(() => {
+        nodesRef.current = nodes;
+    }, [nodes]);
+
+    useEffect(() => {
+        connectionsRef.current = connections;
+    }, [connections]);
+
     // Check for mobile device on mount
     useEffect(() => {
         const checkIfMobile = () => {
             setIsMobile(window.innerWidth < 768);
         };
-        
+
         checkIfMobile();
         window.addEventListener('resize', checkIfMobile);
-        
+
         return () => {
             window.removeEventListener('resize', checkIfMobile);
         };
     }, []);
 
-    const findSpeciesInfo = (image_filename: string, quest_id: string): SpeciesInfo | null => {
-        const questData = questDataDict[quest_id]
-        
+    const findInfo = (image_filename: string, quest_id: string) => {
+        const questData = questDataDict[quest_id];
+
         if (!questData?.history || !image_filename) {
             console.warn('No history data or image filename');
             return null;
         }
-        
-        // Debug: Log all image filenames in history
-        const historyFiles = questData.history.map(item => item.image_filename);
 
-        const historyItem = questData.history.find(item => 
+        let user_id = questData.user_id;
+
+        const historyItem = questData.history.find(item =>
             item.image_filename === image_filename
         );
-        
+
         if (!historyItem || !historyItem.assistant) {
             console.warn('No matching history item or assistant data');
             return null;
         }
-        
+
+        let timestamp = historyItem.timestamp;
+
+        let species_info: SpeciesInfo = {
+            name: "Default Name",
+            what_is_it: "Description",
+            information: "More info",
+            image_filename: historyItem.image_filename,
+            image_location: historyItem.image_location
+        };;
+
         try {
-            // Fix the JSON format by replacing single quotes with double quotes
-            // This is necessary because the data appears to be using JavaScript object literal syntax
-            // rather than strict JSON format
             let fixedJsonStr = historyItem.assistant
                 .replace(/'/g, '"')
                 .replace(/\\"/g, '\\"');
-            
+
             // Parse the fixed JSON string
             const assistantData = JSON.parse(fixedJsonStr);
 
             if (assistantData.species_identification) {
-                return {
+                species_info = {
                     name: assistantData.species_identification.name,
                     what_is_it: assistantData.species_identification.what_is_it,
                     information: assistantData.species_identification.information,
@@ -376,40 +466,49 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                 console.warn('No species_identification field in assistant data');
             }
         } catch (e) {
-            console.error("Error parsing assistant data:", e);
-            console.error("Error details:", e.message);
-            console.log("Full assistant data:", historyItem.assistant);
+            // console.error("Error parsing assistant data:", e);
+            // console.error("Error details:", e.message);
+            // console.log("Full assistant data:", historyItem.assistant);
         }
-        
-        return null;
+
+        return {
+            species_info: species_info,
+            timestamp: timestamp,
+            user_id: user_id
+        };
     };
 
     const createNodes = (speciesData: SpeciesRow[], questId: string) => {
         console.log('Creating nodes for quest id:', questId);
         console.log('Species data len:', speciesData.length);
-        
+
         const canvas = canvasRef.current;
         if (!canvas) return;
 
         const newNodes: Node[] = [];
-        const width = canvas.width;
-        const height = canvas.height;
+        const width = canvas.clientWidth;
+        const height = canvas.clientHeight;
 
         speciesData.forEach((species, index) => {
-            const angle = (index / speciesData.length) * Math.PI * 2;
+            const angle = Math.random() * Math.PI * 2;
             const radius = Math.min(width, height) * 0.3;
-            const x = width / 2 + radius * Math.cos(angle);
-            const y = height / 2 + radius * Math.sin(angle);
-            
+
+            const x = 0
+            const y = 0
+
+            console.log("DEFAUL", x, y)
+
             const imageSrc = species.image_name ? `${API_URL}/explore/images/${questId}/${species.image_name}` : '';
-            
+
             let imageFilename = species.image_name || '';
-            
+
             // If the image filename contains a path, extract just the filename part
             if (imageFilename.includes('/')) {
                 imageFilename = imageFilename.split('/').pop() || '';
             }
-            
+
+            const info = findInfo(imageFilename, questId)
+
             const node = new Node(
                 x,
                 y,
@@ -419,48 +518,76 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                 species['taxonomic_group'] || '',
                 imageSrc,
                 imageFilename,
-                questId
+                questId,
+                info['user_id'],
+                info['species_info'],
+                info['timestamp']
             );
-            
+
             newNodes.push(node);
         });
 
         return newNodes;
     };
 
-    // Updated createConnections function with parameter
-    const createConnections = (nodesToConnect: Node[] = nodes) => {
-        // Create connections based on taxonomic groups or just connect all for now
-        const newConnections: Connection[] = [];
+    const checkForExistingNode = (new_node: Node) => {
+        const currentNodes = nodesRef.current
 
-        for (let i = 0; i < nodesToConnect.length; i++) {
-            for (let j = i + 1; j < nodesToConnect.length; j++) {
-                if (nodesToConnect[i].taxonomicGroup === nodesToConnect[j].taxonomicGroup && nodesToConnect[i].taxonomicGroup) {
-                    const connection = new Connection(nodesToConnect[i], nodesToConnect[j], nodesToConnect[i].taxonomicGroup);
-                    newConnections.push(connection);
-                    nodesToConnect[i].connections.push(connection);
-                    nodesToConnect[j].connections.push(connection);
-                }
+        const existingNode = currentNodes.find(node => node.name == new_node.name);
+
+        return existingNode
+    };
+
+    // Updated createConnections function with parameter
+    const addConnectionsUserId = (new_node: Node) => {
+        const newConnections: Connection[] = [];
+        const currentNodes = nodesRef.current;
+
+        for (let i = currentNodes.length - 1; i >= 0; i--) {
+            if (currentNodes[i].user_id == new_node.user_id) {
+                const connection = new Connection(currentNodes[i], new_node, "");
+                newConnections.push(connection);
+
+                const randomAngle = Math.random() * 2 * Math.PI;
+
+                // Calculate the x and y coordinates on the circle
+                new_node.x = currentNodes[i].x + (new_node.size * Math.cos(randomAngle));
+                new_node.y = currentNodes[i].y + (new_node.size * Math.sin(randomAngle));
+                currentNodes[i].connections.push(connection);
+
+                new_node.connections.push(connection);
+
+                break;
             }
         }
 
+        setConnections(prevConnections => [...prevConnections, ...newConnections]);
         return newConnections
     };
 
     const applyForces = (nodes, connections) => {
-        const repulsionStrength = 0.02;
+        const repulsionStrength = 0.002;
         const attractionStrength = 0.005;
 
         // Apply repulsive forces between nodes
+        // Use squared distances to avoid square root calculations
         nodes.forEach((nodeA, i) => {
-            nodes.slice(i + 1).forEach(nodeB => {
+            for (let j = i + 1; j < nodes.length; j++) {
+                const nodeB = nodes[j];
+
                 const dx = nodeB.x - nodeA.x;
                 const dy = nodeB.y - nodeA.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
+                const distanceSquared = dx * dx + dy * dy;
 
                 const minDistance = nodeA.size + nodeB.size + 50;
+                const minDistanceSquared = minDistance * minDistance;
 
-                if (distance < minDistance) {
+                if (distanceSquared < minDistanceSquared) {
+                    // Only calculate square root once when needed
+                    let distance = Math.sqrt(distanceSquared);
+                    if (distance == 0) {
+                        distance = 0.001
+                    }
                     const dirX = dx / distance;
                     const dirY = dy / distance;
 
@@ -471,47 +598,64 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                     nodeA.vx -= dirX * repulsionForce;
                     nodeA.vy -= dirY * repulsionForce;
                 }
-            });
+            }
         });
 
-        // Apply attractive forces for connected nodes
-        connections.forEach(connection => {
+        // Apply attractive forces for connected nodes with optimization
+        for (let i = 0; i < connections.length; i++) {
+            const connection = connections[i];
             const nodeA = connection.node1;
             const nodeB = connection.node2;
 
             const dx = nodeB.x - nodeA.x;
             const dy = nodeB.y - nodeA.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+            const distanceSquared = dx * dx + dy * dy;
 
             const idealDistance = nodeA.size + nodeB.size + 100;
-            const diff = distance - idealDistance;
+            const idealDistanceSquared = idealDistance * idealDistance;
 
-            if (Math.abs(diff) > 1) {
-                const dirX = dx / distance;
-                const dirY = dy / distance;
+            // Only calculate exact distance if we need to apply a force
+            if (Math.abs(distanceSquared - idealDistanceSquared) > idealDistance) {
+                const distance = Math.sqrt(distanceSquared);
+                const diff = distance - idealDistance;
 
-                const attractionForce = attractionStrength * diff;
+                if (Math.abs(diff) > 1) {
+                    const dirX = dx / distance;
+                    const dirY = dy / distance;
 
-                nodeB.vx -= dirX * attractionForce;
-                nodeB.vy -= dirY * attractionForce;
-                nodeA.vx += dirX * attractionForce;
-                nodeA.vy += dirY * attractionForce;
+                    const attractionForce = attractionStrength * diff;
+
+                    nodeB.vx -= dirX * attractionForce;
+                    nodeB.vy -= dirY * attractionForce;
+                    nodeA.vx += dirX * attractionForce;
+                    nodeA.vy += dirY * attractionForce;
+                }
             }
-        });
+        }
 
-        // Update node positions
-        nodes.forEach(node => {
+        // Update node positions (using regular for loop)
+        for (let i = 0; i < nodes.length; i++) {
+            const node = nodes[i];
             if (node !== selectedNode || !isDragging) {
                 node.update();
             }
-        });
+        }
     };
 
-    const startAnimation = (nodes, connections) => {
+    const startAnimation = () => {
+        // Only start if not already running
+        if (isAnimationRunningRef.current) return;
+
+        isAnimationRunningRef.current = true;
+        console.log("Starting animation loop");
+
         const animate = () => {
+            const currentNodes = nodesRef.current;
+            const currentConnections = connectionsRef.current;
+
             const canvas = canvasRef.current;
             if (!canvas) return;
-            
+
             const ctx = canvas.getContext('2d');
             if (!ctx) {
                 console.error('Canvas context not available');
@@ -519,22 +663,22 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
             }
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillRect(0, 0, canvas.width, canvas.height)
 
             ctx.save();
 
-            // Use the ref values instead of the captured state values
             ctx.translate(panOffsetRef.current.x, panOffsetRef.current.y);
             ctx.scale(zoomRef.current, zoomRef.current);
 
-            applyForces(nodes, connections);
+            applyForces(currentNodes, currentConnections);
 
-            if(connections) {
-                connections.forEach(connection => connection.draw(ctx));
+            if (currentConnections) {
+                currentConnections.forEach(connection => connection.draw(ctx));
             }
 
             // Draw nodes
-            if(nodes) {
-                nodes.forEach(node => node.draw(ctx));
+            if (currentNodes) {
+                currentNodes.forEach(node => node.draw(ctx));
             }
 
             ctx.restore();
@@ -542,17 +686,15 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
             animationRef.current = requestAnimationFrame(animate);
         };
 
-        setNodes(nodes);
-        setConnections(connections);
         animate();
     };
 
     // Handle node click to show info panel
     const handleNodeClick = (node: Node) => {
         console.log('Node clicked:', node.quest_id);
-        
-        // const speciesInfo = findSpeciesInfo(node.image_filename, node.quest_id);
-        const speciesInfo = null;
+
+        const speciesInfo = node.species_info
+        //const speciesInfo = null;
 
         if (speciesInfo) {
             setQuestId(node.quest_id);
@@ -596,6 +738,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
         }
 
         if (clickedNode) {
+            clickedNode.selected = true;
             setSelectedNode(clickedNode);
             setIsPanning(false);
             setIsDragging(true);
@@ -622,7 +765,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
             selectedNode.vx = 0;
             selectedNode.vy = 0;
         }
-        
+
         if (isPanning) {
             setPanOffset(prev => ({
                 x: prev.x + (e.clientX - panStart.x),
@@ -632,22 +775,28 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
         }
     };
 
-    const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {      
+    const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-        
+
         const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
-        
-        if (selectedNode && !isPanning) {
-            var hasMovedSinceClick = (dragOffset.x !== (selectedNode.x - x)) || (dragOffset.y !== (selectedNode.y - y));
+
+        if (selectedNode) {
+            const tolerance = 10;
+            let hasMovedSinceClick = Math.abs(dragOffset.x - (selectedNode.x - x)) > tolerance ||
+                Math.abs(dragOffset.y - (selectedNode.y - y)) > tolerance;
             if (!hasMovedSinceClick) {
                 handleNodeClick(selectedNode);
             }
         }
-        
+
         setIsDragging(false);
         setIsPanning(false);
-        setSelectedNode(null);
+
+        if (selectedNode) {
+            selectedNode.selected = false;
+            setSelectedNode(null);
+        }
     };
 
     // Touch event handlers
@@ -672,6 +821,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
             }
 
             if (clickedNode) {
+                clickedNode.selected = true;
                 setSelectedNode(clickedNode);
                 setIsPanning(false);
                 setIsDragging(true);
@@ -691,11 +841,11 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                 Math.pow(touch2.clientX - touch1.clientX, 2) +
                 Math.pow(touch2.clientY - touch1.clientY, 2)
             );
-            
+
             // Calculate center point between the two touches
             const centerX = (touch1.clientX + touch2.clientX) / 2;
             const centerY = (touch1.clientY + touch2.clientY) / 2;
-            
+
             setTouchDistance(distance);
             setTouchCenter({ x: centerX, y: centerY });
             setIsPanning(false);
@@ -711,7 +861,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
 
         if (touches.length === 1) {
             const touch = touches[0];
-            
+
             if (isDragging && selectedNode) {
                 const { x, y } = getCanvasCoordinates(touch.clientX, touch.clientY);
                 selectedNode.x = x + dragOffset.x;
@@ -737,21 +887,21 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
             if (touchDistance > 0) {
                 const scale = distance / touchDistance;
                 const newZoom = Math.max(0.1, Math.min(4, zoomLevel * scale));
-                
+
                 // Get canvas coordinates for pinch center
                 const canvas = canvasRef.current;
                 if (canvas) {
                     const rect = canvas.getBoundingClientRect();
-                    
+
                     // Calculate center point relative to canvas
                     const pinchCenterX = touchCenter.x - rect.left;
                     const pinchCenterY = touchCenter.y - rect.top;
-                    
+
                     // Calculate new pan offset to zoom from pinch center
                     const scaleChange = newZoom / zoomLevel;
                     const newPanOffsetX = pinchCenterX - (pinchCenterX - panOffset.x) * scaleChange;
                     const newPanOffsetY = pinchCenterY - (pinchCenterY - panOffset.y) * scaleChange;
-                    
+
                     setZoomLevel(newZoom);
                     setPanOffset({
                         x: newPanOffsetX,
@@ -760,7 +910,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                 }
             }
             setTouchDistance(distance);
-            
+
             // Update touch center for next frame
             const centerX = (touch1.clientX + touch2.clientX) / 2;
             const centerY = (touch1.clientY + touch2.clientY) / 2;
@@ -773,11 +923,14 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
         if (selectedNode && !isPanning && !isDragging) {
             handleNodeClick(selectedNode);
         }
-        
+
         setIsTouching(false);
         setIsDragging(false);
         setIsPanning(false);
-        setSelectedNode(null);
+        if (selectedNode) {
+            selectedNode.selected = false;
+            setSelectedNode(null);
+        }
         setTouchDistance(0);
         setTouchCenter({ x: 0, y: 0 });
     };
@@ -788,20 +941,20 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
         if (!canvas) return;
 
         const rect = canvas.getBoundingClientRect();
-        
+
         // Get mouse position relative to canvas
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
-        
+
         // Calculate zoom factor
         const delta = e.deltaY * -0.01;
-        const newZoom = Math.max(0.1, Math.min(4, zoomLevel + delta));
+        const newZoom = Math.max(0.5, Math.min(3, zoomLevel + delta));
         const scaleChange = newZoom / zoomLevel;
-        
+
         // Calculate new pan offset to zoom from mouse position
         const newPanOffsetX = mouseX - (mouseX - panOffset.x) * scaleChange;
         const newPanOffsetY = mouseY - (mouseY - panOffset.y) * scaleChange;
-        
+
         setZoomLevel(newZoom);
         setPanOffset({
             x: newPanOffsetX,
@@ -813,18 +966,18 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
     const handleZoomIn = () => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-        
+
         // Calculate center of canvas
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
-        
+
         const newZoom = Math.min(3, zoomLevel * 1.2);
         const scaleChange = newZoom / zoomLevel;
-        
+
         // Zoom from center
         const newPanOffsetX = centerX - (centerX - panOffset.x) * scaleChange;
         const newPanOffsetY = centerY - (centerY - panOffset.y) * scaleChange;
-        
+
         setZoomLevel(newZoom);
         setPanOffset({
             x: newPanOffsetX,
@@ -835,18 +988,18 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
     const handleZoomOut = () => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-        
+
         // Calculate center of canvas
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
-        
-        const newZoom = Math.max(0.1, zoomLevel * 0.8);
+
+        const newZoom = Math.max(0.5, zoomLevel * 0.8);
         const scaleChange = newZoom / zoomLevel;
-        
+
         // Zoom from center
         const newPanOffsetX = centerX - (centerX - panOffset.x) * scaleChange;
         const newPanOffsetY = centerY - (centerY - panOffset.y) * scaleChange;
-        
+
         setZoomLevel(newZoom);
         setPanOffset({
             x: newPanOffsetX,
@@ -872,12 +1025,12 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
             // Set canvas size to match container
             canvas.width = parent.clientWidth;
             canvas.height = parent.clientHeight;
-            
+
             // If we have nodes, reinitialize the layout
             if (nodes.length > 0) {
                 const width = canvas.width;
                 const height = canvas.height;
-                
+
                 nodes.forEach((node, index) => {
                     const angle = (index / nodes.length) * Math.PI * 2;
                     const radius = Math.min(width, height) * 0.3;
@@ -890,7 +1043,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
         return () => window.removeEventListener('resize', resizeCanvas);
-    }, [nodes]);
+    }, []);
 
     // Cleanup animation on unmount
     useEffect(() => {
@@ -910,12 +1063,12 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
     }
 
     return (
-        <div className="flex flex-col h-[70vh]">
+        <div className="flex flex-col h-full w-full"> {/* Changed from h-[70vh] to h-full */}
             <div className="flex-1 relative overflow-hidden">
                 <canvas
                     ref={canvasRef}
                     className="block"
-                    style={{ 
+                    style={{
                         cursor: isPanning ? 'grabbing' : isDragging ? 'grabbing' : 'grab',
                         width: '100%',
                         height: '100%',
@@ -931,9 +1084,9 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                     onTouchCancel={handleTouchEnd}
                     onWheel={handleWheel}
                 />
-                
+
                 {/* Zoom controls */}
-                <div className="absolute top-4 right-4 flex flex-col gap-2 bg-white rounded-lg shadow-lg p-2">
+                {/* <div className="absolute top-4 right-4 flex flex-col gap-2 bg-white rounded-lg shadow-lg p-2">
                     <button
                         onClick={handleZoomIn}
                         className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100"
@@ -961,15 +1114,15 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
                     </button>
-                </div>
+                </div> */}
 
                 {/* Zoom level indicator */}
                 <div className="absolute bottom-4 right-4 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-sm">
                     {Math.round(zoomLevel * 100)}%
                 </div>
-                
+
                 {/* Species Info Panel */}
-                <SpeciesInfoPanel 
+                <SpeciesInfoPanel
                     questId={questId}
                     species={selectedSpecies}
                     isOpen={isPanelOpen}
