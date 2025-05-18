@@ -1,6 +1,27 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Papa from 'papaparse';
+import JSON5 from 'json5';
 import { API_URL } from '@/app/Constants';
+
+const global_parameters = {
+    delay_add_max_ms: 3e3, // don't wait for more than 3 seconds 
+    delay_add_min_ms: 2, // wait at least 2ms
+    delay_rem_ms: 20,
+    real_time_scaling: 100, // 100x the speed
+    spawning_node_radius: 0.3, // factor of the size of the screen
+    delay_wait_for_rem_ms: 120e3, // 2 minutes
+    delay_wait_for_add_ms: 5e3, // 3 seconds
+    attraction_force: 0.02,
+    repulsion_force: 0.005,
+    node_size_min_px: 50,
+    node_size_max_px: 100000,
+    node_scaling_factor: 1.1,
+    node_damping: 0.95,
+    node_border_radius_px: 2,
+    node_selected_border_radius_px: 10,
+    node_label_font: '12px Arial',
+    connection_width: 10,
+}
 
 interface SpeciesRow {
     'image_name': string;
@@ -24,7 +45,7 @@ interface SpeciesInfo {
     what_is_it: string;
     information: string;
     image_filename: string;
-    image_location?: string;
+    image_src: string;
 }
 
 class Node {
@@ -46,6 +67,7 @@ class Node {
     species_info: SpeciesInfo;
     timestamp: number;
     selected: boolean;
+    imageLoaded: boolean;
 
     constructor(x: number, y: number, size: number, name: string, scientificName: string, taxonomicGroup: string, imageSrc: string, image_filename: string, quest_id: string, user_id: string, species_info: SpeciesInfo, timestamp: number) {
         this.x = x;
@@ -66,16 +88,7 @@ class Node {
         this.species_info = species_info;
         this.timestamp = timestamp;
         this.selected = false;
-
-        // Load image
-        if (imageSrc) {
-            const img = new Image();
-            img.crossOrigin = "anonymous";
-            img.src = imageSrc;
-            img.onload = () => {
-                this.image = img;
-            };
-        }
+        this.imageLoaded = false;
     }
 
     update() {
@@ -83,14 +96,19 @@ class Node {
         this.y += this.vy;
 
         // Damping
-        this.vx *= 0.95;
-        this.vy *= 0.95;
+        this.vx *= global_parameters.node_damping;
+        this.vy *= global_parameters.node_damping;
     }
 
     draw(ctx: CanvasRenderingContext2D) {
+        // Load the image on first draw
+        if (!this.imageLoaded && this.imageSrc) {
+            this.loadImage();
+        }
+
         ctx.beginPath();
 
-        const radius = this.selected ? this.size * 1.01 : this.size;
+        const radius = this.selected ? this.size * global_parameters.node_scaling_factor : this.size;
         ctx.arc(this.x, this.y, radius, 0, Math.PI * 2);
 
         if (this.image) {
@@ -105,13 +123,13 @@ class Node {
 
             // Draw stroke around the circle
             ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = this.selected ? 10 : 2;
+            ctx.lineWidth = this.selected ? global_parameters.node_selected_border_radius_px : global_parameters.node_border_radius_px;
             ctx.stroke();
         } else {
             // Default appearance
             ctx.strokeStyle = '#ffffff';
             ctx.fillStyle = '#000000';
-            ctx.lineWidth = this.selected ? 10 : 2;
+            ctx.lineWidth = this.selected ? global_parameters.node_selected_border_radius_px : global_parameters.node_border_radius_px;
             ctx.stroke();
             ctx.fill();
         }
@@ -120,7 +138,7 @@ class Node {
         ctx.fillStyle = '#fff';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
-        ctx.font = '12px Arial';
+        ctx.font = global_parameters.node_label_font;
         ctx.fillText(this.name, this.x, this.y + radius + 10);
     }
 
@@ -129,14 +147,20 @@ class Node {
         return distance <= this.size;
     }
 
-    update_image(imageSrc: string) {
+    loadImage() {
         const img = new Image();
         img.crossOrigin = "anonymous";
-        img.src = imageSrc;
-        this.imageSrc = imageSrc;
+        img.src = this.imageSrc;
         img.onload = () => {
             this.image = img;
         };
+        this.imageLoaded = true; // Mark as loaded to prevent multiple load attempts
+    }
+
+    update_image(imageSrc: string) {
+        this.imageSrc = imageSrc;
+        this.image = null;
+        this.imageLoaded = false; // Reset flag to trigger load on next draw
     }
 }
 
@@ -174,7 +198,7 @@ class Connection {
         ctx.moveTo(startX, startY);
         ctx.lineTo(endX, endY);
         ctx.strokeStyle = '#888';
-        ctx.lineWidth = 10;
+        ctx.lineWidth = global_parameters.connection_width;
         ctx.stroke();
 
         // Draw text
@@ -209,10 +233,18 @@ class Connection {
     }
 }
 
-// Species Info Panel Component
-const SpeciesInfoPanel = ({ questId, species, isOpen, onClose, isMobile = false }) => {
-    if (!species) return null;
+interface SpeciesInfoProps {
+    name: string;
+    description: string;
+    information: string;
+    image_src: string;
+    isOpen: boolean;
+    onClose: () => void;
+    isMobile?: boolean;
+}
 
+// Species Info Panel Component
+const SpeciesInfoPanel = ({ name, description, information, image_src, isOpen, onClose, isMobile = false }: SpeciesInfoProps) => {
     return (
         <div
             className={`fixed bg-black text-white shadow-xl transition-all duration-300 ease-in-out z-50 border-l border-white
@@ -225,7 +257,7 @@ const SpeciesInfoPanel = ({ questId, species, isOpen, onClose, isMobile = false 
                 <div className="flex flex-col h-full">
                     {/* Header with close button */}
                     <div className="flex justify-between items-center p-4 border-b border-white">
-                        <h2 className="text-xl font-bold truncate">{species.name}</h2>
+                        <h2 className="text-xl font-bold truncate">{name}</h2>
                         <button
                             onClick={onClose}
                             className="p-1 rounded-full hover:bg-gray-800 text-white"
@@ -239,11 +271,11 @@ const SpeciesInfoPanel = ({ questId, species, isOpen, onClose, isMobile = false 
 
                     {/* Panel content */}
                     <div className="flex-1 overflow-y-auto p-4">
-                        {species.image_filename && (
+                        {image_src && (
                             <div className="mb-4">
                                 <img
-                                    src={`${API_URL}/explore/images/${questId}/${species.image_filename}`}
-                                    alt={species.name}
+                                    src={image_src}
+                                    alt={name}
                                     className="w-full object-cover rounded-lg mb-2"
                                 />
                             </div>
@@ -251,12 +283,12 @@ const SpeciesInfoPanel = ({ questId, species, isOpen, onClose, isMobile = false 
 
                         <div className="mb-4">
                             <h3 className="font-semibold text-lg mb-1">Description</h3>
-                            <p className="text-white">{species.what_is_it}</p>
+                            <p className="text-white">{description}</p>
                         </div>
 
                         <div className="mb-4">
                             <h3 className="font-semibold text-lg mb-1">Additional Information</h3>
-                            <p className="text-white">{species.information}</p>
+                            <p className="text-white">{information}</p>
                         </div>
                     </div>
                 </div>
@@ -284,7 +316,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
     const hasProcessedData = useRef(false);
 
     // State for the sliding info panel
-    const [selectedSpecies, setSelectedSpecies] = useState<SpeciesInfo | null>(null);
+    const [selectedSpeciesInfo, setselectedSpeciesInfo] = useState<SpeciesInfo | null>(null);
     const [questId, setQuestId] = useState("")
     const [isPanelOpen, setIsPanelOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
@@ -295,12 +327,9 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
     const nodesRef = useRef<Node[]>([]);
     const connectionsRef = useRef<Connection[]>([]);
 
-
     useEffect(() => {
-        console.log("Processing quest data");
-
-        // Create temporary array to hold all nodes before sorting
         let allNodes: Node[] = [];
+        let sortedNodes: Node[] = []
 
         if (hasProcessedData.current) {
             return;
@@ -313,7 +342,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
             sortedNodes: Node[],
             onComplete?: () => void
         ) => {
-            setNodes([]); // Clear existing nodes
+            setNodes([]);
 
             if (sortedNodes.length === 0) return;
 
@@ -327,16 +356,17 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
 
                     if (same_species_node) {
                         const older_node_userid = sortedNodes.slice(0, currentIndex).filter(node => node.user_id === new_node.user_id).pop();
-                        
+
                         same_species_node.update_image(new_node.imageSrc)
-                        if(older_node_userid) {
+                        if (older_node_userid) {
                             const connection = new Connection(same_species_node, older_node_userid, "");
                             older_node_userid.connections.push(connection);
                             same_species_node.connections.push(connection);
                             setConnections(prevConnections => [...prevConnections, connection]);
                         }
 
-                        same_species_node.size += 30;
+                        // scaling the node
+                        same_species_node.size = Math.min(same_species_node.size * global_parameters.node_scaling_factor, global_parameters.node_size_max_px);
                     } else {
                         addConnectionsUserId(new_node);
                         setNodes(prevNodes => [...prevNodes, new_node]);
@@ -345,7 +375,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                     currentIndex++;
 
                     // Calculate delay based on timestamps
-                    let delay = 0; // Default delay
+                    let delay = global_parameters.delay_add_min_ms;
 
                     if (currentIndex < sortedNodes.length) {
                         // Get timestamp of next node
@@ -353,13 +383,11 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                         const currentTimestamp_ms = new_node.timestamp * 1000;
                         const timeDiff = nextTimestamp_ms - currentTimestamp_ms;
 
-                        // 10 times more slown, don't wait more than 1 minute 
-                        delay = Math.min(timeDiff / 10, 60000);
-                        // delay = 20
+                        delay = Math.min(timeDiff / global_parameters.real_time_scaling, global_parameters.delay_add_max_ms);
                     }
 
                     setTimeout(addNextNode, delay);
-                } else if(onComplete) {
+                } else if (onComplete) {
                     onComplete();
                 }
             };
@@ -385,7 +413,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                     const nodeToRemove = nodesToRemove[currentIndex];
 
                     // Reset size
-                    nodeToRemove.size = 50
+                    nodeToRemove.size = global_parameters.node_size_min_px
 
                     // First, remove all connections associated with this node
                     setConnections(prevConnections =>
@@ -411,8 +439,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
 
                     currentIndex--;
 
-                    // Calculate delay based on timestamps if available or use default
-                    let delay = 100; // Default delay
+                    let delay = global_parameters.delay_rem_ms; // Default delay
 
                     // if (currentIndex >= 0) {
                     //     // If we have timestamps, use them to calculate a natural delay
@@ -440,6 +467,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                 header: true,
                 dynamicTyping: true,
                 skipEmptyLines: true,
+
                 complete: (results) => {
                     const speciesData = results.data as SpeciesRow[];
                     const newNodes = createNodes(speciesData, questId);
@@ -453,14 +481,14 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
         allNodes.sort((a, b) => a.timestamp - b.timestamp);
 
         function startCycle() {
-            addNodesWithDelay(allNodes, function() {
+            addNodesWithDelay(allNodes, function () {
                 removeNodesWithDelay(allNodes, startCycle);
             });
         }
 
         startCycle();
 
-    }, []); // Only depends on questDataDict
+    }, []);
 
     useEffect(() => {
         startAnimation();
@@ -522,37 +550,31 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
 
         let timestamp = historyItem.timestamp;
 
+        // Default values
         let species_info: SpeciesInfo = {
-            name: "Default Name",
+            name: "Name of the species",
             what_is_it: "Description",
             information: "More info",
             image_filename: historyItem.image_filename,
-            image_location: historyItem.image_location
-        };;
+            image_src: ""
+        };
 
         try {
-            let fixedJsonStr = historyItem.assistant
-                .replace(/'/g, '"')
-                .replace(/\\"/g, '\\"');
-
-            // Parse the fixed JSON string
-            const assistantData = JSON.parse(fixedJsonStr);
+            // better parsing with json5 lib, duh
+            const assistantData = JSON5.parse(historyItem.assistant);
 
             if (assistantData.species_identification) {
-                species_info = {
-                    name: assistantData.species_identification.name,
-                    what_is_it: assistantData.species_identification.what_is_it,
-                    information: assistantData.species_identification.information,
-                    image_filename: historyItem.image_filename,
-                    image_location: historyItem.image_location
-                };
+                species_info.name = assistantData.species_identification.name
+                species_info.what_is_it = assistantData.species_identification.what_is_it
+                species_info.information = assistantData.species_identification.information
+                species_info.image_filename = historyItem.image_filename
             } else {
                 console.warn('No species_identification field in assistant data');
             }
         } catch (e) {
-            // console.error("Error parsing assistant data:", e);
-            // console.error("Error details:", e.message);
-            // console.log("Full assistant data:", historyItem.assistant);
+            console.error("Error parsing assistant data:", e);
+            console.error("Error details:", e.message);
+            console.log("Full assistant data:", historyItem.assistant);
         }
 
         return {
@@ -575,12 +597,10 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
 
         speciesData.forEach((species, index) => {
             const angle = Math.random() * Math.PI * 2;
-            const radius = Math.min(width, height) * 0.3;
+            const radius = Math.min(width, height) * global_parameters.spawning_node_radius;
 
-            const x = 0
-            const y = 0
-
-            console.log("DEFAUL", x, y)
+            const x = width / 2 + radius * Math.cos(angle);
+            const y = height / 2 + radius * Math.sin(angle);
 
             const imageSrc = species.image_name ? `${API_URL}/explore/images/${questId}/${species.image_name}` : '';
 
@@ -591,7 +611,18 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                 imageFilename = imageFilename.split('/').pop() || '';
             }
 
-            const info = findInfo(imageFilename, questId)
+            const info = findInfo(imageFilename, questId);
+            if (info && info.species_info) {
+                info.species_info.image_src = imageSrc;
+            }
+
+            const default_info = {
+                name: "",
+                what_is_it: "",
+                information: "",
+                image_filename: "",
+                image_src: ""
+            }
 
             const node = new Node(
                 x,
@@ -603,9 +634,9 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                 imageSrc,
                 imageFilename,
                 questId,
-                info['user_id'],
-                info['species_info'],
-                info['timestamp']
+                info ? info['user_id'] : "",
+                info ? info['species_info'] : default_info,
+                info ? info['timestamp'] : 0
             );
 
             newNodes.push(node);
@@ -616,9 +647,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
 
     const checkForExistingNode = (new_node: Node) => {
         const currentNodes = nodesRef.current
-
         const existingNode = currentNodes.find(node => node.name == new_node.name);
-
         return existingNode
     };
 
@@ -650,8 +679,8 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
     };
 
     const applyForces = (nodes, connections) => {
-        const repulsionStrength = 0.002;
-        const attractionStrength = 0.005;
+        const repulsionStrength = global_parameters.attraction_force;
+        const attractionStrength = global_parameters.repulsion_force;
 
         // Apply repulsive forces between nodes
         // Use squared distances to avoid square root calculations
@@ -669,11 +698,15 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                 if (distanceSquared < minDistanceSquared) {
                     // Only calculate square root once when needed
                     let distance = Math.sqrt(distanceSquared);
-                    if (distance == 0) {
-                        distance = 0.001
+                    let dirX: number, dirY: number;
+                    if (distance !== 0) {
+                        dirX = dx / distance;
+                        dirY = dy / distance;
+                    } else {
+                        // If distance is zero, use arbitrary direction to unstuck nodes
+                        dirX = 0.05;
+                        dirY = 0.05;
                     }
-                    const dirX = dx / distance;
-                    const dirY = dy / distance;
 
                     const repulsionForce = repulsionStrength * (minDistance - distance);
 
@@ -691,7 +724,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
             const nodeA = connection.node1;
             const nodeB = connection.node2;
 
-            if(!nodeA || !nodeB) {
+            if (!nodeA || !nodeB) {
                 continue;
             }
 
@@ -786,7 +819,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
 
         if (speciesInfo) {
             setQuestId(node.quest_id);
-            setSelectedSpecies(speciesInfo);
+            setselectedSpeciesInfo(speciesInfo);
             setIsPanelOpen(true);
         } else {
             console.warn('No species info found for this node');
@@ -1209,14 +1242,18 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                     {Math.round(zoomLevel * 100)}%
                 </div>
 
-                {/* Species Info Panel */}
-                <SpeciesInfoPanel
-                    questId={questId}
-                    species={selectedSpecies}
-                    isOpen={isPanelOpen}
-                    onClose={handleClosePanel}
-                    isMobile={isMobile}
-                />
+                {selectedSpeciesInfo &&
+                    <SpeciesInfoPanel
+                        name={selectedSpeciesInfo.name}
+                        description={selectedSpeciesInfo.what_is_it}
+                        information={selectedSpeciesInfo.information}
+                        image_src={selectedSpeciesInfo.image_src}
+                        isOpen={isPanelOpen}
+                        onClose={handleClosePanel}
+                        isMobile={isMobile}
+                    />
+                }
+
             </div>
         </div>
     );
