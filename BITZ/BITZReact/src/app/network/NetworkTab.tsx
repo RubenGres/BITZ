@@ -20,6 +20,7 @@ const global_parameters = {
     node_border_radius_px: 2,
     node_selected_border_radius_px: 10,
     node_label_font: '12px Arial',
+    ideal_node_distance: 100, // margin between node, ideally
     connection_width: 10,
     zoom_factor: 0.001,
     min_zoom: 0.1,
@@ -588,8 +589,8 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                 console.warn('No species_identification field in assistant data');
             }
         } catch (e) {
-            console.error("Error parsing assistant data:", e);
-            console.error("Error details:", e.message);
+            // console.error("Error parsing assistant data:", e);
+            // console.error("Error details:", e.message);
             console.log("Full assistant data:", historyItem.assistant);
         }
 
@@ -618,7 +619,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
             const x = width / 2 + radius * Math.cos(angle);
             const y = height / 2 + radius * Math.sin(angle);
 
-            const imageSrc = species.image_name ? `${API_URL}/explore/images/${questId}/${species.image_name}` : '';
+            const imageSrc = species.image_name ? `${API_URL}/explore/images/${questId}/${species.image_name}?res=medium` : '';
 
             let imageFilename = species.image_name || '';
 
@@ -748,7 +749,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
             const dy = nodeB.y - nodeA.y;
             const distanceSquared = dx * dx + dy * dy;
 
-            const idealDistance = nodeA.size + nodeB.size + 100;
+            const idealDistance = nodeA.size + nodeB.size + global_parameters.ideal_node_distance;
             const idealDistanceSquared = idealDistance * idealDistance;
 
             // Only calculate exact distance if we need to apply a force

@@ -11,7 +11,8 @@ from openai import OpenAI
 from datetime import datetime
 from collections import Counter
 import time
-
+from PIL import Image, ImageOps
+import hashlib
 
 BASE_DIR = os.path.abspath("history")  # Base directory
 analyzers = {}
@@ -21,13 +22,13 @@ load_dotenv()
 app = Flask(__name__)
 
 # CORS is handled at the nginx level now
-# CORS(app, resources={r"/*": {
-#     "origins": [
-#         "*" # Allow all origins for development purposes
-#     ],
-#     "methods": ["GET", "POST", "OPTIONS", "PUT", "DELETE"],  # Allow all common methods
-#     "allow_headers": ["Content-Type", "Authorization", "X-Requested-With", "Accept"]  # Common headers
-# }})
+CORS(app, resources={r"/*": {
+    "origins": [
+        "*" # Allow all origins for development purposes
+    ],
+    "methods": ["GET", "POST", "OPTIONS", "PUT", "DELETE"],  # Allow all common methods
+    "allow_headers": ["Content-Type", "Authorization", "X-Requested-With", "Accept"]  # Common headers
+}})
 
 def human_readable_size(size, decimal_places=1):
     """Convert bytes to human-readable format (KB, MB, GB, etc.)"""
@@ -297,6 +298,64 @@ def explore_raw(subpath=""):
         return jsonify(file_list)
 
     abort(404)
+
+@app.route("/explore/images/<path:image_path>", methods=["GET"])
+def explore_images(image_path=""):
+    # Get requested resolution, default to full
+    resolution = request.args.get('res', 'full')
+    
+    # Define sizes for different resolutions
+    sizes = {
+        'thumb': (150, 150),
+        'small': (400, 400),
+        'medium': (800, 800),
+        'large': (1600, 1600),
+        'full': None  # No resizing for full
+    }
+    
+    # Validate resolution parameter
+    if resolution not in sizes:
+        return redirect(url_for('explore_images', image_path=image_path, resolution='full'))
+    
+    # Create absolute path to the original image
+    abs_image_path = os.path.join(BASE_DIR, 'images', image_path)
+    
+    # Prevent directory traversal attacks
+    if not os.path.commonpath([os.path.join(BASE_DIR, 'images'), abs_image_path]).startswith(BASE_DIR):
+        abort(403)
+    
+    # For full_size, serve the original image
+    if resolution == 'full_size':
+        return send_from_directory(os.path.join(BASE_DIR, 'images'), image_path)
+    
+    # Create cache directory if needed
+    cache_dir = os.path.join(BASE_DIR, 'cache', resolution)
+    os.makedirs(cache_dir, exist_ok=True)
+    
+    # Create unique filename for cached image
+    image_hash = hashlib.md5(image_path.encode()).hexdigest()
+    file_ext = os.path.splitext(image_path)[1].lower()
+    cached_filename = f"{image_hash}{file_ext}"
+    cached_image_path = os.path.join(cache_dir, cached_filename)
+    
+    # Check if cached version exists, otherwise create it
+    if not os.path.exists(cached_image_path):
+        try:
+            with Image.open(abs_image_path) as img:
+                # Apply EXIF orientation (fix rotation issues)
+                img = ImageOps.exif_transpose(img)
+                
+                # Resize image keeping aspect ratio
+                img.thumbnail(sizes[resolution], Image.LANCZOS)
+                
+                # Save the resized image to cache
+                img.save(cached_image_path, quality=85, optimize=True)
+        except (IOError, OSError) as e:
+            app.logger.error(f"Error resizing image {image_path}: {str(e)}")
+            return send_from_directory(os.path.join(BASE_DIR, 'images'), image_path)
+    
+    # Serve the cached image
+    return send_from_directory(cache_dir, cached_filename)
 
 @app.route("/explore/", methods=["GET"])
 @app.route("/explore/<path:subpath>", methods=["GET"])
