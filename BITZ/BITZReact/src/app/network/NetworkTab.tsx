@@ -4,10 +4,10 @@ import JSON5 from 'json5';
 import { API_URL } from '@/app/Constants';
 
 const global_parameters = {
-    delay_add_max_ms: 3e3, // don't wait for more than 3 seconds 
+    delay_add_max_ms: 10e3, // don't wait for more than 10 seconds 
     delay_add_min_ms: 2, // wait at least 2ms
-    delay_rem_ms: 20,
-    real_time_scaling: 100, // 100x the speed
+    delay_rem_ms: 200,
+    real_time_scaling: 22, // 22x the speed 
     spawning_node_radius: 0.3, // factor of the size of the screen
     delay_wait_for_rem_ms: 120e3, // 2 minutes
     delay_wait_for_add_ms: 3e3, // 3 seconds
@@ -23,7 +23,8 @@ const global_parameters = {
     connection_width: 10,
     zoom_factor: 0.001,
     min_zoom: 0.1,
-    max_zoom: 4
+    max_zoom: 4,
+    cutoff_time: 1747396800
 }
 
 interface SpeciesRow {
@@ -481,8 +482,15 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                 }
             });
         });
+        
+        console.log("before filtering", allNodes.length)
 
-        allNodes.sort((a, b) => a.timestamp - b.timestamp);
+        if (allNodes) {
+            allNodes = allNodes.filter((node) => node.timestamp < global_parameters.cutoff_time); // When we left formiga farm
+            allNodes.sort((a, b) => a.timestamp - b.timestamp);
+        }
+
+        console.log("after filtering", allNodes.length)
 
         function startCycle() {
             setTimeout(() => {
