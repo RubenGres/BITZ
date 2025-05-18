@@ -10,7 +10,7 @@ const global_parameters = {
     real_time_scaling: 100, // 100x the speed
     spawning_node_radius: 0.3, // factor of the size of the screen
     delay_wait_for_rem_ms: 120e3, // 2 minutes
-    delay_wait_for_add_ms: 5e3, // 3 seconds
+    delay_wait_for_add_ms: 3e3, // 3 seconds
     attraction_force: 0.02,
     repulsion_force: 0.005,
     node_size_min_px: 50,
@@ -21,6 +21,9 @@ const global_parameters = {
     node_selected_border_radius_px: 10,
     node_label_font: '12px Arial',
     connection_width: 10,
+    zoom_factor: 0.001,
+    min_zoom: 0.1,
+    max_zoom: 4
 }
 
 interface SpeciesRow {
@@ -316,7 +319,8 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
     const hasProcessedData = useRef(false);
 
     // State for the sliding info panel
-    const [selectedSpeciesInfo, setselectedSpeciesInfo] = useState<SpeciesInfo | null>(null);
+    const [focusedSpeciesInfo, setFocusedSpeciesInfo] = useState<SpeciesInfo | null>(null);
+    const [focusedNode, setFocusedNode] = useState<Node | null>(null);
     const [questId, setQuestId] = useState("")
     const [isPanelOpen, setIsPanelOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
@@ -481,9 +485,13 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
         allNodes.sort((a, b) => a.timestamp - b.timestamp);
 
         function startCycle() {
-            addNodesWithDelay(allNodes, function () {
-                removeNodesWithDelay(allNodes, startCycle);
-            });
+            setTimeout(() => {
+                addNodesWithDelay(allNodes, function () {
+                    setTimeout(() => {
+                        removeNodesWithDelay(allNodes, startCycle);
+                    }, global_parameters.delay_wait_for_rem_ms);
+                });
+            }, global_parameters.delay_wait_for_add_ms)
         }
 
         startCycle();
@@ -819,7 +827,8 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
 
         if (speciesInfo) {
             setQuestId(node.quest_id);
-            setselectedSpeciesInfo(speciesInfo);
+            setFocusedSpeciesInfo(speciesInfo);
+            setFocusedNode(node)
             setIsPanelOpen(true);
         } else {
             console.warn('No species info found for this node');
@@ -1068,8 +1077,8 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
         const mouseY = e.clientY - rect.top;
 
         // Calculate zoom factor
-        const delta = e.deltaY * -0.01;
-        const newZoom = Math.max(0.5, Math.min(3, zoomLevel + delta));
+        const delta = e.deltaY * -1 * global_parameters.zoom_factor;
+        const newZoom = Math.max(global_parameters.min_zoom, Math.min(global_parameters.max_zoom, zoomLevel + delta));
         const scaleChange = newZoom / zoomLevel;
 
         // Calculate new pan offset to zoom from mouse position
@@ -1092,7 +1101,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
 
-        const newZoom = Math.min(3, zoomLevel * 1.2);
+        const newZoom = Math.min(global_parameters.max_zoom, zoomLevel * 1.2);
         const scaleChange = newZoom / zoomLevel;
 
         // Zoom from center
@@ -1242,12 +1251,12 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                     {Math.round(zoomLevel * 100)}%
                 </div>
 
-                {selectedSpeciesInfo &&
+                {focusedNode &&
                     <SpeciesInfoPanel
-                        name={selectedSpeciesInfo.name}
-                        description={selectedSpeciesInfo.what_is_it}
-                        information={selectedSpeciesInfo.information}
-                        image_src={selectedSpeciesInfo.image_src}
+                        name={focusedNode.species_info.name}
+                        description={focusedNode.species_info.what_is_it}
+                        information={focusedNode.species_info.information}
+                        image_src={focusedNode.image ? focusedNode.image.src : ""}
                         isOpen={isPanelOpen}
                         onClose={handleClosePanel}
                         isMobile={isMobile}

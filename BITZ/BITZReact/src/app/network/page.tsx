@@ -91,7 +91,7 @@ export default function NetworkPage() {
       {/* <Header menuColor="text-green-500" logoSrc="/logo/bitz_green.svg" /> */}
      
       {/* Main Content - flex-grow ensures it takes available space */}
-      <main className="flex-grow flex w-full">
+      <main className="flex-grow flex w-full bg-black">
         <div className="flex flex-col w-full mx-auto">
           {error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -100,7 +100,7 @@ export default function NetworkPage() {
           )}
          
           {loading ? (
-            <div className="flex justify-center items-center h-64">
+            <div className="flex justify-center items-center h-64 bg-black">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
             </div>
           ) : (
