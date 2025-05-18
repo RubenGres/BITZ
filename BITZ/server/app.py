@@ -22,13 +22,13 @@ load_dotenv()
 app = Flask(__name__)
 
 # CORS is handled at the nginx level now
-CORS(app, resources={r"/*": {
-    "origins": [
-        "*" # Allow all origins for development purposes
-    ],
-    "methods": ["GET", "POST", "OPTIONS", "PUT", "DELETE"],  # Allow all common methods
-    "allow_headers": ["Content-Type", "Authorization", "X-Requested-With", "Accept"]  # Common headers
-}})
+# CORS(app, resources={r"/*": {
+#     "origins": [
+#         "*" # Allow all origins for development purposes
+#     ],
+#     "methods": ["GET", "POST", "OPTIONS", "PUT", "DELETE"],  # Allow all common methods
+#     "allow_headers": ["Content-Type", "Authorization", "X-Requested-With", "Accept"]  # Common headers
+# }})
 
 def human_readable_size(size, decimal_places=1):
     """Convert bytes to human-readable format (KB, MB, GB, etc.)"""
