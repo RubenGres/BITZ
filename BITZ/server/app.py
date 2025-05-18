@@ -301,61 +301,76 @@ def explore_raw(subpath=""):
 
 @app.route("/explore/images/<path:image_path>", methods=["GET"])
 def explore_images(image_path=""):
-    # Get requested resolution, default to full
-    resolution = request.args.get('res', 'full')
+    # Get requested resolution
+    res = request.args.get('res', 'full')
     
     # Define sizes for different resolutions
     sizes = {
         'thumb': (150, 150),
-        'small': (400, 400),
         'medium': (800, 800),
         'large': (1600, 1600),
-        'full': None  # No resizing for full
+        'full': None
     }
     
     # Validate resolution parameter
-    if resolution not in sizes:
-        return redirect(url_for('explore_images', image_path=image_path, resolution='full'))
+    if res not in sizes:
+        res = 'full'
     
     # Create absolute path to the original image
     abs_image_path = os.path.join(BASE_DIR, 'images', image_path)
     
-    # Prevent directory traversal attacks
-    if not os.path.commonpath([os.path.join(BASE_DIR, 'images'), abs_image_path]).startswith(BASE_DIR):
-        abort(403)
+    # Security check and file existence check
+    try:
+        if not os.path.commonpath([os.path.join(BASE_DIR, 'images'), abs_image_path]).startswith(BASE_DIR):
+            abort(403)
+        if not os.path.isfile(abs_image_path):
+            abort(404)
+    except (ValueError, FileNotFoundError):
+        abort(404)
     
-    # For full_size, serve the original image
-    if resolution == 'full_size':
+    # For full resolution, serve the original image
+    if res == 'full':
         return send_from_directory(os.path.join(BASE_DIR, 'images'), image_path)
     
-    # Create cache directory if needed
-    cache_dir = os.path.join(BASE_DIR, 'cache', resolution)
+    # Set up cache
+    cache_dir = os.path.join(BASE_DIR, 'cache', res)
     os.makedirs(cache_dir, exist_ok=True)
     
-    # Create unique filename for cached image
+    # Create cached filename
     image_hash = hashlib.md5(image_path.encode()).hexdigest()
     file_ext = os.path.splitext(image_path)[1].lower()
     cached_filename = f"{image_hash}{file_ext}"
     cached_image_path = os.path.join(cache_dir, cached_filename)
     
-    # Check if cached version exists, otherwise create it
+    # Create resized version if it doesn't exist
     if not os.path.exists(cached_image_path):
         try:
-            with Image.open(abs_image_path) as img:
-                # Apply EXIF orientation (fix rotation issues)
-                img = ImageOps.exif_transpose(img)
-                
-                # Resize image keeping aspect ratio
-                img.thumbnail(sizes[resolution], Image.LANCZOS)
-                
-                # Save the resized image to cache
-                img.save(cached_image_path, quality=85, optimize=True)
-        except (IOError, OSError) as e:
-            app.logger.error(f"Error resizing image {image_path}: {str(e)}")
-            return send_from_directory(os.path.join(BASE_DIR, 'images'), image_path)
+            img = Image.open(abs_image_path)
+            img = ImageOps.exif_transpose(img)
+            
+            # Get target size and resize
+            target_size = sizes[res]
+            if target_size:
+                img.thumbnail(target_size, Image.LANCZOS)
+            
+            # Save cached version
+            img.save(cached_image_path, quality=85, optimize=True)
+            img.close()
+            
+        except Exception as e:
+            app.logger.error(f"Image processing error ({res}): {image_path}: {str(e)}")
+            try:
+                # Try to serve original if resize fails
+                return send_from_directory(os.path.join(BASE_DIR, 'images'), image_path)
+            except Exception:
+                abort(500)
     
     # Serve the cached image
-    return send_from_directory(cache_dir, cached_filename)
+    try:
+        return send_from_directory(cache_dir, cached_filename)
+    except Exception as e:
+        app.logger.error(f"Error serving cached image: {cached_image_path}: {str(e)}")
+        abort(500)
 
 @app.route("/explore/", methods=["GET"])
 @app.route("/explore/<path:subpath>", methods=["GET"])
