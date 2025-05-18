@@ -7,7 +7,7 @@ const global_parameters = {
     delay_add_max_ms: 10e3, // don't wait for more than 10 seconds 
     delay_add_min_ms: 2, // wait at least 2ms
     delay_rem_ms: 50,
-    real_time_scaling: 220, // 22x the speed 
+    real_time_scaling: 22, // 22x the speed 
     spawning_node_radius: 0.3, // factor of the size of the screen
     delay_wait_for_rem_ms: 120e3, // 2 minutes
     delay_wait_for_add_ms: 3e3, // 3 seconds
@@ -461,6 +461,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                     } else {
                         addConnectionsUserId(new_node);
                         setNodes(prevNodes => [...prevNodes, new_node]);
+                        handleNodeClick(new_node);
                     }
 
                     currentIndex++;
