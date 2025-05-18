@@ -6,22 +6,22 @@ import { API_URL } from '@/app/Constants';
 const global_parameters = {
     delay_add_max_ms: 10e3, // don't wait for more than 10 seconds 
     delay_add_min_ms: 2, // wait at least 2ms
-    delay_rem_ms: 200,
-    real_time_scaling: 22, // 22x the speed 
+    delay_rem_ms: 50,
+    real_time_scaling: 220, // 22x the speed 
     spawning_node_radius: 0.3, // factor of the size of the screen
     delay_wait_for_rem_ms: 120e3, // 2 minutes
     delay_wait_for_add_ms: 3e3, // 3 seconds
     attraction_force: 0.02,
     repulsion_force: 0.005,
     node_size_min_px: 50,
-    node_size_max_px: 100000,
-    node_scaling_factor: 1.1,
+    node_size_max_px: 5000000,
+    node_scaling_factor: 1.08,
     node_damping: 0.95,
     node_border_radius_px: 2,
     node_selected_border_radius_px: 10,
     node_label_font: '12px Arial',
-    ideal_node_distance: 100, // margin between node, ideally
-    connection_width: 10,
+    ideal_node_distance: 400, // margin between node, ideally
+    connection_width: 2,
     zoom_factor: 0.001,
     min_zoom: 0.1,
     max_zoom: 4,
@@ -52,6 +52,8 @@ interface SpeciesInfo {
     image_filename: string;
     image_src: string;
 }
+
+const imageCache = {};
 
 class Node {
     x: number;
@@ -151,21 +153,47 @@ class Node {
         const distance = Math.sqrt((this.x - x) ** 2 + (this.y - y) ** 2);
         return distance <= this.size;
     }
-
     loadImage() {
+        // console.log(imageCache)
+        // Check if this image is already in the cache
+        let key = `${this.quest_id}${this.image_filename}`
+        console.log("Looking in cache for", key)
+        console.log("cache", imageCache)
+
+
+        if (imageCache[key]) {
+            console.log("image is cached!")
+            this.image = imageCache[key];
+            this.imageLoaded = true;
+            return;
+        }
+
+        // If not in cache, load it
         const img = new Image();
         img.crossOrigin = "anonymous";
         img.src = this.imageSrc;
         img.onload = () => {
             this.image = img;
+            // Store in cache for future use
+            imageCache[key] = img;
         };
         this.imageLoaded = true; // Mark as loaded to prevent multiple load attempts
     }
 
     update_image(imageSrc: string) {
-        this.imageSrc = imageSrc;
-        this.image = null;
-        this.imageLoaded = false; // Reset flag to trigger load on next draw
+        // Only update if the source has changed
+        if (this.imageSrc !== imageSrc) {
+            this.imageSrc = imageSrc;
+
+            let key = `${this.quest_id}${this.image_filename}`
+
+            if (imageCache[key]) {
+                this.image = imageCache[key];
+            } else {
+                this.image = null;
+                this.imageLoaded = false; // Reset flag to trigger load on next draw
+            }
+        }
     }
 }
 
@@ -243,13 +271,65 @@ interface SpeciesInfoProps {
     description: string;
     information: string;
     image_src: string;
+    quest_id?: string;
+    user_id?: string;
+    image_filename?: string;
     isOpen: boolean;
     onClose: () => void;
     isMobile?: boolean;
 }
 
-// Species Info Panel Component
-const SpeciesInfoPanel = ({ name, description, information, image_src, isOpen, onClose, isMobile = false }: SpeciesInfoProps) => {
+// Species Info Panel Component with caching support
+const SpeciesInfoPanel = ({ 
+    name, 
+    description, 
+    information, 
+    image_src, 
+    quest_id, 
+    user_id, 
+    image_filename,
+    isOpen, 
+    onClose, 
+    isMobile = false 
+}: SpeciesInfoProps) => {
+    const [loadedImage, setLoadedImage] = useState<HTMLImageElement | null>(null);
+    
+    // Load and cache the image when panel opens
+    useEffect(() => {
+        if (!isOpen || !image_src) return;
+        
+        // Try to get from cache first if we have all needed info
+        if (quest_id && user_id && image_filename) {
+            const cacheKey = `${user_id}_${image_filename}_${quest_id}`;
+            if (imageCache[cacheKey]) {
+                console.log("Panel using cached image:", cacheKey);
+                setLoadedImage(imageCache[cacheKey]);
+                return;
+            }
+        }
+        
+        // Otherwise load the image and cache it
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = image_src;
+        
+        img.onload = () => {
+            setLoadedImage(img);
+            
+            // If we have all the info, cache it
+            if (quest_id && user_id && image_filename) {
+                const cacheKey = `${user_id}_${image_filename}_${quest_id}`;
+                imageCache[cacheKey] = img;
+                console.log("Panel cached new image:", cacheKey);
+            }
+        };
+        
+        img.onerror = (err) => {
+            console.error("Failed to load image in panel:", image_src, err);
+            setLoadedImage(null);
+        };
+    }, [isOpen, image_src, quest_id, user_id, image_filename]);
+
     return (
         <div
             className={`fixed bg-black text-white shadow-xl transition-all duration-300 ease-in-out z-50 border-l border-white
@@ -282,6 +362,11 @@ const SpeciesInfoPanel = ({ name, description, information, image_src, isOpen, o
                                     src={image_src}
                                     alt={name}
                                     className="w-full object-cover rounded-lg mb-2"
+                                    // Use same cache-busting technique if needed
+                                    onError={(e) => {
+                                        // Optional: handle image error
+                                        console.warn("Error loading image in panel");
+                                    }}
                                 />
                             </div>
                         )}
@@ -483,7 +568,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                 }
             });
         });
-        
+
         console.log("before filtering", allNodes.length)
 
         if (allNodes) {
@@ -600,7 +685,6 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
             user_id: user_id
         };
     };
-
     const createNodes = (speciesData: SpeciesRow[], questId: string) => {
         console.log('Creating nodes for quest id:', questId);
         console.log('Species data len:', speciesData.length);
@@ -619,6 +703,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
             const x = width / 2 + radius * Math.cos(angle);
             const y = height / 2 + radius * Math.sin(angle);
 
+            // medium image resolution
             const imageSrc = species.image_name ? `${API_URL}/explore/images/${questId}/${species.image_name}?res=medium` : '';
 
             let imageFilename = species.image_name || '';
@@ -644,7 +729,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
             const node = new Node(
                 x,
                 y,
-                50,
+                global_parameters.node_size_min_px,
                 species['common_name'] || species['scientific_name'] || 'Unknown',
                 species['scientific_name'] || '',
                 species['taxonomic_group'] || '',
@@ -1265,7 +1350,10 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                         name={focusedNode.species_info.name}
                         description={focusedNode.species_info.what_is_it}
                         information={focusedNode.species_info.information}
-                        image_src={focusedNode.image ? focusedNode.image.src : ""}
+                        image_src={focusedNode.imageSrc}
+                        quest_id={focusedNode.quest_id}
+                        user_id={focusedNode.user_id}
+                        image_filename={focusedNode.image_filename}
                         isOpen={isPanelOpen}
                         onClose={handleClosePanel}
                         isMobile={isMobile}
