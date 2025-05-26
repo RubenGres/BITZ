@@ -6,7 +6,7 @@ import { API_URL } from '@/app/Constants';
 const global_parameters = {
     delay_add_max_ms: 10e3, // don't wait for more than 10 seconds 
     delay_add_min_ms: 2, // wait at least 2ms
-    delay_rem_ms: 200,
+    delay_rem_ms: 50,
     real_time_scaling: 22, // 22x the speed 
     spawning_node_radius: 0.3, // factor of the size of the screen
     delay_wait_for_rem_ms: 120e3, // 2 minutes
@@ -14,14 +14,14 @@ const global_parameters = {
     attraction_force: 0.02,
     repulsion_force: 0.005,
     node_size_min_px: 50,
-    node_size_max_px: 100000,
-    node_scaling_factor: 1.1,
+    node_size_max_px: 5000000,
+    node_scaling_factor: 1.08,
     node_damping: 0.95,
     node_border_radius_px: 2,
     node_selected_border_radius_px: 10,
     node_label_font: '12px Arial',
-    ideal_node_distance: 100, // margin between node, ideally
-    connection_width: 10,
+    ideal_node_distance: 400, // margin between node, ideally
+    connection_width: 2,
     zoom_factor: 0.001,
     min_zoom: 0.1,
     max_zoom: 4,
@@ -52,6 +52,9 @@ interface SpeciesInfo {
     image_filename: string;
     image_src: string;
 }
+
+const imageCacheNodes = {};
+const imageCachePanel = {};
 
 class Node {
     x: number;
@@ -151,21 +154,45 @@ class Node {
         const distance = Math.sqrt((this.x - x) ** 2 + (this.y - y) ** 2);
         return distance <= this.size;
     }
-
     loadImage() {
+        // console.log(imageCacheNodes)
+        // Check if this image is already in the cache
+        let key = `${this.quest_id}${this.image_filename}`
+        console.log("Looking in cache for", key)
+        console.log("cache", imageCacheNodes)
+
+
+        if (imageCacheNodes[key]) {
+            console.log("image is cached!")
+            this.image = imageCacheNodes[key];
+            this.imageLoaded = true;
+            return;
+        }
+
+        // If not in cache, load it
         const img = new Image();
         img.crossOrigin = "anonymous";
         img.src = this.imageSrc;
         img.onload = () => {
             this.image = img;
+            // Store in cache for future use
+            imageCacheNodes[key] = img;
         };
         this.imageLoaded = true; // Mark as loaded to prevent multiple load attempts
     }
 
-    update_image(imageSrc: string) {
-        this.imageSrc = imageSrc;
-        this.image = null;
-        this.imageLoaded = false; // Reset flag to trigger load on next draw
+    update_image(imageKey: string, imageSrc: string) {
+        // Only update if the source has changed
+        if (this.imageSrc !== imageSrc) {
+            this.imageSrc = imageSrc;
+
+            if (imageCacheNodes[imageKey]) {
+                this.image = imageCacheNodes[imageKey];
+            } else {
+                this.image = null;
+                this.imageLoaded = false; // Reset flag to trigger load on next draw
+            }
+        }
     }
 }
 
@@ -174,11 +201,13 @@ class Connection {
     node1: Node;
     node2: Node;
     text: string;
+    color: string;
 
-    constructor(node1: Node, node2: Node, text: string = '') {
+    constructor(node1: Node, node2: Node, text: string = '', color: string = "#888") {
         this.node1 = node1;
         this.node2 = node2;
         this.text = text;
+        this.color = color;
     }
 
     draw(ctx: CanvasRenderingContext2D) {
@@ -202,7 +231,7 @@ class Connection {
         ctx.beginPath();
         ctx.moveTo(startX, startY);
         ctx.lineTo(endX, endY);
-        ctx.strokeStyle = '#888';
+        ctx.strokeStyle = this.color;
         ctx.lineWidth = global_parameters.connection_width;
         ctx.stroke();
 
@@ -243,13 +272,84 @@ interface SpeciesInfoProps {
     description: string;
     information: string;
     image_src: string;
+    quest_id?: string;
+    user_id?: string;
+    image_filename?: string;
     isOpen: boolean;
     onClose: () => void;
     isMobile?: boolean;
 }
 
-// Species Info Panel Component
-const SpeciesInfoPanel = ({ name, description, information, image_src, isOpen, onClose, isMobile = false }: SpeciesInfoProps) => {
+
+const SpeciesInfoPanel = ({
+    name,
+    description,
+    information,
+    image_src,
+    quest_id,
+    user_id,
+    image_filename,
+    isOpen,
+    onClose,
+    isMobile = false
+}: SpeciesInfoProps) => {
+    const [imageLoading, setImageLoading] = useState<boolean>(true);
+    const [imageError, setImageError] = useState<boolean>(false);
+    const [cachedImage, setCachedImage] = useState<HTMLImageElement | null>(null);
+
+    // Debug info
+    useEffect(() => {
+        if (isOpen) {
+            console.log("Panel opened with props:", {
+                name,
+                image_src,
+                quest_id,
+                image_filename
+            });
+        }
+    }, [isOpen, name, image_src, quest_id, image_filename]);
+
+    // Load and cache the image when panel opens
+    useEffect(() => {
+        if (!isOpen || !image_src || !quest_id || !image_filename) return;
+
+        setImageLoading(true);
+        setImageError(false);
+        
+        // Create a cache key similar to the Node class
+        const cacheKey = `${quest_id}${image_filename}`;
+        console.log("Looking in panel cache for", cacheKey);
+        
+        // Check if image is already in cache
+        if (imageCachePanel[cacheKey]) {
+            console.log("Panel image is cached!");
+            setCachedImage(imageCachePanel[cacheKey]);
+            setImageLoading(false);
+            return;
+        }
+        
+        // If not in cache, load it
+        console.log("Loading image for panel:", image_src);
+        
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = image_src;
+        
+        img.onload = () => {
+            console.log("Panel image loaded successfully");
+            // Store in cache for future use
+            imageCachePanel[cacheKey] = img;
+            setCachedImage(img);
+            setImageLoading(false);
+        };
+        
+        img.onerror = (e) => {
+            console.error("Failed to load panel image:", e);
+            setImageError(true);
+            setImageLoading(false);
+        };
+    }, [isOpen, image_src, quest_id, image_filename]);
+
     return (
         <div
             className={`fixed bg-black text-white shadow-xl transition-all duration-300 ease-in-out z-50 border-l border-white
@@ -277,23 +377,40 @@ const SpeciesInfoPanel = ({ name, description, information, image_src, isOpen, o
                     {/* Panel content */}
                     <div className="flex-1 overflow-y-auto p-4">
                         {image_src && (
-                            <div className="mb-4">
-                                <img
-                                    src={image_src}
-                                    alt={name}
-                                    className="w-full object-cover rounded-lg mb-2"
-                                />
+                            <div className="mb-4 relative min-h-[200px] flex items-center justify-center">
+                                {imageLoading && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 z-10">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white"></div>
+                                    </div>
+                                )}
+                                
+                                {!imageError && cachedImage && (
+                                    <img
+                                        src={cachedImage.src}
+                                        alt={name}
+                                        className="w-full object-cover rounded-lg mb-2"
+                                    />
+                                )}
+                                
+                                {imageError && (
+                                    <div className="bg-red-900 text-white p-4 rounded text-center">
+                                        <svg className="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                        </svg>
+                                        Failed to load image. The URL may be invalid or the image cannot be accessed.
+                                    </div>
+                                )}
                             </div>
                         )}
 
                         <div className="mb-4">
                             <h3 className="font-semibold text-lg mb-1">Description</h3>
-                            <p className="text-white">{description}</p>
+                            <p className="text-white">{description || "No description available."}</p>
                         </div>
 
                         <div className="mb-4">
                             <h3 className="font-semibold text-lg mb-1">Additional Information</h3>
-                            <p className="text-white">{information}</p>
+                            <p className="text-white">{information || "No additional information available."}</p>
                         </div>
                     </div>
                 </div>
@@ -301,6 +418,24 @@ const SpeciesInfoPanel = ({ name, description, information, image_src, isOpen, o
         </div>
     );
 };
+
+
+function RandomNodeClicker({ nodeList, handleNodeClick }) {
+  useEffect(() => {
+    if (!nodeList || nodeList.length === 0) return;
+
+    const interval = setInterval(() => {
+      const randomIndex = Math.floor(Math.random() * nodeList.length);
+      const randomNode = nodeList[randomIndex];
+      handleNodeClick(randomNode);
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval); // cleanup on unmount
+  }, [nodeList, handleNodeClick]);
+
+  return null; // this component doesn’t render anything
+}
+
 
 const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -363,9 +498,12 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                     if (same_species_node) {
                         const older_node_userid = sortedNodes.slice(0, currentIndex).filter(node => node.user_id === new_node.user_id).pop();
 
-                        same_species_node.update_image(new_node.imageSrc)
+                        let new_key = `${new_node.quest_id}${new_node.image_filename}`
+                        same_species_node.update_image(new_key, new_node.imageSrc)
+                        
                         if (older_node_userid) {
-                            const connection = new Connection(same_species_node, older_node_userid, "");
+                            let color = get_user_id_color(new_node.user_id)
+                            const connection = new Connection(same_species_node, older_node_userid, "", color);
                             older_node_userid.connections.push(connection);
                             same_species_node.connections.push(connection);
                             setConnections(prevConnections => [...prevConnections, connection]);
@@ -376,6 +514,9 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                     } else {
                         addConnectionsUserId(new_node);
                         setNodes(prevNodes => [...prevNodes, new_node]);
+
+                        // fake a click for the display panel
+                        handleNodeClick(new_node);
                     }
 
                     currentIndex++;
@@ -483,7 +624,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                 }
             });
         });
-        
+
         console.log("before filtering", allNodes.length)
 
         if (allNodes) {
@@ -545,6 +686,44 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
             window.removeEventListener('resize', checkIfMobile);
         };
     }, []);
+    // Create a cache object outside the function to persist between calls
+    const colorCache: { [key: string]: string } = {};
+
+    const get_user_id_color = (user_id: string): string => {
+        if (colorCache[user_id]) {
+            return colorCache[user_id];
+        }
+
+        let hash = 0;
+        for (let i = 0; i < user_id.length; i++) {
+            hash = user_id.charCodeAt(i) + ((hash << 5) - hash);
+        }
+
+        const hue = Math.abs(hash) % 360;
+
+        const saturation = 65; // Moderate saturation
+        const lightness = 60;  // Medium-bright lightness
+
+        const color = hslToHex(hue, saturation, lightness);
+
+        colorCache[user_id] = color;
+
+        return color;
+    };
+
+    // Helper function to convert HSL to hex
+    const hslToHex = (h: number, s: number, l: number): string => {
+        l /= 100;
+        const a = s * Math.min(l, 1 - l) / 100;
+
+        const f = (n: number) => {
+            const k = (n + h / 30) % 12;
+            const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+            return Math.round(255 * color).toString(16).padStart(2, '0');
+        };
+
+        return `#${f(0)}${f(8)}${f(4)}`;
+    };
 
     const findInfo = (image_filename: string, quest_id: string) => {
         const questData = questDataDict[quest_id];
@@ -600,7 +779,6 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
             user_id: user_id
         };
     };
-
     const createNodes = (speciesData: SpeciesRow[], questId: string) => {
         console.log('Creating nodes for quest id:', questId);
         console.log('Species data len:', speciesData.length);
@@ -619,6 +797,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
             const x = width / 2 + radius * Math.cos(angle);
             const y = height / 2 + radius * Math.sin(angle);
 
+            // medium image resolution
             const imageSrc = species.image_name ? `${API_URL}/explore/images/${questId}/${species.image_name}?res=medium` : '';
 
             let imageFilename = species.image_name || '';
@@ -644,7 +823,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
             const node = new Node(
                 x,
                 y,
-                50,
+                global_parameters.node_size_min_px,
                 species['common_name'] || species['scientific_name'] || 'Unknown',
                 species['scientific_name'] || '',
                 species['taxonomic_group'] || '',
@@ -675,7 +854,8 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
 
         for (let i = currentNodes.length - 1; i >= 0; i--) {
             if (currentNodes[i].user_id == new_node.user_id) {
-                const connection = new Connection(currentNodes[i], new_node, "");
+                let color = get_user_id_color(new_node.user_id)
+                const connection = new Connection(currentNodes[i], new_node, "", color);
                 newConnections.push(connection);
 
                 const randomAngle = Math.random() * 2 * Math.PI;
@@ -1265,12 +1445,17 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                         name={focusedNode.species_info.name}
                         description={focusedNode.species_info.what_is_it}
                         information={focusedNode.species_info.information}
-                        image_src={focusedNode.image ? focusedNode.image.src : ""}
+                        image_src={focusedNode.imageSrc}
+                        quest_id={focusedNode.quest_id}
+                        user_id={focusedNode.user_id}
+                        image_filename={focusedNode.image_filename}
                         isOpen={isPanelOpen}
                         onClose={handleClosePanel}
                         isMobile={isMobile}
                     />
                 }
+
+                <RandomNodeClicker nodeList={nodes} handleNodeClick={handleNodeClick} />
 
             </div>
         </div>
