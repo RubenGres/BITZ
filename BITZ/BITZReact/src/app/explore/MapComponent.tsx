@@ -51,7 +51,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ speciesData, questId, mapCe
       <MapContainer 
         center={mapCenter} 
         zoom={13} 
-        style={{ height: '100%', width: '100%', flex: '1', minHeight: '500px' }}
+        style={{ height: '100%', width: '100%', flex: '1', minHeight: '500px', zIndex: 0 }}
       >
         {/* This ensures the map resizes properly */}
         <MapResizer />

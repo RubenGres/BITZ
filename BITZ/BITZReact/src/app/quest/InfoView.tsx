@@ -72,7 +72,6 @@ export const InfoView: React.FC<InfoViewProps> = ({ uploadedImage, resultDict, o
 
   return (
     <div className="relative w-full h-full overflow-y-auto">
-      {/* Fixed Background Image - Lower z-index */}
       <div
         className="fixed inset-0 z-0"
         style={{

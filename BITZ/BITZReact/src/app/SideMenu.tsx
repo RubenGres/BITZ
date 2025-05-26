@@ -13,7 +13,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose }) => {
 
   return (
     <div 
-      className={`fixed top-0 right-0 h-full w-64 bg-white shadow-lg transform transition-transform duration-300 z-20 border-l-2 border-green-500 ${
+      className={`fixed top-0 right-0 h-full w-64 bg-white shadow-lg transform transition-transform duration-300 z-100 border-l-2 border-green-500 ${
         isOpen ? 'translate-x-0' : 'translate-x-full'
       }`}
 
