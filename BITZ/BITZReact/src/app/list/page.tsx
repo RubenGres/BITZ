@@ -61,11 +61,11 @@ export default function QuestListPage() {
     return `${minutes}m ${remainingSeconds}s`;
   };
 
-  // Filter quests based on active tab
+  // Filter and sort quests based on active tab
   const filteredQuests = () => {
     if (!questsData) return [];
     
-    return Object.entries(questsData).filter(([_, metadata]) => {
+    const filtered = Object.entries(questsData).filter(([_, metadata]) => {
       const questUserId = metadata.user_id || null;
       
       if (activeTab === 'my') {
@@ -73,6 +73,15 @@ export default function QuestListPage() {
       } else {
         return questUserId !== userId;
       }
+    });
+
+    // Sort by timestamp (most recent first)
+    return filtered.sort(([_, metadataA], [__, metadataB]) => {
+      const dateA = metadataA.date_time ? new Date(metadataA.date_time).getTime() : 0;
+      const dateB = metadataB.date_time ? new Date(metadataB.date_time).getTime() : 0;
+      
+      // Sort in descending order (newest first)
+      return dateB - dateA;
     });
   };
 
