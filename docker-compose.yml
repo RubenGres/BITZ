@@ -1,0 +1,42 @@
+# docker-compose.yml (place in root directory)
+version: '3.8'
+
+services:
+  bitz-frontend:
+    build: 
+      context: ./BITZ/BITZReact
+      dockerfile: Dockerfile
+    container_name: bitz-frontend
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    depends_on:
+      - bitz-server
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  bitz-server:
+    build: 
+      context: ./BITZ/server
+      dockerfile: Dockerfile
+    container_name: bitz-server
+    ports:
+      - "5000:5000"
+    environment:
+      - DELETE_PASSWORD=${DELETE_PASSWORD}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - ./BITZ/server/history:/app/history
+      - ./BITZ/server/static:/app/static
+      - ./BITZ/server/templates:/app/templates
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

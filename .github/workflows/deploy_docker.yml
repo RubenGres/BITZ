@@ -1,0 +1,71 @@
+# .github/workflows/deploy-docker.yml
+name: Deploy with Docker
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'prod'
+        type: choice
+        options:
+          - prod
+          - staging
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup SSH key
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      
+      - name: Add host key to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ vars.VPS_HOST }} >> ~/.ssh/known_hosts
+      
+      - name: Create environment file
+        run: |
+          echo "DELETE_PASSWORD=${{ secrets.DELETE_PASSWORD }}" > .env
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
+      
+      - name: Deploy to VPS
+        run: |
+          # Create deployment package
+          tar --exclude='.git' --exclude='node_modules' --exclude='.next' --exclude='__pycache__' -czf deployment.tar.gz .
+          
+          # Copy to VPS
+          scp deployment.tar.gz ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }}:~/
+          
+          # Deploy on VPS
+          ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} '
+            # Create deployment directory
+            mkdir -p ~/bitz-deployment
+            cd ~/bitz-deployment
+            
+            # Extract new version
+            mv ~/deployment.tar.gz .
+            rm -rf ./*
+            tar -xzf deployment.tar.gz
+            rm deployment.tar.gz
+            
+            # Stop existing containers
+            docker compose down || true
+            
+            # Pull latest images and rebuild
+            docker compose build --no-cache
+            
+            # Start services
+            docker compose up -d
+            
+            # Clean up old images
+            docker image prune -f
+          '
