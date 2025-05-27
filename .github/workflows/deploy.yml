@@ -1,5 +1,4 @@
-# .github/workflows/deploy-docker.yml
-name: Deploy with Docker
+name: Deploy to VPS using pm2
 
 on:
   workflow_dispatch:
@@ -14,67 +13,57 @@ on:
           - staging
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment }}
-    
+    env:
+      WORKING_DIR: './BITZ/BITZReact'
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Setup SSH key
-        uses: webfactory/ssh-agent@v0.7.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-      
-      - name: Add host key to known hosts
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ vars.VPS_HOST }} >> ~/.ssh/known_hosts
-      
-      - name: Create environment file
-        run: |
-          echo "DELETE_PASSWORD=${{ secrets.DELETE_PASSWORD }}" > .env
-          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
-      
-      - name: Test SSH connection
-        run: |
-          ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} 'echo "SSH connection successful"'
-      
-      - name: Check Docker on VPS
-        run: |
-          ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} 'docker --version && docker compose version'
-      
-      - name: Create and copy deployment package
-        run: |
-          tar --exclude='.git' \
-              --exclude='node_modules' \
-              --exclude='.next' \
-              --exclude='__pycache__' \
-              --exclude='.env.local' \
-              --exclude='*.log' \
-              --exclude='.cache' \
-              --warning=no-file-changed \
-              -czf deployment.tar.gz .
-          
-          scp deployment.tar.gz ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }}:~/
-      
-      - name: Stop existing containers
-        run: |
-          ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} '
-            cd ~/bitz-deployment || mkdir -p ~/bitz-deployment
-            cd ~/bitz-deployment
-            docker compose down || echo "No containers to stop"
-          '
-      
-      - name: Extract and deploy
-        run: |
-          ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} '
-            cd ~/bitz-deployment
-            mv ~/deployment.tar.gz .
-            tar -xzf deployment.tar.gz
-            rm deployment.tar.gz
-            ls -la
-            docker compose build --no-cache
-            docker compose up -d
-          '
+        uses: actions/checkout@v3
+
+name: Setup Node.js
+uses: actions/setup-node@v3
+with:
+  node-version: '18'
+  cache: 'npm'
+  cache-dependency-path: '${{ env.WORKING_DIR }}/package-lock.json'
+
+name: Install dependencies
+working-directory: ${{ env.WORKING_DIR }}
+run: npm ci
+
+name: Build Next.js app
+working-directory: ${{ env.WORKING_DIR }}
+run: npm run build
+
+name: Setup SSH key
+uses: webfactory/ssh-agent@v0.7.0
+with:
+  ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+name: Add host key to known hosts
+run: |
+  mkdir -p ~/.ssh
+  ssh-keyscan -H ${{ vars.VPS_HOST }} >> ~/.ssh/known_hosts
+
+name: Deploy to VPS
+working-directory: ${{ env.WORKING_DIR }}
+run: |
+  # Create a tarball of the build output
+  tar -czf nextjs-app.tar.gz .next public package.json package-lock.json next.config.ts
+
+  # Copy the tarball to the VPS
+  scp nextjs-app.tar.gz ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }}:~/
+
+  # Execute deployment commands on the VPS
+  ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} '
+    mkdir -p ~/bitz-app
+    cd ~/bitz-app
+    mv ~/nextjs-app.tar.gz .
+    tar -xzf nextjs-app.tar.gz
+    npm ci --production
+    pm2 restart bitz-app || pm2 start npm --name "bitz-app" -- start -- -p ${{ vars.PORT }}
+    rm nextjs-app.tar.gz
+  '
