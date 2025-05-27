@@ -39,8 +39,16 @@ jobs:
       
       - name: Deploy to VPS
         run: |
-          # Create deployment package
-          tar --exclude='.git' --exclude='node_modules' --exclude='.next' --exclude='__pycache__' -czf deployment.tar.gz .
+          # Create deployment package with better exclusions
+          tar --exclude='.git' \
+              --exclude='node_modules' \
+              --exclude='.next' \
+              --exclude='__pycache__' \
+              --exclude='.env.local' \
+              --exclude='*.log' \
+              --exclude='.cache' \
+              --warning=no-file-changed \
+              -czf deployment.tar.gz .
           
           # Copy to VPS
           scp deployment.tar.gz ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }}:~/
@@ -51,19 +59,17 @@ jobs:
             mkdir -p ~/bitz-deployment
             cd ~/bitz-deployment
             
+            # Stop existing containers first
+            docker compose down || true
+            
             # Extract new version
             mv ~/deployment.tar.gz .
             rm -rf ./*
             tar -xzf deployment.tar.gz
             rm deployment.tar.gz
             
-            # Stop existing containers
-            docker compose down || true
-            
-            # Pull latest images and rebuild
+            # Build and start services
             docker compose build --no-cache
-            
-            # Start services
             docker compose up -d
             
             # Clean up old images
