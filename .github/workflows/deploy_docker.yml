@@ -54,10 +54,27 @@ jobs:
               --exclude='.env.local' \
               --exclude='*.log' \
               --exclude='.cache' \
+              --exclude='dist' \
+              --exclude='build' \
+              --exclude='coverage' \
+              --exclude='*.tar.gz' \
+              --exclude='*.zip' \
               --warning=no-file-changed \
               -czf deployment.tar.gz .
           
-          scp -o ConnectTimeout=10 deployment.tar.gz ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }}:~/
+          # Check file size
+          ls -lh deployment.tar.gz
+          
+          # Split into smaller chunks if needed
+          if [ $(stat -c%s deployment.tar.gz) -gt 100000000 ]; then
+            split -b 50M deployment.tar.gz deployment_part_
+            for part in deployment_part_*; do
+              scp -o ConnectTimeout=10 $part ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }}:~/
+            done
+            ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} 'cat ~/deployment_part_* > ~/deployment.tar.gz && rm ~/deployment_part_*'
+          else
+            scp -o ConnectTimeout=10 deployment.tar.gz ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }}:~/
+          fi
       
       - name: Stop existing containers
         run: |
