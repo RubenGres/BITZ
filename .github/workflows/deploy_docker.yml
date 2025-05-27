@@ -41,9 +41,12 @@ jobs:
         run: |
           ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} 'echo "SSH connection successful"'
       
-      - name: Deploy to VPS
+      - name: Check Docker on VPS
         run: |
-          # Create deployment package with better exclusions
+          ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} 'docker --version && docker compose version'
+      
+      - name: Create and copy deployment package
+        run: |
           tar --exclude='.git' \
               --exclude='node_modules' \
               --exclude='.next' \
@@ -54,38 +57,24 @@ jobs:
               --warning=no-file-changed \
               -czf deployment.tar.gz .
           
-          # Copy to VPS
           scp deployment.tar.gz ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }}:~/
-          
-          # Deploy on VPS with detailed logging
-          ssh -v ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} '
-            echo "=== Starting deployment ==="
-            
-            echo "Creating deployment directory..."
-            mkdir -p ~/bitz-deployment
+      
+      - name: Stop existing containers
+        run: |
+          ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} '
+            cd ~/bitz-deployment || mkdir -p ~/bitz-deployment
             cd ~/bitz-deployment
-            pwd
-            
-            echo "Checking Docker..."
-            docker --version || { echo "Docker not found"; exit 1; }
-            docker compose version || { echo "Docker Compose not found"; exit 1; }
-            
-            echo "Stopping existing containers..."
-            docker compose down 2>&1 || echo "No containers to stop"
-            
-            echo "Extracting deployment package..."
-            mv ~/deployment.tar.gz . || { echo "Failed to move tar file"; exit 1; }
-            tar -xzf deployment.tar.gz || { echo "Failed to extract tar"; exit 1; }
+            docker compose down || echo "No containers to stop"
+          '
+      
+      - name: Extract and deploy
+        run: |
+          ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} '
+            cd ~/bitz-deployment
+            mv ~/deployment.tar.gz .
+            tar -xzf deployment.tar.gz
             rm deployment.tar.gz
-            
-            echo "Checking docker-compose.yml..."
-            ls -la docker-compose.yml || { echo "docker-compose.yml not found"; exit 1; }
-            
-            echo "Building containers..."
-            docker compose build --no-cache || { echo "Build failed"; exit 1; }
-            
-            echo "Starting services..."
-            docker compose up -d || { echo "Start failed"; exit 1; }
-            
-            echo "=== Deployment completed ==="
+            ls -la
+            docker compose build --no-cache
+            docker compose up -d
           '
