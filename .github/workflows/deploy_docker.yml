@@ -66,7 +66,7 @@ jobs:
           ls -lh deployment.tar.gz
           
           # Split into smaller chunks if needed
-          if [ $(stat -c%s deployment.tar.gz) -gt 100000000 ]; then
+          if [ $(stat -c%s deployment.tar.gz) -gt 50000000 ]; then
             split -b 50M deployment.tar.gz deployment_part_
             for part in deployment_part_*; do
               scp -o ConnectTimeout=10 $part ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }}:~/
