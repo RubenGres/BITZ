@@ -53,25 +53,28 @@ jobs:
           # Copy to VPS
           scp deployment.tar.gz ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }}:~/
           
-          # Deploy on VPS
-          ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} '
-            # Create deployment directory
+          # Deploy on VPS with error handling
+          ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} 'set -e
+            echo "Creating deployment directory..."
             mkdir -p ~/bitz-deployment
             cd ~/bitz-deployment
             
-            # Stop existing containers first
-            docker compose down || true
+            echo "Stopping existing containers..."
+            docker compose down || echo "No containers to stop"
             
-            # Extract new version
+            echo "Extracting deployment package..."
             mv ~/deployment.tar.gz .
-            rm -rf ./*
             tar -xzf deployment.tar.gz
             rm deployment.tar.gz
             
-            # Build and start services
+            echo "Building containers..."
             docker compose build --no-cache
+            
+            echo "Starting services..."
             docker compose up -d
             
-            # Clean up old images
-            docker image prune -f
+            echo "Cleaning up old images..."
+            docker image prune -f || echo "No images to prune"
+            
+            echo "Deployment completed successfully!"
           '
