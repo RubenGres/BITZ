@@ -74,7 +74,7 @@ jobs:
         run: |
           ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} '
             cd ~/bitz-deployment
-            docker compose build --no-cache
+            docker compose build
             docker compose up -d
             echo "Deployment completed successfully!"
           '
