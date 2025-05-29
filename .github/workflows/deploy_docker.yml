@@ -37,6 +37,7 @@ jobs:
         run: |
           echo "DELETE_PASSWORD=${{ secrets.DELETE_PASSWORD }}" > .env
           echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
+          echo "HISTORY_PATH=${{ vars.HISTORY_PATH }}" >> .env
       
       - name: Test SSH connection
         run: |
