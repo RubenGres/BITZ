@@ -30,7 +30,7 @@ services:
       - DELETE_PASSWORD=${DELETE_PASSWORD}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
-      - ./BITZ/server/history:/app/history
+      - ${HISTORY_PATH}:/app/history
       - ./BITZ/server/static:/app/static
       - ./BITZ/server/templates:/app/templates
     restart: unless-stopped
