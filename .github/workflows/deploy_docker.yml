@@ -1,6 +1,5 @@
 # .github/workflows/deploy-docker.yml
 name: Deploy with Docker
-
 on:
   workflow_dispatch:
     inputs:
@@ -13,7 +12,6 @@ on:
           - prod
           - staging
           - production
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -38,6 +36,11 @@ jobs:
           echo "DELETE_PASSWORD=${{ secrets.DELETE_PASSWORD }}" > .env
           echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
           echo "HISTORY_PATH=${{ vars.HISTORY_PATH }}" >> .env
+          echo "DOMAIN=${{ vars.DOMAIN }}" >> .env
+          echo "API_DOMAIN=${{ vars.API_DOMAIN }}" >> .env
+          echo "CERT_PATH=${{ vars.CERT_PATH }}" >> .env
+          echo "CERT_KEY_PATH=${{ vars.CERT_KEY_PATH }}" >> .env
+          echo "WEBROOT_PATH=${{ vars.WEBROOT_PATH }}" >> .env
       
       - name: Test SSH connection
         run: |
