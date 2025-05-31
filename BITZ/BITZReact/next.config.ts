@@ -11,7 +11,13 @@ const nextConfig = {
   // Ignore TypeScript errors during build
   typescript: {
     ignoreBuildErrors: true,
+  },
+
+  env: {
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
   }
 };
 
 export default nextConfig;
+
+
