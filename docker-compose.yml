@@ -1,14 +1,29 @@
-# docker-compose.yml (place in root directory)
-version: '3.8'
-
 services:
+  nginx:
+    image: nginx:alpine
+    container_name: bitz-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - bitz-frontend
+      - bitz-server
+    restart: unless-stopped
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $$!; nginx -s reload; done & nginx -g \"daemon off;\"'"
+    networks:
+      - bitz-network
+
   bitz-frontend:
     build: 
       context: ./BITZ/BITZReact
       dockerfile: Dockerfile
     container_name: bitz-frontend
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     restart: unless-stopped
     depends_on:
       - bitz-server
@@ -18,19 +33,21 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - bitz-network
 
   bitz-server:
     build: 
       context: ./BITZ/server
       dockerfile: Dockerfile
     container_name: bitz-server
-    ports:
-      - "5000:5000"
+    expose:
+      - "5000"
     environment:
       - DELETE_PASSWORD=${DELETE_PASSWORD}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
-      - ${HISTORY_PATH}:/app/history
+      - ./BITZ/server/history:/app/history
       - ./BITZ/server/static:/app/static
       - ./BITZ/server/templates:/app/templates
     restart: unless-stopped
@@ -40,3 +57,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - bitz-network
+
+networks:
+  bitz-network:
+    driver: bridge
