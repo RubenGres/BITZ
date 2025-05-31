@@ -1,6 +1,7 @@
 .env
 BITZ/server/history
 __pycache__
+venv
 node_modules
 *.pyc
 *.pyo
