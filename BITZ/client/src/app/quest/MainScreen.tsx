@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Header from '@/app/Header';
 import { getConversationId } from '../User';
+import DisclaimerPopup from './DisclaimerPopup'; // Adjust path as needed
 
 // Define the type for location suggestions
 interface LocationSuggestion {
@@ -35,6 +36,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({ onLocationChange, onGPSC
   const [gpsCoordinates, setGpsCoordinates] = useState<string>('');
   const [isEditingLocation, setIsEditingLocation] = useState<boolean>(false);
   const [gpsFlashing, setGpsFlashing] = useState<boolean>(false);
+  const [showDisclaimer, setShowDisclaimer] = useState<boolean>(true);
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -48,6 +50,16 @@ export const MainScreen: React.FC<MainScreenProps> = ({ onLocationChange, onGPSC
       onGPSCoordinatesChange(gpsCoordinates);
     }
   }, [gpsCoordinates, onGPSCoordinatesChange]);
+
+  // Check if user has already accepted terms
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hasAcceptedTerms = localStorage.getItem('bitz-terms-accepted');
+      if (hasAcceptedTerms === 'true') {
+        setShowDisclaimer(false);
+      }
+    }
+  }, []);
 
   // Function to trigger GPS flash effect
   const flashGpsCoordinates = () => {
@@ -106,6 +118,30 @@ export const MainScreen: React.FC<MainScreenProps> = ({ onLocationChange, onGPSC
       const url = new URL(window.location.href);
       url.searchParams.set('flavor', newFlavor);
       window.history.replaceState({}, '', url.toString());
+    }
+  };
+
+  // Handler functions for disclaimer
+  const handleAcceptTerms = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('bitz-terms-accepted', 'true');
+    }
+    setShowDisclaimer(false);
+  };
+
+  const handleViewTerms = () => {
+    // Navigate to the terms page - adjust the route as needed
+    window.open('/terms', '_blank'); // Opens in new tab
+    // OR use your router: router.push('/terms');
+  };
+
+  // Handle camera input
+  const handleCameraInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Process the image file
+      console.log('Image captured:', file);
+      // Add your image processing logic here
     }
   };
 
@@ -240,6 +276,14 @@ export const MainScreen: React.FC<MainScreenProps> = ({ onLocationChange, onGPSC
     <>
       <Header menuColor="text-white" logoSrc="/logo/bitz_white.svg" />
 
+      {/* Disclaimer Popup */}
+      {showDisclaimer && (
+        <DisclaimerPopup 
+          onAccept={handleAcceptTerms} 
+          onViewTerms={handleViewTerms}
+        />
+      )}
+
       <main className="flex flex-col items-center px-4 pt-16">
         <div className="text-white text-center">
           <img 
@@ -284,6 +328,16 @@ export const MainScreen: React.FC<MainScreenProps> = ({ onLocationChange, onGPSC
             <span className="text-xl tracking-widest font-medium">take photo</span>
           </button>
         </div>
+
+        {/* Hidden Camera Input */}
+        <input
+          id="camera-input"
+          type="file"
+          accept="image/*"
+          capture="environment"
+          style={{ display: 'none' }}
+          onChange={handleCameraInput}
+        />
 
         {/* Location Display - Under Camera Button */}
         <div className="mt-8 text-center">
@@ -361,4 +415,4 @@ export const MainScreen: React.FC<MainScreenProps> = ({ onLocationChange, onGPSC
       </main>
     </>
   );
-}
+};
