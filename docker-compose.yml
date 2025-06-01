@@ -19,7 +19,7 @@ services:
 
   bitz-frontend:
     build: 
-      context: ./BITZ/BITZReact
+      context: ./BITZ/client
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: https://${API_DOMAIN}
