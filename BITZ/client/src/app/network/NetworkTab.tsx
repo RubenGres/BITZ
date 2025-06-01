@@ -4,17 +4,20 @@ import JSON5 from 'json5';
 import { API_URL } from '@/app/Constants';
 
 const global_parameters = {
-    delay_add_max_ms: 10e3, // don't wait for more than 10 seconds 
+    interaction_mode: "explore", // "auto" or "explore"
+    connection_type: "user_id", // "user_id" or "species"
+    cutoff_time: 1747396800, // maximum timestamp to display nodes
+    delay_add_max_ms: 2e3, // don't wait for more than 10 seconds 
     delay_add_min_ms: 2, // wait at least 2ms
     delay_rem_ms: 50,
-    real_time_scaling: 22, // 22x the speed 
+    real_time_scaling: 220, // real time speed multiplier 
     spawning_node_radius: 0.3, // factor of the size of the screen
     delay_wait_for_rem_ms: 120e3, // 2 minutes
     delay_wait_for_add_ms: 3e3, // 3 seconds
     attraction_force: 0.02,
     repulsion_force: 0.005,
     node_size_min_px: 50,
-    node_size_max_px: 5000000,
+    node_size_max_px: 999999999, // no size max
     node_scaling_factor: 1.08,
     node_damping: 0.95,
     node_border_radius_px: 2,
@@ -25,7 +28,6 @@ const global_parameters = {
     zoom_factor: 0.001,
     min_zoom: 0.1,
     max_zoom: 4,
-    cutoff_time: 1747396800
 }
 
 interface SpeciesRow {
@@ -280,7 +282,6 @@ interface SpeciesInfoProps {
     isMobile?: boolean;
 }
 
-
 const SpeciesInfoPanel = ({
     name,
     description,
@@ -419,24 +420,6 @@ const SpeciesInfoPanel = ({
     );
 };
 
-
-function RandomNodeClicker({ nodeList, handleNodeClick }) {
-  useEffect(() => {
-    if (!nodeList || nodeList.length === 0) return;
-
-    const interval = setInterval(() => {
-      const randomIndex = Math.floor(Math.random() * nodeList.length);
-      const randomNode = nodeList[randomIndex];
-      handleNodeClick(randomNode);
-    }, 30000); // 30 seconds
-
-    return () => clearInterval(interval); // cleanup on unmount
-  }, [nodeList, handleNodeClick]);
-
-  return null; // this component doesn’t render anything
-}
-
-
 const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [nodes, setNodes] = useState<Node[]>([]);
@@ -512,11 +495,16 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                         // scaling the node
                         same_species_node.size = Math.min(same_species_node.size * global_parameters.node_scaling_factor, global_parameters.node_size_max_px);
                     } else {
-                        addConnectionsUserId(new_node);
+                        if(global_parameters.connection_type === "user_id") {
+                            addConnectionsUserId(new_node);
+                        }
+
                         setNodes(prevNodes => [...prevNodes, new_node]);
 
                         // fake a click for the display panel
-                        handleNodeClick(new_node);
+                        if( global_parameters.interaction_mode === "auto") {
+                            handleNodeClick(new_node);
+                        }
                     }
 
                     currentIndex++;
@@ -779,6 +767,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
             user_id: user_id
         };
     };
+
     const createNodes = (speciesData: SpeciesRow[], questId: string) => {
         console.log('Creating nodes for quest id:', questId);
         console.log('Species data len:', speciesData.length);
@@ -1404,37 +1393,6 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                     onWheel={handleWheel}
                 />
 
-                {/* Zoom controls */}
-                {/* <div className="absolute top-4 right-4 flex flex-col gap-2 bg-white rounded-lg shadow-lg p-2">
-                    <button
-                        onClick={handleZoomIn}
-                        className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100"
-                        title="Zoom In"
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                        </svg>
-                    </button>
-                    <button
-                        onClick={handleZoomOut}
-                        className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100"
-                        title="Zoom Out"
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4" />
-                        </svg>
-                    </button>
-                    <button
-                        onClick={handleResetZoom}
-                        className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100"
-                        title="Reset View"
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                    </button>
-                </div> */}
-
                 {/* Zoom level indicator */}
                 <div className="absolute bottom-4 right-4 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-sm">
                     {Math.round(zoomLevel * 100)}%
@@ -1454,8 +1412,6 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                         isMobile={isMobile}
                     />
                 }
-
-                <RandomNodeClicker nodeList={nodes} handleNodeClick={handleNodeClick} />
 
             </div>
         </div>
