@@ -32,7 +32,7 @@ export default function AboutPage() {
                 We work with organizations to create customized BITZ experiences that fit your needs.
             </p>
 
-            <p>Contact us: xxxxx@xxxx</p>
+            <p>Contact us: info@bitz.tools</p>
         </section>
 
         <section className="mb-8">

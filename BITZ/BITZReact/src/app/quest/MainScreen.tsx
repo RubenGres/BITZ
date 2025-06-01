@@ -240,7 +240,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({ onLocationChange, onGPSC
     <>
       <Header menuColor="text-white" logoSrc="/logo/bitz_white.svg" />
 
-      <main className="flex flex-col items-center justify-center h-4/5">
+      <main className="flex flex-col items-center px-4 pt-16">
         <div className="text-white text-center">
           <img 
             src="/text/explore.svg" 
@@ -252,7 +252,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({ onLocationChange, onGPSC
 
         {/* Flavor Selection */}
         <div className="mt-8 mb-6">
-          <div className="flex flex-wrap justify-center gap-3 mt-10">
+          <div className="flex flex-wrap justify-center gap-3 mt-4">
             {FLAVOR_OPTIONS.map((option) => (
               <button
                 key={option.key}
@@ -260,7 +260,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({ onLocationChange, onGPSC
                 className={`px-6 py-3 border-2 transition-all duration-200 ${
                   flavor === option.key
                     ? 'bg-white text-[#f44928] border-white'
-                    : 'bg-transparent text-white border-white hover:bg-white hover:text-[#f44928]'
+                    : 'bg-transparent text-white border-white/50 hover:bg-white/10 hover:border-white'
                 }`}
               >
                 <span className="font-medium">{option.name}</span>
@@ -269,9 +269,10 @@ export const MainScreen: React.FC<MainScreenProps> = ({ onLocationChange, onGPSC
           </div>
         </div>
 
+        {/* Camera Button */}
         <div className="relative">
           <button 
-            className="flex items-center justify-center bg-white text-[#f44928] border-2 border-[#f44928] py-4 px-[90px]"
+            className="flex items-center justify-center bg-white text-[#f44928] border-2 border-[#f44928] py-4 px-[90px] hover:bg-gray-50 transition-colors shadow-lg"
             onClick={() => {
               const cameraInput = document.getElementById('camera-input');
               if (cameraInput) {
@@ -280,90 +281,83 @@ export const MainScreen: React.FC<MainScreenProps> = ({ onLocationChange, onGPSC
             }}
           >
             <img src="/icons/camera.svg" alt="Camera" className="w-6 h-6 mr-3" />
-            <span className="text-xl tracking-widest">take photo</span>
+            <span className="text-xl tracking-widest font-medium">take photo</span>
           </button>
         </div>
 
-        <div className="bg-[#00000011] text-white p-10 mx-10 my-16 max-w-md mx-auto">
-          <div className="text-left mb-3">
-            <p className="text-lg">
-              Location: 
-              <b 
-                className={`text-sm transition-all duration-300 ${
-                  gpsFlashing
-                    ? 'text-[#f44928]' 
-                    : 'text-white'
-                }`}
-              >
-                &nbsp;GPS {gpsCoordinates || 'N/A'}
-              </b>
-            </p>
-          
-          <div>
-            {isEditingLocation ? (
-              <div className="relative inline-block mt-1">
-                <div className="relative">
-                  <input
-                    id="location-input"
-                    type="text"
-                    value={locationInput}
-                    onChange={handleLocationInputChange}
-                    className="text-black px-3 py-2 rounded border border-white w-64 focus:outline-none focus:border-[#f44928]-500"
-                    placeholder="Enter location name..."
-                    autoFocus
-                  />
-                  {loading && (
-                    <div className="absolute right-2 top-3 w-4 h-4 border-t-2 border-blue-500 rounded-full animate-spin"></div>
-                  )}
-                </div>
-                
-                {/* Suggestions dropdown */}
-                {showSuggestions && suggestions.length > 0 && (
-                  <div id="location-suggestions" className="absolute z-50 w-full bg-white rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto">
-                    {suggestions.map((suggestion) => (
-                      <div
-                        key={suggestion.place_id}
-                        onClick={() => handleSuggestionClick(suggestion)}
-                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-black text-left text-sm"
-                      >
-                        {suggestion.display_name}
-                      </div>
-                    ))}
-                  </div>
+        {/* Location Display - Under Camera Button */}
+        <div className="mt-8 text-center">
+          {isEditingLocation ? (
+            <div className="relative">
+              <div className="flex items-center justify-center gap-2">
+                <input
+                  id="location-input"
+                  type="text"
+                  value={locationInput}
+                  onChange={handleLocationInputChange}
+                  className="bg-white/10 backdrop-blur-sm text-white px-4 py-2 border border-white/30 text-center focus:outline-none focus:border-white/60 focus:bg-white/20 transition-all placeholder-white/50 min-w-[280px]"
+                  placeholder="Search for a location..."
+                  autoFocus
+                />
+                {loading && (
+                  <div className="w-4 h-4 border-t-2 border-white animate-spin"></div>
                 )}
-                
-                <div className="mt-2 flex gap-2 justify-center">
-                  <button
-                    onClick={saveLocation}
-                    className="px-4 py-1 bg-white text-[#f44928] border border-[#f44928] rounded hover:bg-gray-100 transition-colors"
-                  >
-                    Save
-                  </button>
-                  <button
-                    onClick={toggleLocationEdit}
-                    className="px-4 py-1 bg-transparent text-white border border-white rounded hover:bg-white hover:text-black transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
               </div>
-            ) : (
-              <div className="mt-1">
-                <p className="break-words">
-                  <b>{location || 'Detecting location...'}</b>
-                </p>
+              
+              {/* Suggestions dropdown */}
+              {showSuggestions && suggestions.length > 0 && (
+                <div id="location-suggestions" className="absolute z-50 w-full max-w-md mx-auto left-1/2 transform -translate-x-1/2 bg-white/95 backdrop-blur-md shadow-xl mt-2 max-h-60 overflow-y-auto border border-white/20">
+                  {suggestions.map((suggestion) => (
+                    <div
+                      key={suggestion.place_id}
+                      onClick={() => handleSuggestionClick(suggestion)}
+                      className="px-4 py-3 hover:bg-white/20 cursor-pointer text-gray-800 text-left text-sm border-b border-gray-200/50 last:border-b-0"
+                    >
+                      {suggestion.display_name}
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              <div className="mt-3 flex gap-2 justify-center">
+                <button
+                  onClick={saveLocation}
+                  className="px-6 py-2 bg-white text-[#f44928] hover:bg-gray-100 transition-colors text-sm font-medium"
+                >
+                  Save
+                </button>
                 <button
                   onClick={toggleLocationEdit}
-                  className="mt-2 mx-auto px-3 py-1 bg-transparent text-white border border-white rounded text-sm hover:bg-white hover:text-black transition-colors"
+                  className="px-6 py-2 bg-transparent text-white border border-white/50 hover:bg-white/10 transition-colors text-sm"
                 >
-                  Change location
+                  Cancel
                 </button>
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center justify-center gap-2 text-white mb-1">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                </svg>
+                <span className="text-sm opacity-75">Current Location</span>
+              </div>
+              
+              <button 
+                onClick={toggleLocationEdit}
+                className="text-white text-lg font-medium max-w-md mx-auto hover:text-white/80 transition-colors cursor-pointer"
+              >
+                {location || 'Detecting location...'}
+              </button>
+              
+              <div className="flex items-center justify-center text-sm">
+                <span className={`transition-all duration-300 ${gpsFlashing ? 'text-[#f44928]' : 'text-white/70'}`}>
+                  GPS: {gpsCoordinates || 'N/A'}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
-        </div>
-
       </main>
     </>
   );
