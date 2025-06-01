@@ -262,6 +262,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questData, questId, loading, er
     const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
     const [panStart, setPanStart] = useState({ x: 0, y: 0 });
     const [zoomLevel, setZoomLevel] = useState(1);
+    const [isTouching, setIsTouching] = useState(false);
     const [touchDistance, setTouchDistance] = useState(0);
     const [touchCenter, setTouchCenter] = useState({ x: 0, y: 0 });
     const animationRef = useRef<number>(0);

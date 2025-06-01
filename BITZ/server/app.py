@@ -21,15 +21,6 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# CORS is handled at the nginx level now
-# CORS(app, resources={r"/*": {
-#     "origins": [
-#         "*" # Allow all origins for development purposes
-#     ],
-#     "methods": ["GET", "POST", "OPTIONS", "PUT", "DELETE"],  # Allow all common methods
-#     "allow_headers": ["Content-Type", "Authorization", "X-Requested-With", "Accept"]  # Common headers
-# }})
-
 def human_readable_size(size, decimal_places=1):
     """Convert bytes to human-readable format (KB, MB, GB, etc.)"""
     for unit in ["B", "KB", "MB", "GB", "TB"]:
@@ -828,4 +819,13 @@ def question():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
+    # CORS is handled at the nginx level in production, but for development we can enable it here
+    CORS(app, resources={r"/*": {
+        "origins": [
+            "*" # Allow all origins for development purposes
+        ],
+        "methods": ["GET", "POST", "OPTIONS", "PUT", "DELETE"],  # Allow all common methods
+        "allow_headers": ["Content-Type", "Authorization", "X-Requested-With", "Accept"]  # Common headers
+    }})
+    
     app.run(host="0.0.0.0", port=5000, debug=True)
