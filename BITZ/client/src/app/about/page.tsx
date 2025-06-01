@@ -54,10 +54,18 @@ export default function AboutPage() {
         </section>
         
         {/* THE DATA Section */}
-        <section className="mb-16">
+        <section className="mb-8">
           <h2 className="text-orange-500  text-l font-medium mb-4">THE DATA</h2>
           <p className="mb-8">
             BITZ collects and coalesces data... outputting it as X DarwinCore....
+          </p>
+        </section>
+
+        {/* TOS Section */}
+        <section className="mb-16">
+          <h2 className="text-orange-500  text-l font-medium mb-4">TERMS OF SERVICE</h2>
+          <p className="mb-8">
+            Full terms of service can be found <Link href="/terms" className="text-blue-600 underline hover:text-blue-800">here</Link>.
           </p>
         </section>
       </main>
