@@ -40,37 +40,14 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose }) => {
               <button 
                 className="text-black uppercase font-medium flex justify-between w-full"
               >
-                Quest Flavors
+                Eyes On The Field
               </button>
               {questDropdownOpen && (
                 <ul className="mt-2 ml-8 space-y-2">
-                  <li><a href="/quest?flavor=basic" className="text-green-600 hover:text-green-800 capitalize">Basic</a></li>
-                  <li><a href="/quest?flavor=expert" className="text-green-600 hover:text-green-800 capitalize">Expert</a></li>
-                  <li><a href="/quest?flavor=myths" className="text-green-600 hover:text-green-800 capitalize">Myth & Culture</a></li>
+                  <li><a href="/network" className="text-green-600 hover:text-green-800 capitalize"> VENN canteen - Porto </a></li>
                 </ul>
               )}
             </div>
-          </li>
-          
-          <li className="border border-green-500  p-4">
-            <div>
-              <button 
-                className="text-black uppercase font-medium flex justify-between w-full"
-              >
-                Visualizations
-              </button>
-              {visualizationsDropdownOpen && (
-                <ul className="mt-2 ml-8 space-y-2">
-                  <li><a href="/gallery" className="text-green-600 hover:text-green-800 capitalize">Gallery</a></li>
-                  <li><a href="/network" className="text-green-600 hover:text-green-800 capitalize">Network</a></li>
-                  <li><a href="/map" className="text-green-600 hover:text-green-800 capitalize">Map</a></li>
-                </ul>
-              )}
-            </div>
-          </li>
-          
-          <li className="border border-green-500  p-4">
-            <a href="#" className="text-black uppercase font-medium block">Dashboard</a>
           </li>
           
           <li className="border border-green-500  p-4">

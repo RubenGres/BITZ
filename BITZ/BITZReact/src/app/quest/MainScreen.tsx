@@ -17,8 +17,15 @@ interface MainScreenProps {
   onGPSCoordinatesChange?: (gpsCoordinates: string) => void;
 }
 
+// Flavor options configuration
+const FLAVOR_OPTIONS = [
+  { key: 'basic', name: 'Basic' },
+  { key: 'expert', name: 'Expert' },
+  { key: 'myths', name: 'Myth & Culture' }
+];
+
 export const MainScreen: React.FC<MainScreenProps> = ({ onLocationChange, onGPSCoordinatesChange }) => {
-  const [flavor, setFlavor] = useState<string | null>(null);
+  const [flavor, setFlavor] = useState<string>('basic'); // Default to basic
   const [conversationPrefix, setConversationPrefix] = useState<string>('');
   const [locationInput, setLocationInput] = useState<string>('');
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
@@ -47,7 +54,7 @@ export const MainScreen: React.FC<MainScreenProps> = ({ onLocationChange, onGPSC
     setGpsFlashing(true);
     setTimeout(() => {
       setGpsFlashing(false);
-    }, 300); // Flash for 0.1 second
+    }, 300); // Flash for 0.3 second
   };
 
   // Get current GPS coordinates
@@ -58,7 +65,6 @@ export const MainScreen: React.FC<MainScreenProps> = ({ onLocationChange, onGPSC
           const { latitude, longitude } = position.coords;
           const coords = `${latitude}, ${longitude}`;
           setGpsCoordinates(coords);
-          // flashGpsCoordinates();
           
           // Get location name from coordinates
           await getLocationFromCoordinates(latitude, longitude);
@@ -71,12 +77,16 @@ export const MainScreen: React.FC<MainScreenProps> = ({ onLocationChange, onGPSC
     }
   }, []);
 
-  // Get URL params and conversation ID
+  // Get URL params and conversation ID, also check for existing flavor
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
       const flavorParam = urlParams.get('flavor');
-      setFlavor(flavorParam);
+      
+      // Set flavor from URL if available, otherwise keep default
+      if (flavorParam && FLAVOR_OPTIONS.some(option => option.key === flavorParam)) {
+        setFlavor(flavorParam);
+      }
       
       // Get conversation ID prefix
       const conversationId = getConversationId();
@@ -86,6 +96,18 @@ export const MainScreen: React.FC<MainScreenProps> = ({ onLocationChange, onGPSC
       }
     }
   }, []);
+
+  // Update URL when flavor changes
+  const handleFlavorChange = (newFlavor: string) => {
+    setFlavor(newFlavor);
+    
+    // Update URL to include the new flavor
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('flavor', newFlavor);
+      window.history.replaceState({}, '', url.toString());
+    }
+  };
 
   // Get location name from GPS coordinates using Nominatim
   const getLocationFromCoordinates = async (lat: number, lon: number) => {
@@ -228,7 +250,26 @@ export const MainScreen: React.FC<MainScreenProps> = ({ onLocationChange, onGPSC
           <p className="text-white text-xl">BIODIVERSITY WITH BITZ</p>
         </div>
 
-        <div className="relative mt-10">
+        {/* Flavor Selection */}
+        <div className="mt-8 mb-6">
+          <div className="flex flex-wrap justify-center gap-3 mt-10">
+            {FLAVOR_OPTIONS.map((option) => (
+              <button
+                key={option.key}
+                onClick={() => handleFlavorChange(option.key)}
+                className={`px-6 py-3 border-2 transition-all duration-200 ${
+                  flavor === option.key
+                    ? 'bg-white text-[#f44928] border-white'
+                    : 'bg-transparent text-white border-white hover:bg-white hover:text-[#f44928]'
+                }`}
+              >
+                <span className="font-medium">{option.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="relative">
           <button 
             className="flex items-center justify-center bg-white text-[#f44928] border-2 border-[#f44928] py-4 px-[90px]"
             onClick={() => {
@@ -245,8 +286,6 @@ export const MainScreen: React.FC<MainScreenProps> = ({ onLocationChange, onGPSC
 
         <div className="bg-[#00000011] text-white p-10 mx-10 my-16 max-w-md mx-auto">
           <div className="text-left mb-3">
-            <p className="text-lg mb-4">Quest Flavor: <b>{flavor || 'default'}</b></p>
-            <p className="text-lg mb-4">Conversation ID: <b>{conversationPrefix || 'N/A'}</b></p>
             <p className="text-lg">
               Location: 
               <b 
