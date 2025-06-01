@@ -36,7 +36,10 @@ export default function AboutPage() {
             BITZ focuses on the sites & transition zones that sit between urban informatics and biodiversity informatics: gardens, farms, suburbs and the side of the highway.
           </p>
           <p className="mb-8">
-            BITZ is a biodiversity storytelling and data-gathering tool for organisations, governments and activists that helps them run community-driven biodiversity-listing events that is better than automated techno-centric solutions because it brings people to the field, starts conversations and generates public datasets. We charge a setup/customization fee for bespoke projects, but the base tool is free.
+            BITZ is a biodiversity storytelling and data-gathering tool for organisations, governments and activists that helps them run community-driven biodiversity-listing events that is better than automated techno-centric solutions because it brings people to the field, starts conversations and generates public datasets.
+          </p>
+          <p>
+            We charge a setup/customization fee for bespoke projects, but the base tool is free.
           </p>
         </section>
         
