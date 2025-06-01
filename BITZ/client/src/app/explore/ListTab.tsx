@@ -163,7 +163,7 @@ const ListTab: React.FC<ListTabProps> = ({ questData, questId, loading, error })
                     {row.image_name ? (
                       <div className="w-24 h-24 overflow-hidden rounded">
                         <img
-                          src={`${API_URL}/explore/images/${questId}/${row.image_name}`}
+                          src={`${API_URL}/explore/images/${questId}/${row.image_name}?res=medium`}
                           alt={row['common_name'] || row['scientific_name'] || 'Species image'}
                           className="w-full h-full object-contain cursor-pointer transition-opacity hover:opacity-80"
                           loading="lazy"
