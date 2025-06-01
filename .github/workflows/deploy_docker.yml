@@ -75,6 +75,12 @@ jobs:
             docker compose down || echo "No containers to stop"
           '
       
+      - name: Setup BITZ directory structure
+        run: |
+          ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} '
+            sudo mkdir -p ${{ vars.HISTORY_PATH }} && sudo chown -R 1000:1000 ${{ vars.HISTORY_PATH }}
+          '
+      
       - name: Extract and deploy
         run: |
           ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} '
