@@ -44,7 +44,7 @@ export default function AboutPage() {
         <section className="mb-8">
           <h2 className="text-orange-500 text-l font-medium mb-4">THE CREATORS</h2>
           <p className="mb-8">
-            BITZ was created by <span className="text-green-600 font-semibold">Nicetails & Genomic Gastronomy</span> in 2025 with support from <span className="text-green-600 font-semibold">MUSAE, an EU S+T+ARTS program</span>.
+            BITZ was created by <span className="text-green-600 font-semibold">NiceTrails & Genomic Gastronomy</span> in 2025 with support from <span className="text-green-600 font-semibold">MUSAE, an EU S+T+ARTS program</span>.
           </p>
 
           <img src="logo/starts_eu.png" alt="STARTS EU Logo" />
