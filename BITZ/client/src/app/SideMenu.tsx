@@ -28,9 +28,11 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose }) => {
       </div>
       <nav>
         <ul>
+
           <li className="border border-green-500 p-4">
-            <a href="/about" className="text-black uppercase font-medium block">About</a>
+            <a href="/list" className="text-black uppercase font-medium block">My Quests</a>
           </li>
+
           <li className="border border-green-500 p-4">
             <a href="/list" className="text-black uppercase font-medium block">Explore</a>
           </li>
@@ -49,10 +51,11 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose }) => {
               )}
             </div>
           </li>
-          
-          <li className="border border-green-500  p-4">
-            <a href="/info" className="text-black uppercase font-medium block">More Info</a>
+
+          <li className="border border-green-500 p-4">
+            <a href="/about" className="text-black uppercase font-medium block">About</a>
           </li>
+
         </ul>
       </nav>
     </div>
