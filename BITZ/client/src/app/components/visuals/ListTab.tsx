@@ -3,6 +3,7 @@ import Papa from 'papaparse';
 import { QUEST_COLORS } from '@/app/Constants';
 import { hashStringToIndex } from '@/app/utils/hashUtils';
 import { API_URL } from '@/app/Constants';
+import FullscreenImageModal from "@/app/components/FullscreenImageModal";
 
 interface SpeciesRow {
   'image_name': string;
@@ -147,18 +148,6 @@ const ListTab: React.FC<ListTabProps> = ({ questData, loading, error }) => {
     setFullscreenImage(null);
   };
 
-  // Handle escape key to close fullscreen
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && fullscreenImage) {
-        closeFullscreen();
-      }
-    };
-
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [fullscreenImage]);
-
   if (loading || parsedLoading) {
     return <div className="p-4">Loading...</div>;
   }
@@ -226,8 +215,8 @@ const ListTab: React.FC<ListTabProps> = ({ questData, loading, error }) => {
                               row.questId,
                               row.latitude,
                               row.longitude
-                            ),
-                              e.stopPropagation()
+                            );
+                            e.stopPropagation();
                           }}
                         />
                       </div>
@@ -262,32 +251,12 @@ const ListTab: React.FC<ListTabProps> = ({ questData, loading, error }) => {
         </div>
       )}
 
-      {/* Fullscreen Image Modal */}
-      {fullscreenImage && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4"
-          onClick={closeFullscreen}
-        >
-          <div className="relative max-w-full max-h-full">
-            <button
-              onClick={closeFullscreen}
-              className="absolute top-4 right-4 text-white text-2xl font-bold hover:text-gray-300 transition-colors"
-              aria-label="Close fullscreen"
-            >
-              ×
-            </button>
-            <img
-              src={fullscreenImage.src}
-              alt={fullscreenImage.alt}
-              className="max-w-full max-h-[90vh] object-contain"
-              onClick={(e) => e.stopPropagation()}
-            />
-            <div className="text-white text-center mt-4 text-sm">
-              <div>{fullscreenImage.alt}</div>
-            </div>
-          </div>
-        </div>
-      )}
+      <FullscreenImageModal
+        src={fullscreenImage?.src || ''}
+        alt={fullscreenImage?.alt || ''}
+        isOpen={!!fullscreenImage}
+        onClose={closeFullscreen}
+      />
     </div>
   );
 };
