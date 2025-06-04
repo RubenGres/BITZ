@@ -46,7 +46,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose }) => {
               </button>
               {questDropdownOpen && (
                 <ul className="mt-2 ml-8 space-y-2">
-                  <li><a href="/network" className="text-green-600 hover:text-green-800 capitalize"> VENN canteen - Porto </a></li>
+                  <li><a href="/events/venn" className="text-green-600 hover:text-green-800 capitalize"> VENN canteen - Porto </a></li>
                 </ul>
               )}
             </div>
