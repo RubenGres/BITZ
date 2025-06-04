@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Papa from 'papaparse';
+import { QUEST_COLORS } from '@/app/Constants';
+import { hashStringToIndex } from '@/app/utils/hashUtils';
 import { API_URL } from '@/app/Constants';
 
 interface SpeciesRow {
@@ -10,18 +12,23 @@ interface SpeciesRow {
   'discovery_timestamp': string;
   'confidence': string;
   'notes': string;
-  'latitude': string;  // Added latitude
-  'longitude': string; // Added longitude
+  'latitude': string;
+  'longitude': string;
+  'questId': string;
+}
+
+interface QuestData {
+  species_data_csv: string;
+  [key: string]: any; // Allow for other properties
 }
 
 interface ListTabProps {
-  questData: any;
-  questId: string;
+  questData: Record<string, QuestData>; // Changed to dictionary with questId as key
   loading: boolean;
   error: string | null;
 }
 
-const ListTab: React.FC<ListTabProps> = ({ questData, questId, loading, error }) => {
+const ListTab: React.FC<ListTabProps> = ({ questData, loading, error }) => {
   const [speciesData, setSpeciesData] = useState<SpeciesRow[]>([]);
   const [parsedLoading, setParsedLoading] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -30,27 +37,45 @@ const ListTab: React.FC<ListTabProps> = ({ questData, questId, loading, error })
     alt: string;
     lat?: string;
     lng?: string;
+    questId: string;
   } | null>(null);
 
   useEffect(() => {
-    if (questData?.species_data_csv) {
+    if (questData && Object.keys(questData).length > 0) {
       setParsedLoading(true);
       setParseError(null);
-      
-      Papa.parse(questData.species_data_csv, {
-        header: true,
-        dynamicTyping: true,
-        skipEmptyLines: true,
-        complete: (results) => {
-          if (results.errors.length > 0) {
-            console.warn("CSV parsing errors:", results.errors);
-            // Try to continue despite errors
+
+      const allSpeciesData: SpeciesRow[] = [];
+      const questIds = Object.keys(questData);
+      let processedQuests = 0;
+
+      const processQuest = (questId: string, questInfo: QuestData) => {
+        if (!questInfo?.species_data_csv) {
+          processedQuests++;
+          if (processedQuests === questIds.length) {
+            // Sort all data by timestamp and set state
+            const sortedData = allSpeciesData.sort((a, b) => {
+              const dateA = new Date(a.discovery_timestamp || 0);
+              const dateB = new Date(b.discovery_timestamp || 0);
+              return dateB.getTime() - dateA.getTime(); // Most recent first
+            });
+            setSpeciesData(sortedData);
+            setParsedLoading(false);
           }
-          
-          // Process the data to ensure all required fields exist
-          const processedData = results.data.map((row: any) => {
-            // Ensure all fields exist, even if empty
-            return {
+          return;
+        }
+
+        Papa.parse(questInfo.species_data_csv, {
+          header: true,
+          dynamicTyping: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            if (results.errors.length > 0) {
+              console.warn(`CSV parsing errors for quest ${questId}:`, results.errors);
+            }
+
+            // Process the data for this quest
+            const processedQuestData = results.data.map((row: any) => ({
               'image_name': row['image_name'] || '',
               'taxonomic_group': row['taxonomic_group'] || '',
               'scientific_name': row['scientific_name'] || '',
@@ -58,19 +83,41 @@ const ListTab: React.FC<ListTabProps> = ({ questData, questId, loading, error })
               'discovery_timestamp': row['discovery_timestamp'] || '',
               'confidence': row['confidence'] || '',
               'notes': row['notes'] || '',
-              'latitude': row['latitude'] || '', // Default to empty string if missing
-              'longitude': row['longitude'] || '' // Default to empty string if missing
-            };
-          });
-          
-          setSpeciesData(processedData as SpeciesRow[]);
-          setParsedLoading(false);
-        },
-        error: (error: Error) => {
-          setParseError(error.message);
-          setParsedLoading(false);
-        }
+              'latitude': row['latitude'] || '',
+              'longitude': row['longitude'] || '',
+              'questId': questId
+            })) as SpeciesRow[];
+
+            // Add this quest's data to the overall collection
+            allSpeciesData.push(...processedQuestData);
+            processedQuests++;
+
+            // If all quests have been processed, sort and set the data
+            if (processedQuests === questIds.length) {
+              const sortedData = allSpeciesData.sort((a, b) => {
+                const dateA = new Date(a.discovery_timestamp || 0);
+                const dateB = new Date(b.discovery_timestamp || 0);
+                return dateB.getTime() - dateA.getTime(); // Most recent first
+              });
+              setSpeciesData(sortedData);
+              setParsedLoading(false);
+            }
+          },
+          error: (error: Error) => {
+            console.error(`Error parsing CSV for quest ${questId}:`, error);
+            setParseError(`Error parsing quest ${questId}: ${error.message}`);
+            setParsedLoading(false);
+          }
+        });
+      };
+
+      // Process all quests
+      questIds.forEach(questId => {
+        processQuest(questId, questData[questId]);
       });
+    } else {
+      setSpeciesData([]);
+      setParsedLoading(false);
     }
   }, [questData]);
 
@@ -92,8 +139,8 @@ const ListTab: React.FC<ListTabProps> = ({ questData, questId, loading, error })
     }
   };
 
-  const openFullscreen = (src: string, alt: string, lat?: string, lng?: string) => {
-    setFullscreenImage({ src, alt, lat, lng });
+  const openFullscreen = (src: string, alt: string, questId: string, lat?: string, lng?: string) => {
+    setFullscreenImage({ src, alt, questId, lat, lng });
   };
 
   const closeFullscreen = () => {
@@ -120,12 +167,12 @@ const ListTab: React.FC<ListTabProps> = ({ questData, questId, loading, error })
     return <div className="p-4 text-red-500">Error: {error || parseError}</div>;
   }
 
-  if (!questData?.species_data_csv) {
-    return <div className="p-4">No species data available</div>;
+  if (!questData || Object.keys(questData).length === 0) {
+    return <div className="p-4">No quest data available</div>;
   }
 
   return (
-    <div className="p-4">     
+    <div className="p-4">
       {speciesData.length === 0 ? (
         <p className="text-gray-600">No species data found</p>
       ) : (
@@ -158,21 +205,30 @@ const ListTab: React.FC<ListTabProps> = ({ questData, questId, loading, error })
             </thead>
             <tbody>
               {speciesData.map((row, index) => (
-                <tr key={index} className="hover:bg-gray-50">
+                <tr
+                  key={`${row.questId}-${index}`}
+                  className="hover:bg-gray-50"
+                  style={{ borderLeft: '7px solid ' + QUEST_COLORS[hashStringToIndex(row.questId, QUEST_COLORS.length)] }}
+                  onClick={() => { window.location.href = `/view?id=${row.questId}`; }}
+                >
                   <td className="border border-gray-200 px-4 py-2">
                     {row.image_name ? (
                       <div className="w-24 h-24 overflow-hidden rounded">
                         <img
-                          src={`${API_URL}/explore/images/${questId}/${row.image_name}?res=medium`}
+                          src={`${API_URL}/explore/images/${row.questId}/${row.image_name}?res=medium`}
                           alt={row['common_name'] || row['scientific_name'] || 'Species image'}
                           className="w-full h-full object-contain cursor-pointer transition-opacity hover:opacity-80"
                           loading="lazy"
-                          onClick={() => openFullscreen(
-                            `${API_URL}/explore/images/${questId}/${row.image_name}`,
-                            row['common_name'] || row['scientific_name'] || 'Species image',
-                            row.latitude,
-                            row.longitude
-                          )}
+                          onClick={(e) => {
+                            openFullscreen(
+                              `${API_URL}/explore/images/${row.questId}/${row.image_name}`,
+                              row['common_name'] || row['scientific_name'] || 'Species image',
+                              row.questId,
+                              row.latitude,
+                              row.longitude
+                            ),
+                              e.stopPropagation()
+                          }}
                         />
                       </div>
                     ) : (
@@ -208,7 +264,7 @@ const ListTab: React.FC<ListTabProps> = ({ questData, questId, loading, error })
 
       {/* Fullscreen Image Modal */}
       {fullscreenImage && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4"
           onClick={closeFullscreen}
         >
@@ -227,7 +283,7 @@ const ListTab: React.FC<ListTabProps> = ({ questData, questId, loading, error })
               onClick={(e) => e.stopPropagation()}
             />
             <div className="text-white text-center mt-4 text-sm">
-              {fullscreenImage.alt}
+              <div>{fullscreenImage.alt}</div>
             </div>
           </div>
         </div>

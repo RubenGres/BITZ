@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '@/app/Constants';
-import StatsTab from './StatsTab';
-import ListTab from './ListTab';
-import NetworkTab from './NetworkTab';
+import StatsTab from '../components/visuals/StatsTab';
+import ListTab from '../components/visuals/ListTab';
+import NetworkTab from '../components/visuals/NetworkTab';
 import { QuestData } from './QuestTypes';
-import MapTab from './MapTab';
+import MapTab from '../components/visuals/MapTab';
 
 const QuestExplorer = ({ questId = "XXXXXXXX" }) => {
   const [activeTab, setActiveTab] = useState('stats');
@@ -53,11 +53,11 @@ const QuestExplorer = ({ questId = "XXXXXXXX" }) => {
       case 'stats': 
         return <StatsTab questData={questData} loading={loading} error={error} />;
       case 'list': 
-        return <ListTab questData={questData} questId={currentQuestId} loading={loading} error={error} />;
+        return <ListTab questData={{ [currentQuestId]: questData }} loading={loading} error={error} />;
       case 'network': 
         return <NetworkTab questData={questData} questId={currentQuestId} loading={loading} error={error} />;
       case 'map': 
-        return <MapTab questData={questData} questId={currentQuestId} loading={loading} error={error} />;
+        return <MapTab questData={{ [currentQuestId]: questData }} loading={loading} error={error}/>;
       default: 
         return <StatsTab questData={questData} loading={loading} error={error} />;
     }

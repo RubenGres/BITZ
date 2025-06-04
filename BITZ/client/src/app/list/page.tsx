@@ -99,16 +99,6 @@ export default function QuestListPage() {
         >
           MY QUESTS
         </button>
-        <button
-          className={`py-2 px-6 font-semibold ${
-            activeTab === 'others' 
-              ? 'text-green-600 border-b-2 border-green-500 bg-green-50' 
-              : 'text-gray-600 hover:text-green-600'
-          }`}
-          onClick={() => setActiveTab('others')}
-        >
-          COMMUNITY
-        </button>
         <div className="flex-grow border-b border-green-300"></div>
       </div>
     );
@@ -142,23 +132,16 @@ export default function QuestListPage() {
           {filtered.map(([quest_id, metadata]) => (
             <a 
               key={quest_id}
-              href={`/explore?id=${quest_id}`}
+              href={`/view?id=${quest_id}`}
               className="block p-4 bg-white shadow hover:shadow-md transition-shadow border border-green-300 hover:border-green-500"
             >
               <div className="font-semibold text-green-700 text-lg mb-1">
-                QUEST #{quest_id.substring(0, 8)}
+                {metadata.location.split(", ")[0] + ", " + metadata.location.split(", ").slice(-1)[0] || 'Unknown location'}
               </div>
-              <div className="text-xs text-gray-500 mb-2">{metadata.user_id}</div>
+
+              {/* <div className="text-xs text-gray-500 mb-2">{metadata.user_id}</div> */}
               
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <span className="text-gray-600">{metadata.flavor || 'No flavor'}</span>
-                </div>
-                
-                <div className="overflow-hidden">
-                  <span className="text-gray-600 block truncate">{metadata.location || 'Unknown location'}</span>
-                </div>
-                
                 <div>
                   <span className="text-gray-600">
                     {metadata.date_time ? formatDate(metadata.date_time) : 'Date unknown'}
@@ -166,10 +149,14 @@ export default function QuestListPage() {
                 </div>
                 
                 <div>
+                  <span className="text-gray-600">{metadata.flavor || 'No flavor'}</span>
+                </div>
+{/*                 
+                <div>
                   <span className="text-gray-600">
                     {metadata.duration ? formatDuration(metadata.duration) : 'Duration unknown'}
                   </span>
-                </div>
+                </div> */}
                 
                 <div>
                   <span className="text-gray-600">

@@ -3,14 +3,30 @@
 import React, { Suspense } from 'react';
 import Header from '@/app/Header';
 import Footer from '@/app/Footer';
-import QuestExplorer from './GlobalQuestExplorer';
+import QuestExplorer from './QuestExplorer';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 // Client component that uses search params
 function ViewContentTabs() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const questId = searchParams.get('id');
+
+  // Use React's useEffect for navigation instead of directly modifying window.location
+  React.useEffect(() => {
+    if (!questId) {
+      router.push('/list');
+    }
+  }, [questId, router]);
+
+  // Return null during the redirect check
+  if (!questId) {
+    return null;
+  }
+
   return (
     <div className="flex-grow container mx-auto px-4 py-6">
-      <QuestExplorer />
+      <QuestExplorer questId={questId} />
     </div>
   );
 }

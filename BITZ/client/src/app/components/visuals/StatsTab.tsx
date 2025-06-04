@@ -1,5 +1,5 @@
 import React from 'react';
-import { QuestData } from './QuestTypes';
+import { QuestData } from '../../view/QuestTypes';
 
 interface StatsTabProps {
   questData: QuestData | null;
