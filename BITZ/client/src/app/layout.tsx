@@ -46,7 +46,18 @@ const spaceMono = localFont({
 
 export const metadata: Metadata = {
   title: "BITZ",
-  description: "Biodiversity in Transition Zones",
+  description: "Take photos of species and learn about the biodiversity around you.",
+  manifest: "/manifest.json",
+  themeColor: "#3EC488",
+  viewport: "width=device-width, initial-scale=1",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "BITZ",
+  },
+  icons: {
+    apple: "/icon-192x192.png",
+  },
 };
 
 export default function RootLayout({

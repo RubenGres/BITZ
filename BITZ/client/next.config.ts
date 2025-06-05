@@ -1,23 +1,28 @@
 import type { NextConfig } from "next";
 
-const nextConfig = {
-  output: 'standalone',
+const withPWA = require('next-pwa')({
+ dest: 'public',
+ register: true,
+ skipWaiting: true,
+ disable: process.env.NODE_ENV === 'development'
+});
 
-  // Ignore ESLint errors during build
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  
-  // Ignore TypeScript errors during build
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+const nextConfig: NextConfig = {
+ output: 'standalone',
 
-  env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
-  }
+ // Ignore ESLint errors during build
+ eslint: {
+   ignoreDuringBuilds: true,
+ },
+ 
+ // Ignore TypeScript errors during build
+ typescript: {
+   ignoreBuildErrors: true,
+ },
+
+ env: {
+   NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+ }
 };
 
-export default nextConfig;
-
-
+export default withPWA(nextConfig);

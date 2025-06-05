@@ -92,6 +92,14 @@ const QuestExplorer = () => {
         <div className="overflow-x-auto">
           <div className="flex whitespace-nowrap">
             <button 
+              className={`px-6 py-2 ml-1 ${activeTab === 'map' 
+                ? 'bg-green-400 text-white' 
+                : 'border border-green-400 text-green-400'}`}
+              onClick={() => setActiveTab('map')}
+            >
+              MAP
+            </button>
+            <button 
               className={`px-6 py-2 mx-1 ${activeTab === 'list' 
                 ? 'bg-green-400 text-white' 
                 : 'border border-green-400 text-green-400'}`}
@@ -106,14 +114,6 @@ const QuestExplorer = () => {
               onClick={() => setActiveTab('network')}
             >
               NETWORK
-            </button>
-            <button 
-              className={`px-6 py-2 ml-1 ${activeTab === 'map' 
-                ? 'bg-green-400 text-white' 
-                : 'border border-green-400 text-green-400'}`}
-              onClick={() => setActiveTab('map')}
-            >
-              MAP
             </button>
           </div>
         </div>

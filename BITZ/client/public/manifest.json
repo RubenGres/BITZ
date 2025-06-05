@@ -1,0 +1,39 @@
+{
+  "name": "BITZ - Biodiversity In Transition Zones",
+  "short_name": "BITZ",
+  "description": "Take photos of species and learn about the biodiversity around you.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#3EC488",
+  "theme_color": "#3EC488",
+  "orientation": "portrait-primary",
+  "categories": ["education", "utilities", "photo"],
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Mobile view of BITZ app"
+    }
+  ]
+}

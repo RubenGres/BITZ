@@ -76,9 +76,12 @@ export default function AboutPage() {
 
         {/* PREVIOUS PROJECTS Section */}
         <section className="mb-8">
-          <h2 className="text-orange-500 text-l font-medium mb-4">OUR PREVIOUS PROJECTS INCLUDE:</h2>
+          <h2 className="text-orange-500 text-l font-medium mb-4">CUSTOM PROJECTS</h2>
           <p className="mb-4">
-            We work with organizations to create customized BITZ experiences that fit your needs.
+            We work with festivals, museums, community groups, and research institutions to bring BITZ into diverse contexts.
+          </p>
+          <p className="mb-4">
+            In May 2025, we collaborated on <a href="/events/venn" className="text-blue-600 underline hover:text-blue-800">an event in Porto</a> that included an EYES ON THE FIELD workshop at a local farm, a dinner event based on the species found during the visit, and an audiovisual installation.
           </p>
         </section>
 
