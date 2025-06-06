@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Header from '@/app/Header';
 import Footer from '@/app/Footer';
-import NetworkTab from './NetworkTab';
+import NetworkTab from '../components/visuals/NetworkTab';
 import { API_URL } from '@/app/Constants';
 
 export default function NetworkPage() {
@@ -90,8 +90,8 @@ export default function NetworkPage() {
       {/* Header */}
       {/* <Header menuColor="text-green-500" logoSrc="/logo/bitz_green.svg" /> */}
      
-      {/* Main Content - flex-grow ensures it takes available space */}
-      <main className="flex-grow flex w-full bg-black">
+      {/* Main Content - flex-grow  ensures it takes available space */}
+      <main className="flex-grow  flex w-full bg-black">
         <div className="flex flex-col w-full mx-auto">
           {error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -104,7 +104,7 @@ export default function NetworkPage() {
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
             </div>
           ) : (
-            <div className="flex-grow flex w-full h-full">
+            <div className="flex-grow  flex w-full h-full">
               <NetworkTab
                 questDataDict={questDataDict}
                 questId={selectedQuestId}

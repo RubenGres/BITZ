@@ -53,11 +53,11 @@ const QuestExplorer = ({ questId = "XXXXXXXX" }) => {
       case 'stats': 
         return <StatsTab questData={questData} loading={loading} error={error} />;
       case 'list': 
-        return <ListTab questData={{ [currentQuestId]: questData }} loading={loading} error={error} />;
+        return <ListTab questData={questDataDict} loading={loading} error={error} />;
       case 'network': 
-        return <NetworkTab questData={questData} questId={currentQuestId} loading={loading} error={error} />;
+        return <NetworkTab questDataDict={questDataDict} questId={currentQuestId} loading={loading} error={error} />;
       case 'map': 
-        return <MapTab questData={{ [currentQuestId]: questData }} loading={loading} error={error}/>;
+        return <MapTab questData={questDataDict} loading={loading} error={error}/>;
       default: 
         return <StatsTab questData={questData} loading={loading} error={error} />;
     }
@@ -107,7 +107,7 @@ const QuestExplorer = ({ questId = "XXXXXXXX" }) => {
       </div>
       
       {/* Tab content */}
-      <div className="flex-grow border-t border-green-400 mt-0">
+      <div className="flex-grow  border-t border-green-400 mt-0">
         {renderTabContent()}
       </div>
     </div>

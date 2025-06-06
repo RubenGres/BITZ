@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '@/app/Constants';
-// import NetworkTab from './NetworkTab';
+import NetworkTab from '../components/visuals/NetworkTab';
 import ListTab from '../components/visuals/ListTab';
 import MapTab from '../components/visuals/MapTab';
 // import { QuestData } from './QuestTypes';
@@ -75,8 +75,8 @@ const QuestExplorer = () => {
     switch (activeTab) {
       case 'list': 
         return <ListTab questData={questDataDict} loading={loading} error={error} />;
-    //   case 'network': 
-    //     return <NetworkTab questData={questDataDict} loading={loading} error={error} />;
+      case 'network': 
+        return <NetworkTab questDataDict={questDataDict} loading={loading} error={error} />;
       case 'map': 
         return <MapTab questData={questDataDict} loading={loading} error={error} />;
       default: 
@@ -120,7 +120,7 @@ const QuestExplorer = () => {
       </div>
       
       {/* Tab content */}
-      <div className="flex-grow border-t border-green-400 mt-0">
+      <div className="flex-1 border-t border-green-400 mt-0">
         {renderTabContent()}
       </div>
     </div>

@@ -158,7 +158,7 @@ const MapTab: React.FC<MapTabProps> = ({ questData, loading, error }) => {
   }
 
   return (
-    <div className="h-full w-full" style={{ display: 'flex', flexDirection: 'column', minHeight: '500px' }}>      
+    <div className="h-full w-full" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 200px)' }}>      
       <MapWithNoSSR 
         speciesData={allSpeciesData}
         questColors={questColors}

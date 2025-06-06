@@ -22,8 +22,8 @@ export default function TermsPage() {
       {/* Header */}
       <Header menuColor="text-green-500" logoSrc="/logo/bitz_green.svg" />
       
-      {/* Main Content - flex-grow ensures it takes available space */}
-      <main className="flex-grow max-w-3xl mx-auto px-6 py-8 w-full">
+      {/* Main Content - flex-grow  ensures it takes available space */}
+      <main className="flex-grow  max-w-3xl mx-auto px-6 py-8 w-full">
         <h1 className="text-3xl mb-8">BITZ – Terms of Service</h1>
         <p className="text-sm text-gray-600 mb-8 italic">Last Updated: Apr 10, 2025</p>
         
