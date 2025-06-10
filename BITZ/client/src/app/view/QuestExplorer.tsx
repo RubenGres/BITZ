@@ -95,7 +95,7 @@ const QuestExplorer = ({ questId = "XXXXXXXX" }) => {
               NETWORK
             </button>
             <button 
-              className={`px-6 py-2 mx-1 ${activeTab === 'map' 
+a              className={`px-6 py-2 mx-1 ${activeTab === 'map' 
                 ? 'bg-green-400 text-white' 
                 : 'border border-green-400 text-green-400'}`}
               onClick={() => setActiveTab('map')}

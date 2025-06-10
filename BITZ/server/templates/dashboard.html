@@ -5,10 +5,10 @@
     <div class="dashboard-filters">
         <input type="text" id="searchInput" placeholder="Search quests..." onkeyup="filterQuests()">
         <select id="sortSelect" onchange="sortQuests()">
+            <option value="date-desc" selected>Date (Newest)</option>
+            <option value="date-asc">Date (Oldest)</option>
             <option value="name-asc">Name (A-Z)</option>
             <option value="name-desc">Name (Z-A)</option>
-            <option value="date-desc">Date (Newest)</option>
-            <option value="date-asc">Date (Oldest)</option>
         </select>
     </div>
 
@@ -20,7 +20,7 @@
             <div class="quest-actions">Actions</div>
         </div>
         
-        {% for quest in quests %}
+        {% for quest in quests|sort(attribute='mod_time', reverse=true) %}
         <div class="quest-item" data-name="{{ quest.name }}" data-date="{{ quest.mod_time }}">
             <div class="quest-name">
                 <span class="quest-icon">{{ quest.icon }}</span>
@@ -46,6 +46,11 @@
 </div>
 
 <script>
+// Sort quests by date on page load
+document.addEventListener('DOMContentLoaded', function() {
+    sortQuests();
+});
+
 function filterQuests() {
     const input = document.getElementById('searchInput');
     const filter = input.value.toUpperCase();
@@ -75,25 +80,25 @@ function sortQuests() {
         } else if (sortValue === 'name-desc') {
             return b.dataset.name.localeCompare(a.dataset.name);
         } else if (sortValue === 'date-asc') {
-            return new Date(a.dataset.date) - new Date(b.dataset.date);
+            const dateA = new Date(a.dataset.date);
+            const dateB = new Date(b.dataset.date);
+            return dateA - dateB;
         } else if (sortValue === 'date-desc') {
-            return new Date(b.dataset.date) - new Date(a.dataset.date);
+            const dateA = new Date(a.dataset.date);
+            const dateB = new Date(b.dataset.date);
+            return dateB - dateA;
         }
     });
     
-    // Remove all existing quest items
-    questItems.forEach(item => {
-        questList.removeChild(item);
-    });
+    // Clear the quest list but keep the header
+    const questHeader = document.querySelector('.quest-header');
+    questList.innerHTML = '';
+    questList.appendChild(questHeader);
     
     // Add sorted quest items back to the list
-    const questHeader = document.querySelector('.quest-header');
     questItems.forEach(item => {
         questList.appendChild(item);
     });
-    
-    // Ensure header stays at the top
-    questList.insertBefore(questHeader, questList.firstChild);
 }
 </script>
 {% endblock %}
