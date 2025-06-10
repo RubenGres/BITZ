@@ -3,6 +3,7 @@ import { API_URL } from '@/app/Constants';
 import 'leaflet/dist/leaflet.css';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import FullscreenImageModal from '@/app/components/FullscreenImageModal';
 
 // Fix for Leaflet marker icons not showing properly in React
 // We need to redefine the icon paths
@@ -79,6 +80,11 @@ interface MapComponentProps {
 }
 
 const MapComponent: React.FC<MapComponentProps> = ({ speciesData, questColors, mapCenter }) => {
+  const [fullscreenImage, setFullscreenImage] = React.useState<{
+    src: string;
+    alt: string;
+  } | null>(null);
+
   // Create icons for each quest color
   const questIcons = React.useMemo(() => {
     const icons: Record<string, L.Icon> = {};
@@ -116,6 +122,14 @@ const MapComponent: React.FC<MapComponentProps> = ({ speciesData, questColors, m
     return mapCenter;
   }, [bounds, mapCenter]);
 
+  const handleImageClick = (imageSrc: string, alt: string) => {
+    setFullscreenImage({ src: imageSrc, alt });
+  };
+
+  const handleViewQuest = (questId: string) => {
+    window.location.href = `/view?id=${questId}`;
+  };
+
   return (
     <div className="h-full w-full" style={{ minHeight: '500px', display: 'flex', flexDirection: 'column' }}>
       <MapContainer 
@@ -137,6 +151,8 @@ const MapComponent: React.FC<MapComponentProps> = ({ speciesData, questColors, m
               !isNaN(Number(species.latitude)) && !isNaN(Number(species.longitude))) {
             
             const questIcon = questIcons[species.questId];
+            const imageSrc = `${API_URL}/explore/images/${species.questId}/${species.image_name}?res=medium`;
+            const imageAlt = species.common_name || species.scientific_name || 'Species image';
             
             return (
               <Marker 
@@ -145,7 +161,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ speciesData, questColors, m
                 icon={questIcon}
               >
                 <Popup>
-                  <div className="w-56" onClick={() => {window.location.href = `/view?id=${species.questId}`;}}>
+                  <div className="w-56">
                     <div className="font-medium mb-1">
                       {species.common_name || 'Unknown Species'}
                     </div>
@@ -155,10 +171,11 @@ const MapComponent: React.FC<MapComponentProps> = ({ speciesData, questColors, m
                     {species.image_name ? (
                       <div className="mb-2">
                         <img
-                          src={`${API_URL}/explore/images/${species.questId}/${species.image_name}?res=medium`}
-                          alt={species.common_name || species.scientific_name || 'Species image'}
-                          className="w-full h-40 object-cover rounded"
+                          src={imageSrc}
+                          alt={imageAlt}
+                          className="w-full h-40 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
                           loading="lazy"
+                          onClick={() => handleImageClick(imageSrc, imageAlt)}
                         />
                       </div>
                     ) : (
@@ -173,7 +190,13 @@ const MapComponent: React.FC<MapComponentProps> = ({ speciesData, questColors, m
                         <div>Discovered: {new Date(species.discovery_timestamp).toLocaleDateString()}</div>
                       )}
                     </div>
-                    <div className="text-xs font-medium mb-1 py-1 rounded mt-2" style={{ backgroundColor: questColors[species.questId]}}></div>
+                    <div 
+                      className="text-xs font-medium text-black text-center py-2 rounded mt-2 cursor-pointer hover:opacity-80 transition-opacity" 
+                      style={{ backgroundColor: questColors[species.questId] }}
+                      onClick={() => handleViewQuest(species.questId)}
+                    >
+                      View Quest
+                    </div>
                   </div>
                 </Popup>
               </Marker>
@@ -182,6 +205,13 @@ const MapComponent: React.FC<MapComponentProps> = ({ speciesData, questColors, m
           return null;
         })}
       </MapContainer>
+
+      <FullscreenImageModal
+        src={fullscreenImage?.src || ''}
+        alt={fullscreenImage?.alt || ''}
+        isOpen={!!fullscreenImage}
+        onClose={() => setFullscreenImage(null)}
+      />
     </div>
   );
 };

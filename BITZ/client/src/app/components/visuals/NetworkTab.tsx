@@ -24,6 +24,7 @@ const global_parameters = {
     node_border_radius_px: 2,
     node_selected_border_radius_px: 10,
     node_label_font: '12px Arial',
+    node_label_color: '#000',
     ideal_node_distance: 400, // margin between node, ideally
     connection_width: 2,
     zoom_factor: 0.001,
@@ -138,14 +139,15 @@ class Node {
             ctx.stroke();
         } else {
             // Default appearance
-            ctx.strokeStyle = '#ffffff';
+            ctx.strokeStyle = '#fff';
             ctx.lineWidth = this.selected ? global_parameters.node_selected_border_radius_px : global_parameters.node_border_radius_px;
             ctx.stroke();
+            ctx.fillStyle = "#fff"
             ctx.fill();
         }
 
         // Draw label
-        ctx.fillStyle = '#fff';
+        ctx.fillStyle = global_parameters.node_label_color;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
         ctx.font = global_parameters.node_label_font;
@@ -838,8 +840,8 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
         if (!canvas) return;
 
         const newNodes: Node[] = [];
-        const width = canvas.clientWidth;
-        const height = canvas.clientHeight;
+        const width = canvas.width || window.innerWidth;
+        const height = canvas.height || window.innerHeight;
 
         speciesData.forEach((species, index) => {
             const angle = Math.random() * Math.PI * 2;
