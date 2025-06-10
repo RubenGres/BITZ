@@ -626,7 +626,7 @@ def image_grid(quest_id=None):
             continue
         
         # Get relative paths for frontend
-        relative_imgs_path = f"/explore/images/{qid}?res=thumb"
+        relative_imgs_path = f"/explore/images/{qid}"
         
         try:
             # Load species data from CSV - key differences here to handle multiple entries
@@ -677,7 +677,7 @@ def image_grid(quest_id=None):
                         for species_entry in species_data[image_filename]:
                             image_info = {
                                 'quest_id': qid,
-                                'image_path': f"{relative_imgs_path}{image_filename}",
+                                'image_path': f"{relative_imgs_path}{image_filename}?res=thumb",
                                 'image_filename': image_filename,
                                 'timestamp': datetime.fromtimestamp(int(entry.get('timestamp'))).strftime('%Y-%m-%d %H:%M'),
                                 'location': entry.get('image_location'),
@@ -693,7 +693,7 @@ def image_grid(quest_id=None):
                         # If no species data, still add the image once
                         image_info = {
                             'quest_id': qid,
-                            'image_path': f"{relative_imgs_path}{image_filename}",
+                            'image_path': f"{relative_imgs_path}{image_filename}?res=thumb",
                             'image_filename': image_filename,
                             'timestamp': datetime.fromtimestamp(int(entry.get('timestamp'))).strftime('%Y-%m-%d %H:%M'),
                             'location': entry.get('image_location'),
