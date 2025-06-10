@@ -626,7 +626,7 @@ def image_grid(quest_id=None):
             continue
         
         # Get relative paths for frontend
-        relative_imgs_path = f"/explore/images/{qid}"
+        relative_imgs_path = f"/explore/images/{qid}/"
         
         try:
             # Load species data from CSV - key differences here to handle multiple entries
