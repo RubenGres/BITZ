@@ -59,6 +59,76 @@ interface SpeciesInfo {
 
 const imageCacheNodes = {};
 const imageCachePanel = {};
+const connectionLabelCache = {};
+
+const addConnectionsSpecies = async (newNode: Node, existingNodes: Node[]) => {
+    const newConnections: Connection[] = [];
+
+    // Find nodes with the same taxonomic group
+    const sameGroupNodes = existingNodes.filter(node =>
+        node.taxonomicGroup === newNode.taxonomicGroup &&
+        node.name !== newNode.name
+    );
+
+    // Connect to a few similar species (limit to avoid too many connections)
+    const maxConnections = Math.min(3, sameGroupNodes.length);
+    for (let i = 0; i < maxConnections; i++) {
+        const targetNode = sameGroupNodes[i];
+        const connection = new Connection(newNode, targetNode, "", "#4CAF50");
+        newConnections.push(connection);
+
+        // Position new node near the connected node
+        if (i === 0) {
+            const randomAngle = Math.random() * 2 * Math.PI;
+            const distance = global_parameters.ideal_node_distance * 0.8;
+            newNode.x = targetNode.x + (distance * Math.cos(randomAngle));
+            newNode.y = targetNode.y + (distance * Math.sin(randomAngle));
+        }
+
+        targetNode.connections.push(connection);
+        newNode.connections.push(connection);
+    }
+
+    return newConnections;
+};
+
+// Add this function after the existing helper functions (around line 50)
+const fetchSpeciesLink = async (species1: string, species2: string): Promise<string> => {
+    // Create cache key (consistent ordering)
+    const cacheKey = [species1, species2].sort().join('|');
+
+    // Check cache first
+    if (connectionLabelCache[cacheKey]) {
+        return connectionLabelCache[cacheKey];
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/link_species`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                species: [species1, species2]
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const link = data.link || '';
+
+        // Cache the result
+        connectionLabelCache[cacheKey] = link;
+
+        return link;
+    } catch (error) {
+        console.error('Error fetching species link:', error);
+        return ''; // Return empty string on error
+    }
+};
 
 class Node {
     x: number;
@@ -200,18 +270,40 @@ class Node {
     }
 }
 
-// Connection class
 class Connection {
     node1: Node;
     node2: Node;
     text: string;
     color: string;
+    labelPromise: Promise<string> | null;
+    isLabelLoading: boolean;
 
     constructor(node1: Node, node2: Node, text: string = '', color: string = "#888") {
         this.node1 = node1;
         this.node2 = node2;
         this.text = text;
         this.color = color;
+        this.labelPromise = null;
+        this.isLabelLoading = false;
+
+        // Only fetch link if both nodes have names and connection type is species
+        if (node1.name && node2.name && node1.name !== node2.name) {
+            this.fetchConnectionLabel();
+        }
+    }
+
+    async fetchConnectionLabel() {
+        if (this.isLabelLoading || this.text) return; // Don't fetch if already loading or has text
+
+        this.isLabelLoading = true;
+        try {
+            const link = await fetchSpeciesLink(this.node1.name, this.node2.name);
+            this.text = link;
+        } catch (error) {
+            console.error('Failed to fetch connection label:', error);
+        } finally {
+            this.isLabelLoading = false;
+        }
     }
 
     draw(ctx: CanvasRenderingContext2D) {
@@ -239,8 +331,8 @@ class Connection {
         ctx.lineWidth = global_parameters.connection_width;
         ctx.stroke();
 
-        // Draw text
-        if (this.text) {
+        // Draw text (including loading indicator)
+        if (this.text || this.isLabelLoading) {
             const midX = (startX + endX) / 2;
             const midY = (startY + endY) / 2;
 
@@ -259,12 +351,16 @@ class Connection {
             ctx.textBaseline = 'middle';
             ctx.font = '10px Arial';
 
-            const textWidth = ctx.measureText(this.text).width;
+            const displayText = this.text || (this.isLabelLoading ? '...' : '');
+            const textWidth = ctx.measureText(displayText).width;
+
+            // Background for text
             ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
             ctx.fillRect(-textWidth / 2 - 5, -8, textWidth + 10, 16);
 
-            ctx.fillStyle = '#000';
-            ctx.fillText(this.text, 0, 0);
+            // Text
+            ctx.fillStyle = this.isLabelLoading ? '#666' : '#000';
+            ctx.fillText(displayText, 0, 0);
 
             ctx.restore();
         }
@@ -474,7 +570,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
 
             let currentIndex = 0;
 
-            const addNextNode = () => {
+            const addNextNode = async () => {
                 if (currentIndex < sortedNodes.length) {
                     const new_node = sortedNodes[currentIndex];
 
@@ -499,6 +595,10 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                     } else {
                         if (global_parameters.connection_type === "user_id") {
                             addConnectionsUserId(new_node);
+                        } else if (global_parameters.connection_type === "species") {
+                            const currentNodes = nodesRef.current;
+                            const newConnections = await addConnectionsSpecies(new_node, currentNodes);
+                            setConnections(prevConnections => [...prevConnections, ...newConnections]);
                         }
 
                         setNodes(prevNodes => [...prevNodes, new_node]);
@@ -535,6 +635,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
             // Start adding nodes
             addNextNode();
         };
+
 
         // Function to remove nodes with delay
         const removeNodesWithDelay = (
@@ -642,11 +743,11 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
         }
 
         // Function to add all nodes immediately
-        const addAllNodesAtOnce = (sortedNodes: Node[]) => {
+        const addAllNodesAtOnce = async (sortedNodes: Node[]) => {
             const finalNodes: Node[] = [];
             const finalConnections: Connection[] = [];
 
-            sortedNodes.forEach((new_node) => {
+            for (const new_node of sortedNodes) {
                 const same_species_node = finalNodes.find(node => node.name === new_node.name);
 
                 if (same_species_node) {
@@ -685,11 +786,15 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
                                 break;
                             }
                         }
+                    } else if (global_parameters.connection_type === "species") {
+                        // Add species-based connections
+                        const newConnections = await addConnectionsSpecies(new_node, finalNodes);
+                        finalConnections.push(...newConnections);
                     }
 
                     finalNodes.push(new_node);
                 }
-            });
+            }
 
             // Set all nodes and connections at once
             setNodes(finalNodes);

@@ -16,6 +16,7 @@ import hashlib
 
 BASE_DIR = os.path.abspath("history")  # Base directory
 analyzers = {}
+species_link_cache = {}
 
 load_dotenv()
 
@@ -816,6 +817,58 @@ def question():
         
     except Exception as e:
         app.logger.error(f"Error in question route: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/link_species', methods=['POST'])
+def link_species():
+    openai_client = OpenAI()
+
+    data = request.json
+    species = data.get('species')
+
+    # Validate species input
+    if not isinstance(species, list):
+        return jsonify({"error": "Species must be a list."}), 400
+
+    if len(species) > 2:
+        return jsonify({"error": "Too many species provided. Please provide 2 or fewer species."}), 400
+    
+    if not species:
+        return jsonify({"error": "No species provided."}), 400
+    
+    # Create a consistent cache key by sorting species names (case-insensitive)
+    cache_key = tuple(sorted([s.lower().strip() for s in species]))
+    
+    # Check if we already have this pair cached
+    if cache_key in species_link_cache:
+        return jsonify({"link": species_link_cache[cache_key]})
+    
+    # Prepare system prompt for GPT-4o Mini
+    system_prompt = f"""You are a helpful assistant that links species based on their common names and/or scientific names.
+    provide a brief explanation of their relationship in one two three word, using action verbs (examples: "is eaten by", "eats", "shelters", "feeds", "share habitat", etc.).
+    If the relationship is not clear, just say "Linked"."""
+    
+    messages = [{"role": "system", "content": system_prompt}]
+    messages.append({"role": "user", "content": f"Link these species: {', '.join(species)}"})
+    
+    try:
+        # Create the API call without streaming
+        response = openai_client.chat.completions.create(
+            model="gpt-4o-mini",  # Using GPT-4o Mini as requested
+            messages=messages
+        )
+        
+        # Get the response content
+        link_response = response.choices[0].message.content.strip()
+        
+        # Cache the response
+        species_link_cache[cache_key] = link_response
+        
+        # Return the response content
+        return jsonify({"link": link_response})
+        
+    except Exception as e:
+        app.logger.error(f"Error in link_species route: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
