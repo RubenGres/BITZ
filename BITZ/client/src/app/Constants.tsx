@@ -1,4 +1,4 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.bitz.tools"
+export const API_URL = process.env.API_URL || "https://api.bitz.tools"
 
 export const QUEST_COLORS = [
   '#FF6B6B', // Red

@@ -135,16 +135,6 @@ export const MainScreen: React.FC<MainScreenProps> = ({ onLocationChange, onGPSC
     // OR use your router: router.push('/terms');
   };
 
-  // Handle camera input
-  const handleCameraInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Process the image file
-      console.log('Image captured:', file);
-      // Add your image processing logic here
-    }
-  };
-
   // Get location name from GPS coordinates using Nominatim
   const getLocationFromCoordinates = async (lat: number, lon: number) => {
     try {
@@ -328,16 +318,6 @@ export const MainScreen: React.FC<MainScreenProps> = ({ onLocationChange, onGPSC
             <span className="text-xl tracking-widest font-medium">take photo</span>
           </button>
         </div>
-
-        {/* Hidden Camera Input */}
-        <input
-          id="camera-input"
-          type="file"
-          accept="image/*"
-          capture="environment"
-          style={{ display: 'none' }}
-          onChange={handleCameraInput}
-        />
 
         {/* Location Display - Under Camera Button */}
         <div className="mt-8 text-center">

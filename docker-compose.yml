@@ -22,7 +22,7 @@ services:
       context: ./BITZ/client
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: https://${API_DOMAIN}
+        API_URL: https://${API_DOMAIN}
     container_name: bitz-frontend
     expose:
       - "3000"
