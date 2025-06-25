@@ -845,7 +845,7 @@ def link_species():
     
     # Prepare system prompt for GPT-4o Mini
     system_prompt = f"""You are a helpful assistant that links species based on their common names and/or scientific names.
-    provide a brief explanation of their relationship in one two three word, using action verbs (examples: "is eaten by", "eats", "shelters", "feeds", "share habitat", etc.).
+    provide a brief explanation of their biodiversity relationship in one two three word, using action verbs (examples: "is eaten by", "eats", "shelters", "feeds", "share habitat", etc.).
     If the relationship is not clear, just say "Linked"."""
     
     messages = [{"role": "system", "content": system_prompt}]
