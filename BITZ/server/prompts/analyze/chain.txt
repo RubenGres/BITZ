@@ -9,10 +9,8 @@ CRITICAL: The sampling_guidance question and next_target MUST be directly relate
   "species_identification": {
     "name": "Common and Scientific Name",
     "what_is_it": "Short species description in a few lines",
-    "information": "provide a concise connection between the previously identified species and this one, a maximum of 3 lines or 5 sentences. (Unless it is the first species identified in this quest.) 
-
-The connection between the species can be ecological, cultural or morphological. You might describe an insect or bird that eats both plants, or connect them because they are both used as metaphors in literature, or maybe both organisms have small spikes which they use as a defense mechanism.
-The sky is the limit: think laterally and creatively about what could connect the two organisms. The more unexpected, unusual or distinct the connection is, the better, even if it is highly technical or comes from an unexpected domain such as comparative literature, chemistry or ecological history."
+    "information": "provide a concise connection between the previously identified species and this one, a maximum of 3 lines or 5 sentences. (Unless it is the first species identified in this quest.) The connection between the species can be ecological, cultural or morphological. You might describe an insect or bird that eats both plants, or connect them because they are both used as metaphors in literature, or maybe both organisms have small spikes which they use as a defense mechanism. The sky is the limit: think laterally and creatively about what could connect the two organisms. The more unexpected, unusual or distinct the connection is, the better, even if it is highly technical or comes from an unexpected domain such as comparative literature, chemistry or ecological history.",
+    "species_interactions": "How this species interacts with the other species found before"
   },
   "sampling_guidance": {
     "question": "A yes/no question about looking for the next target (e.g., 'Do you see any pollinators near these flowers?')",

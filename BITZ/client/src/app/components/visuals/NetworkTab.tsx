@@ -26,7 +26,7 @@ const global_parameters = {
     node_label_font: '12px Arial',
     node_label_color: '#000',
     ideal_node_distance: 400, // margin between node, ideally
-    show_labels: false, // whether to show connection labels, this will also the labels from the server which can be slow
+    show_labels: true, // whether to show connection labels, this will also the labels from the server which can be slow
     connection_width: 2,
     zoom_factor: 0.001,
     min_zoom: 0.1,

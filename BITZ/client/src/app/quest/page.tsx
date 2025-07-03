@@ -166,7 +166,7 @@ export default function QuestPage() {
 
   const handleEndQuest = () => {
     // stop this conversation
-    let conversation_graph_url = '/explore?id=' + getConversationId();
+    let conversation_graph_url = '/view?id=' + getConversationId();
     createNewConversationId();
     window.location.href = conversation_graph_url;
   };

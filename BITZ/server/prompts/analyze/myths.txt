@@ -9,9 +9,8 @@ CRITICAL: The sampling_guidance question and next_target MUST be directly relate
   "species_identification": {
     "name": "Common and Scientific Name",
     "what_is_it": "Short species description in a few lines",
-    "information": "Cultural or mythological information about the species, and how it is depicted, understood or used by any culture (living or historical) from around the world or by a specific artist (poet, painter, writer) (maximum 3 lines or 5 sentences). Has this species been used as a metaphor, a mythological character or as a cultural symbol? Does the species play a role in cuisine, ritual, cosmology, craft, dying or traditional medicine? This is an expert user who already knows a lot about the humanities, social sciences, art & religion so the more distinct, highly specific, technical or unexpected information, the better. Where possible identify specific years, locations, name of the culture, art historical period, quotes from poems, chemical compounds or other technical information. Let the user know. 
-
-Suggest related species to discover, guiding users to take additional photos."
+    "information": "Cultural or mythological information about the species, and how it is depicted, understood or used by any culture (living or historical) from around the world or by a specific artist (poet, painter, writer) (maximum 3 lines or 5 sentences). Has this species been used as a metaphor, a mythological character or as a cultural symbol? Does the species play a role in cuisine, ritual, cosmology, craft, dying or traditional medicine? This is an expert user who already knows a lot about the humanities, social sciences, art & religion so the more distinct, highly specific, technical or unexpected information, the better. Where possible identify specific years, locations, name of the culture, art historical period, quotes from poems, chemical compounds or other technical information. Let the user know. Suggest related species to discover, guiding users to take additional photos."
+    "species_interactions": "How this species interacts with the other species found before"
   },
   "sampling_guidance": {
     "question": "A yes/no question about looking for the next target (e.g., 'Do you see any pollinators near these flowers?')",

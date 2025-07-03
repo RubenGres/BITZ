@@ -84,7 +84,6 @@ Guidelines:
 
 def identify_chatgpt(image_path, language):
     llm_reply_raw = identify_chatgpt_raw(image_path, language)
-    print(image_path)
 
     identified_species = extract_json(llm_reply_raw)
 
@@ -96,8 +95,8 @@ def identify_chatgpt(image_path, language):
                     species_csv_lines.append([
                         os.path.basename(image_path), #filename
                         taxonomic_group,
-                        species["scientific_name"],
-                        species["common_name"],
+                        species.get("scientific_name", ""),
+                        species.get("common_name", ""),
                         species.get("confidence", ""),
                         species.get("notes", "")
                     ])

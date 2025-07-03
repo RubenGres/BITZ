@@ -74,7 +74,6 @@ export default function TermsPage() {
           <p className="mb-4">The data controller for this project is:</p>
           <div className="bg-white p-4 rounded-lg mb-4">
             <p className="font-medium">NICETRAILS S.L.</p>
-            <p>Municipi 14 Ent 3</p>
             <p>08018 - Barcelona, Spain</p>
             <p>Contact: data@nicetrails.com</p>
           </div>

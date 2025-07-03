@@ -54,7 +54,7 @@ export default function AboutPage() {
         <section className="mb-8">
           <h2 className="text-orange-500 text-l font-medium mb-4">THE DATA</h2>
           <p className="mb-8">
-            BITZ collects and coalesces data... outputting it as X DarwinCore....
+            The long term goal of BITZ is to share the collected data in an open and accessible manner throught the DarwinCore format so it can be used my universities and other institutions.
           </p>
         </section>
 

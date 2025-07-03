@@ -92,7 +92,7 @@ class ImageAnalyzer:
             "raw_response": text[:500] + ("..." if len(text) > 500 else "")
         }
 
-    def analyze_image(self, image_input: Union[str, dict], flavor: str) -> Dict:
+    def analyze_image(self, image_input: Union[str, dict], flavor: str, history) -> Dict:
         """
         Analyze an image using OpenAI's model for biodiversity sampling.
         This is a two step process, first the species identification and then the full analysis text.
@@ -109,6 +109,10 @@ class ImageAnalyzer:
 
         # default flavor to "basic" if not found
         flavor = "basic" if flavor not in self.system_prompts else flavor
+
+        print("history is:", history)
+        species_names = [eval(entry['assistant'])['species_identification']['name'] for entry in history] 
+        print("species_names are:", species_names)
 
         try:
             language = "en"  # Default language, adjust as needed
@@ -127,7 +131,7 @@ class ImageAnalyzer:
             # Add the current image
             messages.append({
                 "role": "user",
-                "content": f"Here are the species found on the image: \n\n {species_csv_lines}",
+                "content": f"Here are the species found on the image: \n\n {species_csv_lines}. Previous species identified: {', '.join(species_names)}",
             })
 
             response = self.client.chat.completions.create(

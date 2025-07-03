@@ -12,7 +12,8 @@ CRITICAL: The sampling_guidance question and next_target MUST be directly relate
   "species_identification": {
     "name": "Common and Scientific Name",
     "what_is_it": "Short species description in a few lines",
-    "information": "More information about the species, with a preference for facts that are unique to this species, distinct or unexpected. This could include some or all of the following: its natural habitat, physical characteristics, behavior, life cycle, distribution, and ecological role, any known uses by humans (e.g., medicinal, culinary, mythological, poetic), conservation status, interactions with other species (such as pollinators or predators), and notable adaptations."
+    "information": "More information about the species, with a preference for facts that are unique to this species, distinct or unexpected. This could include some or all of the following: its natural habitat, physical characteristics, behavior, life cycle, distribution, and ecological role, any known uses by humans (e.g., medicinal, culinary, mythological, poetic), conservation status, interactions with other species (such as pollinators or predators), and notable adaptations.",
+    "species_interactions": "How this species interacts with the other species found before"
   },
   "sampling_guidance": {
     "question": "A yes/no question about looking for the next target (e.g., 'Do you see any pollinators near these flowers?')",

@@ -746,7 +746,9 @@ def analyze():
 
     analyzer = analyzers.setdefault(conversation_id, ImageAnalyzer())
     image_path = oaak.process_image(image_b64, conversation_id, len(history), image_coordinates)
-    result = analyzer.analyze_image(image_path, flavor)
+    
+    last_result = history[-1] if history else None
+    result = analyzer.analyze_image(image_path, flavor, history)
 
     # Create user message entry
     timestamp = str(int(time.time()))
@@ -844,9 +846,12 @@ def link_species():
         return jsonify({"link": species_link_cache[cache_key]})
     
     # Prepare system prompt for GPT-4o Mini
-    system_prompt = f"""You are a helpful assistant that links species based on their common names and/or scientific names.
-    provide a brief explanation of their relationship in one two three word, using action verbs (examples: "is eaten by", "eats", "shelters", "feeds", "share habitat", etc.).
-    If the relationship is not clear, just say "Linked"."""
+    system_prompt = f"""
+    You are a helpful assistant that links species by their common or scientific names using short relationship phrases or common characteristics (1–3 words) with action verbs.
+    Action verbs can be such as eats, is eaten by, pollinates, is pollinated by, parasitizes, is parasitized by, feeds on, is host to, shares habitat, competes with, nests in,
+    shelters, lays eggs on, mutualism with, camouflages in, mimics, disperses seeds of, is preyed on by, infects, provides nutrients to, prefers wet soil, well drained soil,
+    sandy soil, shade tolerant, needs a lot of sun, or mutualistic; if the relationship is unclear, respond with an empty string (""), otherwise provide a short phrase.
+    """
     
     messages = [{"role": "system", "content": system_prompt}]
     messages.append({"role": "user", "content": f"Link these species: {', '.join(species)}"})
@@ -860,6 +865,7 @@ def link_species():
         
         # Get the response content
         link_response = response.choices[0].message.content.strip()
+        link_response = link_response.strip('"')
         
         # Cache the response
         species_link_cache[cache_key] = link_response

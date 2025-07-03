@@ -110,6 +110,16 @@ export const InfoView: React.FC<InfoViewProps> = ({ uploadedImage, resultDict, o
           </div>
         </div>
 
+        {/* How it relates to the last species (only if resultDict.species_identification.relation_to_last_species) */}
+        {resultDict?.species_identification?.species_interactions && (
+          <div className="bg-[#f6f9ec] bg-opacity-90 p-4 mb-10 mr-16" style={greenShadowStyle}>
+            <div className="text-green-800 uppercase font-semibold">Relationships</div>
+            <div className="mt-2 text-gray-700">
+              <p>{resultDict.species_identification.species_interactions}</p>
+            </div>
+          </div>
+        )}
+
         {/* Ask Question Button */}
         <div className="bg-[#ef5232] p-4 mb-10 mr-16" style={whiteShadowStyle}>
           <button

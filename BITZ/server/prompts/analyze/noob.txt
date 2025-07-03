@@ -15,8 +15,9 @@ CRITICAL: The sampling_guidance question and next_target MUST be directly relate
     "name": "Common and Scientific Name",
     "what_is_it": "Short species description in a few lines",
     "information": "More information on the species, myths, ecological facts, etc. Use emojis to convey feelings. ☺🥰"
+    "species_interactions": "How this species interacts with the other species found before"
   },
-  "sampling_guidance": {
+  "sampling_guidance":: {
     "question": "A yes/no question about looking for the next target (e.g., 'Do you see any pollinators near these flowers?')",
     "yes_action": "What to do if the user sees the next target",
     "no_action": "How to find or look for the next target elsewhere"
