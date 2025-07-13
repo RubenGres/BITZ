@@ -1,0 +1,46 @@
+ _____ ___  ____   ___  
+|_   _/ _ \|  _ \ / _ \ 
+  | || | | | | | | | | |
+  | || |_| | |_| | |_| |
+  |_| \___/|____/ \___/ S
+
+Theses are the planned features for the future of the BITZ app, ordered by importance and priority.
+
+⚠️ Most Important
+
+- move main instance to a new NiceTrail's server
+- update API keys to NiceTrail's account
+- finish data backup pipeline
+- Event page with separated species list / network
+- Add subdomain filtering for quests
+
+❗  Important
+- Optimizing the database (atm it works but will be slow if too many users)
+- Optimizing client (dynamic cursor loading on the map, paginated explore list, network text is slowing everything down, etc. etc.)
+- Merge Amsterdam garden data in the main instance
+- Cluster species labels to improve loading times in global network view
+- Stop quest if too much time has passed or location is too far
+- Make it clear when you are still on a quest
+- Something changed, the prompts are not working as well anymore?
+- limit API calls / days to avoid invoice surprises + archive version
+
+👍  Nice to have
+
+- download the data button in the quest view
+- translation to GBIF DwC format
+- In depth README documentation
+- Refactoring of some of the client codebase (network graph)
+- Location based information at the beggining of the quest (you are at...)
+- update admin panel
+- unify species relationship in graph (some are full sentences, other only words)
+- rethink the relationships tone (relationship flavors?)
+- Use LLM streaming mode to have shorter loading times
+
+❓   New features 
+
+- display number of found species during the quest ?
+- user profile ? social features ? (oauth)
+
+✅ Done
+
+- interactions with previously found species panel
