@@ -93,44 +93,6 @@ const addConnectionsSpecies = async (newNode: Node, existingNodes: Node[]) => {
     return newConnections;
 };
 
-// Add this function after the existing helper functions (around line 50)
-const fetchSpeciesLink = async (species1: string, species2: string): Promise<string> => {
-    // Create cache key (consistent ordering)
-    const cacheKey = [species1, species2].sort().join('|');
-
-    // Check cache first
-    if (connectionLabelCache[cacheKey]) {
-        return connectionLabelCache[cacheKey];
-    }
-
-    try {
-        const response = await fetch(`${API_URL}/link_species`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                species: [species1, species2]
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const link = data.link || '';
-
-        // Cache the result
-        connectionLabelCache[cacheKey] = link;
-
-        return link;
-    } catch (error) {
-        console.error('Error fetching species link:', error);
-        return ''; // Return empty string on error
-    }
-};
-
 class Node {
     x: number;
     y: number;
@@ -271,6 +233,45 @@ class Node {
     }
 }
 
+const fetchSpeciesLinkBatch = async (speciesPairs: string[][]): Promise<{ [key: string]: string }> => {
+    try {
+        const response = await fetch(`${API_URL}/link_species_batch`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                species_pairs: speciesPairs
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const results: { [key: string]: string } = {};
+
+        // Process results and cache them
+        data.results.forEach((result: any) => {
+            if (result.pair && result.pair.length === 2) {
+                // Create consistent cache key
+                const cacheKey = result.pair.sort().join('|');
+                const link = result.link || '';
+                
+                // Cache the result
+                connectionLabelCache[cacheKey] = link;
+                results[cacheKey] = link;
+            }
+        });
+
+        return results;
+    } catch (error) {
+        console.error('Error fetching species links in batch:', error);
+        return {};
+    }
+};
+
 class Connection {
     node1: Node;
     node2: Node;
@@ -278,6 +279,11 @@ class Connection {
     color: string;
     labelPromise: Promise<string> | null;
     isLabelLoading: boolean;
+    
+    // Add static properties for batch processing
+    static pendingConnections: Connection[] = [];
+    static batchTimer: NodeJS.Timeout | null = null;
+    static readonly BATCH_DELAY = 100; // Wait 100ms to collect more connections
 
     constructor(node1: Node, node2: Node, text: string = '', color: string = "#888") {
         this.node1 = node1;
@@ -288,21 +294,89 @@ class Connection {
         this.isLabelLoading = false;
 
         if (global_parameters.show_labels && node1.name && node2.name && node1.name !== node2.name) {
-            this.fetchConnectionLabel();
+            this.requestConnectionLabel();
         }
     }
 
-    async fetchConnectionLabel() {
-        if (this.isLabelLoading || this.text) return; // Don't fetch if already loading or has text
+    requestConnectionLabel() {
+        const cacheKey = [this.node1.name, this.node2.name].sort().join('|');
+        
+        // Check cache first
+        if (connectionLabelCache[cacheKey]) {
+            this.text = connectionLabelCache[cacheKey];
+            return;
+        }
 
+        // Add to pending batch
+        Connection.pendingConnections.push(this);
         this.isLabelLoading = true;
+
+        // Clear existing timer and set new one
+        if (Connection.batchTimer) {
+            clearTimeout(Connection.batchTimer);
+        }
+
+        Connection.batchTimer = setTimeout(() => {
+            Connection.processBatch();
+        }, Connection.BATCH_DELAY);
+    }
+
+    static async processBatch() {
+        if (Connection.pendingConnections.length === 0) return;
+
+        // Get unique species pairs from pending connections
+        const speciesPairs: string[][] = [];
+        const connectionMap = new Map<string, Connection[]>();
+
+        Connection.pendingConnections.forEach(connection => {
+            const pair = [connection.node1.name, connection.node2.name];
+            const cacheKey = pair.sort().join('|');
+            
+            // Only add if not already in cache
+            if (!connectionLabelCache[cacheKey]) {
+                // Check if we already have this pair in our batch
+                if (!connectionMap.has(cacheKey)) {
+                    speciesPairs.push([connection.node1.name, connection.node2.name]);
+                    connectionMap.set(cacheKey, []);
+                }
+                connectionMap.get(cacheKey)!.push(connection);
+            } else {
+                // Use cached result
+                connection.text = connectionLabelCache[cacheKey];
+                connection.isLabelLoading = false;
+            }
+        });
+
+        // Clear pending connections
+        Connection.pendingConnections = [];
+
+        // If no new pairs to fetch, we're done
+        if (speciesPairs.length === 0) return;
+
+        console.log(`Fetching labels for ${speciesPairs.length} species pairs in batch`);
+
         try {
-            const link = await fetchSpeciesLink(this.node1.name, this.node2.name);
-            this.text = link;
+            // Fetch all labels in batch
+            const results = await fetchSpeciesLinkBatch(speciesPairs);
+
+            // Update all connections with their labels
+            connectionMap.forEach((connections, cacheKey) => {
+                const label = results[cacheKey] || '';
+                connections.forEach(connection => {
+                    connection.text = label;
+                    connection.isLabelLoading = false;
+                });
+            });
+
         } catch (error) {
-            console.error('Failed to fetch connection label:', error);
-        } finally {
-            this.isLabelLoading = false;
+            console.error('Batch label fetching failed:', error);
+            // Mark all connections as failed
+            connectionMap.forEach((connections) => {
+                connections.forEach(connection => {
+                    connection.text = '';
+                    connection.isLabelLoading = false;
+                });
+            });
         }
     }
 

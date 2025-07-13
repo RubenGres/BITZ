@@ -1,22 +1,26 @@
+import concurrent.futures
+import threading
+import markdown
+import mimetypes
+import hashlib
 import os
 import json
-import markdown
 from dotenv import load_dotenv
 from image_analyzer import ImageAnalyzer
 from flask import Flask, send_from_directory, abort, request, jsonify, url_for, render_template, make_response, redirect, Response, stream_with_context
 from flask_cors import CORS
-import mimetypes
 import oaak
 from openai import OpenAI
 from datetime import datetime
 from collections import Counter
 import time
 from PIL import Image, ImageOps
-import hashlib
+from functools import partial
 
 BASE_DIR = os.path.abspath("history")  # Base directory
 analyzers = {}
 species_link_cache = {}
+species_link_cache_lock = threading.Lock()
 
 load_dotenv()
 
@@ -821,29 +825,29 @@ def question():
         app.logger.error(f"Error in question route: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-@app.route('/link_species', methods=['POST'])
-def link_species():
-    openai_client = OpenAI()
 
-    data = request.json
-    species = data.get('species')
-
+def get_species_link_single(openai_client, species_pair):
+    """
+    Helper function to get a link for a single species pair.
+    This is the core logic extracted from your existing link_species route.
+    """
     # Validate species input
-    if not isinstance(species, list):
-        return jsonify({"error": "Species must be a list."}), 400
-
-    if len(species) > 2:
-        return jsonify({"error": "Too many species provided. Please provide 2 or fewer species."}), 400
+    if not isinstance(species_pair, list):
+        return {"error": "Species must be a list."}
     
-    if not species:
-        return jsonify({"error": "No species provided."}), 400
+    if len(species_pair) > 2:
+        return {"error": "Too many species provided. Please provide 2 or fewer species."}
+    
+    if not species_pair:
+        return {"error": "No species provided."}
     
     # Create a consistent cache key by sorting species names (case-insensitive)
-    cache_key = tuple(sorted([s.lower().strip() for s in species]))
+    cache_key = tuple(sorted([s.lower().strip() for s in species_pair]))
     
-    # Check if we already have this pair cached
-    if cache_key in species_link_cache:
-        return jsonify({"link": species_link_cache[cache_key]})
+    # Thread-safe cache check
+    with species_link_cache_lock:
+        if cache_key in species_link_cache:
+            return {"link": species_link_cache[cache_key], "cached": True}
     
     # Prepare system prompt for GPT-4o Mini
     system_prompt = f"""
@@ -854,12 +858,12 @@ def link_species():
     """
     
     messages = [{"role": "system", "content": system_prompt}]
-    messages.append({"role": "user", "content": f"Link these species: {', '.join(species)}"})
+    messages.append({"role": "user", "content": f"Link these species: {', '.join(species_pair)}"})
     
     try:
         # Create the API call without streaming
         response = openai_client.chat.completions.create(
-            model="gpt-4o-mini",  # Using GPT-4o Mini as requested
+            model="gpt-4o-mini",
             messages=messages
         )
         
@@ -867,15 +871,115 @@ def link_species():
         link_response = response.choices[0].message.content.strip()
         link_response = link_response.strip('"')
         
-        # Cache the response
-        species_link_cache[cache_key] = link_response
+        # Thread-safe cache update
+        with species_link_cache_lock:
+            species_link_cache[cache_key] = link_response
         
-        # Return the response content
-        return jsonify({"link": link_response})
+        return {"link": link_response, "cached": False}
         
     except Exception as e:
-        app.logger.error(f"Error in link_species route: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        app.logger.error(f"Error linking species {species_pair}: {str(e)}")
+        return {"error": str(e)}
+
+@app.route('/link_species_batch', methods=['POST'])
+def link_species_batch():
+    """
+    Batch endpoint for linking multiple species pairs.
+    Accepts a list of species pairs and processes them in parallel.
+    
+    Expected input format:
+    {
+        "species_pairs": [
+            ["species1", "species2"],
+            ["species3", "species4"],
+            ["species5", "species6"]
+        ]
+    }
+    
+    Returns:
+    {
+        "results": [
+            {"pair": ["species1", "species2"], "link": "eats", "cached": false},
+            {"pair": ["species3", "species4"], "link": "", "cached": true},
+            {"pair": ["species5", "species6"], "error": "Error message"}
+        ]
+    }
+    """
+    openai_client = OpenAI()
+    
+    data = request.json
+    species_pairs = data.get('species_pairs', [])
+    
+    # Validate input
+    if not isinstance(species_pairs, list):
+        return jsonify({"error": "species_pairs must be a list."}), 400
+    
+    if not species_pairs:
+        return jsonify({"error": "No species pairs provided."}), 400
+    
+    # Validate each pair
+    for i, pair in enumerate(species_pairs):
+        if not isinstance(pair, list):
+            return jsonify({"error": f"Species pair {i} must be a list."}), 400
+        if len(pair) > 2:
+            return jsonify({"error": f"Species pair {i} has too many species. Maximum 2 allowed."}), 400
+        if not pair:
+            return jsonify({"error": f"Species pair {i} is empty."}), 400
+    
+    # Process species pairs in parallel
+    results = []
+    
+    # Use ThreadPoolExecutor for I/O-bound OpenAI API calls
+    max_workers = min(10, len(species_pairs))  # Limit concurrent requests
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Create a partial function with the OpenAI client
+        link_function = partial(get_species_link_single, openai_client)
+        
+        # Submit all tasks
+        future_to_pair = {
+            executor.submit(link_function, pair): pair 
+            for pair in species_pairs
+        }
+        
+        # Collect results as they complete
+        for future in concurrent.futures.as_completed(future_to_pair):
+            pair = future_to_pair[future]
+            try:
+                result = future.result()
+                result["pair"] = pair
+                results.append(result)
+            except Exception as e:
+                app.logger.error(f"Exception for pair {pair}: {str(e)}")
+                results.append({
+                    "pair": pair,
+                    "error": f"Processing failed: {str(e)}"
+                })
+    
+    # Sort results to maintain input order
+    pair_to_result = {tuple(result["pair"]): result for result in results}
+    ordered_results = [pair_to_result[tuple(pair)] for pair in species_pairs]
+    
+    return jsonify({"results": ordered_results})
+
+# Keep your existing single link_species endpoint for backward compatibility
+@app.route('/link_species', methods=['POST'])
+def link_species():
+    """
+    Original single species pair linking endpoint.
+    Kept for backward compatibility.
+    """
+    openai_client = OpenAI()
+    
+    data = request.json
+    species = data.get('species')
+    
+    result = get_species_link_single(openai_client, species)
+    
+    if "error" in result:
+        return jsonify(result), 400
+    
+    return jsonify({"link": result["link"]})
 
 if __name__ == "__main__":
     # CORS is handled at the nginx level in production, but for development we can enable it here
