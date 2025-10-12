@@ -56,6 +56,7 @@ const QuestExplorer = () => {
         questResults.forEach(result => {
           if (result.data) {
             newQuestDataDict[result.id] = result.data;
+            //console.log(result.data)
           }
         });
        

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Papa from 'papaparse';
 import { QUEST_COLORS } from '@/app/Constants';
 import { hashStringToIndex } from '@/app/utils/hashUtils';
@@ -20,6 +20,7 @@ interface SpeciesRow {
 
 interface QuestData {
   species_data_csv: string;
+  timestamp?: string;
   [key: string]: any; // Allow for other properties
 }
 
@@ -40,11 +41,16 @@ const ListTab: React.FC<ListTabProps> = ({ questData, loading, error }) => {
     lng?: string;
     questId: string;
   } | null>(null);
+  const [displayedRows, setDisplayedRows] = useState(20);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  
+  const observerTarget = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (questData && Object.keys(questData).length > 0) {
       setParsedLoading(true);
       setParseError(null);
+      setDisplayedRows(20); // Reset pagination when data changes
 
       const allSpeciesData: SpeciesRow[] = [];
       const questIds = Object.keys(questData);
@@ -54,11 +60,11 @@ const ListTab: React.FC<ListTabProps> = ({ questData, loading, error }) => {
         if (!questInfo?.species_data_csv) {
           processedQuests++;
           if (processedQuests === questIds.length) {
-            // Sort all data by timestamp and set state
+            // Sort all data by timestamp (most recent first)
             const sortedData = allSpeciesData.sort((a, b) => {
               const dateA = new Date(a.discovery_timestamp || 0);
               const dateB = new Date(b.discovery_timestamp || 0);
-              return dateB.getTime() - dateA.getTime(); // Most recent first
+              return dateB.getTime() - dateA.getTime();
             });
             setSpeciesData(sortedData);
             setParsedLoading(false);
@@ -76,12 +82,17 @@ const ListTab: React.FC<ListTabProps> = ({ questData, loading, error }) => {
             }
 
             // Process the data for this quest
+            // Use the quest-level timestamp (convert from Unix timestamp to ISO string)
+            const questTimestamp = questInfo.timestamp 
+              ? new Date(parseInt(questInfo.timestamp) * 1000).toISOString()
+              : '';
+            
             const processedQuestData = results.data.map((row: any) => ({
               'image_name': row['image_name'] || '',
               'taxonomic_group': row['taxonomic_group'] || '',
               'scientific_name': row['scientific_name'] || '',
               'common_name': row['common_name'] || '',
-              'discovery_timestamp': row['discovery_timestamp'] || '',
+              'discovery_timestamp': questTimestamp,
               'confidence': row['confidence'] || '',
               'notes': row['notes'] || '',
               'latitude': row['latitude'] || '',
@@ -98,7 +109,7 @@ const ListTab: React.FC<ListTabProps> = ({ questData, loading, error }) => {
               const sortedData = allSpeciesData.sort((a, b) => {
                 const dateA = new Date(a.discovery_timestamp || 0);
                 const dateB = new Date(b.discovery_timestamp || 0);
-                return dateB.getTime() - dateA.getTime(); // Most recent first
+                return dateB.getTime() - dateA.getTime();
               });
               setSpeciesData(sortedData);
               setParsedLoading(false);
@@ -122,14 +133,58 @@ const ListTab: React.FC<ListTabProps> = ({ questData, loading, error }) => {
     }
   }, [questData]);
 
-  const formatTimestamp = (timestamp: string): string => {
+  // Infinite scroll handler
+  const handleObserver = useCallback((entries: IntersectionObserverEntry[]) => {
+    const [target] = entries;
+    if (target.isIntersecting && !isLoadingMore && displayedRows < speciesData.length) {
+      setIsLoadingMore(true);
+      // Simulate loading delay for smooth UX
+      setTimeout(() => {
+        setDisplayedRows(prev => Math.min(prev + 20, speciesData.length));
+        setIsLoadingMore(false);
+      }, 300);
+    }
+  }, [isLoadingMore, displayedRows, speciesData.length]);
+
+  // Set up intersection observer
+  useEffect(() => {
+    const element = observerTarget.current;
+    if (!element) return;
+
+    const observer = new IntersectionObserver(handleObserver, {
+      root: null,
+      rootMargin: '100px', // Start loading a bit before reaching the bottom
+      threshold: 0.1
+    });
+
+    observer.observe(element);
+
+    return () => {
+      if (element) {
+        observer.unobserve(element);
+      }
+    };
+  }, [handleObserver]);
+
+  const formatDate = (timestamp: string): string => {
     if (!timestamp) return 'N/A';
     try {
       const date = new Date(timestamp);
-      return date.toLocaleString('en-US', {
+      return date.toLocaleDateString('en-US', {
         year: 'numeric',
         month: '2-digit',
-        day: '2-digit',
+        day: '2-digit'
+      });
+    } catch (error) {
+      return timestamp;
+    }
+  };
+
+  const formatTime = (timestamp: string): string => {
+    if (!timestamp) return 'N/A';
+    try {
+      const date = new Date(timestamp);
+      return date.toLocaleTimeString('en-US', {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
@@ -160,95 +215,126 @@ const ListTab: React.FC<ListTabProps> = ({ questData, loading, error }) => {
     return <div className="p-4">No quest data available</div>;
   }
 
+  // Get only the rows to display
+  const visibleData = speciesData.slice(0, displayedRows);
+
   return (
     <div className="p-4">
       {speciesData.length === 0 ? (
         <p className="text-gray-600">No species data found</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full border-collapse border border-gray-200">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-700">
-                  Image
-                </th>
-                <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-700">
-                  Common Name
-                </th>
-                <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-700">
-                  Scientific Name
-                </th>
-                <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-700">
-                  Taxonomic Group
-                </th>
-                <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-700">
-                  Discovery Timestamp
-                </th>
-                <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-700">
-                  Confidence
-                </th>
-                <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-700">
-                  Notes
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {speciesData.map((row, index) => (
-                <tr
-                  key={`${row.questId}-${index}`}
-                  className="hover:bg-gray-50"
-                  style={{ borderLeft: '7px solid ' + QUEST_COLORS[hashStringToIndex(row.questId, QUEST_COLORS.length)] }}
-                  onClick={() => { window.location.href = `/view?id=${row.questId}`; }}
-                >
-                  <td className="border border-gray-200 px-4 py-2">
-                    {row.image_name ? (
-                      <div className="w-24 h-24 overflow-hidden rounded">
-                        <img
-                          src={`${API_URL}/explore/images/${row.questId}/${row.image_name}?res=medium`}
-                          alt={row['common_name'] || row['scientific_name'] || 'Species image'}
-                          className="w-full h-full object-contain cursor-pointer transition-opacity hover:opacity-80"
-                          loading="lazy"
-                          onClick={(e) => {
-                            openFullscreen(
-                              `${API_URL}/explore/images/${row.questId}/${row.image_name}`,
-                              row['common_name'] || row['scientific_name'] || 'Species image',
-                              row.questId,
-                              row.latitude,
-                              row.longitude
-                            );
-                            e.stopPropagation();
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <div className="w-24 h-24 bg-gray-200 rounded flex items-center justify-center">
-                        <span className="text-gray-400 text-xs">No image</span>
-                      </div>
-                    )}
-                  </td>
-                  <td className="border border-gray-200 px-4 py-2 text-sm">
-                    {row['common_name'] || 'N/A'}
-                  </td>
-                  <td className="border border-gray-200 px-4 py-2 text-sm font-medium italic">
-                    {row['scientific_name'] || 'N/A'}
-                  </td>
-                  <td className="border border-gray-200 px-4 py-2 text-sm">
-                    {row['taxonomic_group'] || 'N/A'}
-                  </td>
-                  <td className="border border-gray-200 px-4 py-2 text-sm">
-                    {formatTimestamp(row['discovery_timestamp'])}
-                  </td>
-                  <td className="border border-gray-200 px-4 py-2 text-sm">
-                    {row.confidence || 'N/A'}
-                  </td>
-                  <td className="border border-gray-200 px-4 py-2 text-sm">
-                    {row.notes || '-'}
-                  </td>
+        <>
+          <div className="mb-4 text-sm text-gray-600">
+            Showing {visibleData.length} of {speciesData.length} species
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full border-collapse border border-gray-200">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-700">
+                    Image
+                  </th>
+                  <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-700">
+                    Common Name
+                  </th>
+                  <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-700">
+                    Scientific Name
+                  </th>
+                  <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-700">
+                    Taxonomic Group
+                  </th>
+                  <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-700">
+                    Discovery Date
+                  </th>
+                  <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-700">
+                    Discovery Time
+                  </th>
+                  <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-700">
+                    Confidence
+                  </th>
+                  <th className="border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-700">
+                    Notes
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {visibleData.map((row, index) => (
+                  <tr
+                    key={`${row.questId}-${index}`}
+                    className="hover:bg-gray-50"
+                    style={{ borderLeft: '7px solid ' + QUEST_COLORS[hashStringToIndex(row.questId, QUEST_COLORS.length)] }}
+                    onClick={() => { window.location.href = `/view?id=${row.questId}`; }}
+                  >
+                    <td className="border border-gray-200 px-4 py-2">
+                      {row.image_name ? (
+                        <div className="w-24 h-24 overflow-hidden rounded">
+                          <img
+                            src={`${API_URL}/explore/images/${row.questId}/${row.image_name}?res=medium`}
+                            alt={row['common_name'] || row['scientific_name'] || 'Species image'}
+                            className="w-full h-full object-contain cursor-pointer transition-opacity hover:opacity-80"
+                            loading="lazy"
+                            onClick={(e) => {
+                              openFullscreen(
+                                `${API_URL}/explore/images/${row.questId}/${row.image_name}`,
+                                row['common_name'] || row['scientific_name'] || 'Species image',
+                                row.questId,
+                                row.latitude,
+                                row.longitude
+                              );
+                              e.stopPropagation();
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-24 h-24 bg-gray-200 rounded flex items-center justify-center">
+                          <span className="text-gray-400 text-xs">No image</span>
+                        </div>
+                      )}
+                    </td>
+                    <td className="border border-gray-200 px-4 py-2 text-sm">
+                      {row['common_name'] || 'N/A'}
+                    </td>
+                    <td className="border border-gray-200 px-4 py-2 text-sm font-medium italic">
+                      {row['scientific_name'] || 'N/A'}
+                    </td>
+                    <td className="border border-gray-200 px-4 py-2 text-sm">
+                      {row['taxonomic_group'] || 'N/A'}
+                    </td>
+                    <td className="border border-gray-200 px-4 py-2 text-sm">
+                      {formatDate(row['discovery_timestamp'])}
+                    </td>
+                    <td className="border border-gray-200 px-4 py-2 text-sm">
+                      {formatTime(row['discovery_timestamp'])}
+                    </td>
+                    <td className="border border-gray-200 px-4 py-2 text-sm">
+                      {row.confidence || 'N/A'}
+                    </td>
+                    <td className="border border-gray-200 px-4 py-2 text-sm">
+                      {row.notes || '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Intersection observer target and loading indicator */}
+          {displayedRows < speciesData.length && (
+            <div ref={observerTarget} className="py-4 text-center">
+              {isLoadingMore && (
+                <div className="inline-block">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {displayedRows >= speciesData.length && speciesData.length > 20 && (
+            <div className="py-4 text-center text-sm text-gray-500">
+              All {speciesData.length} species loaded
+            </div>
+          )}
+        </>
       )}
 
       <FullscreenImageModal
