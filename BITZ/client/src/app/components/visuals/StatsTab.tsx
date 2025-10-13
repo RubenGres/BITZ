@@ -1,5 +1,6 @@
 import React from 'react';
 import { QuestData } from '../../view/QuestTypes';
+import { API_URL } from '@/app/Constants';
 
 interface StatsTabProps {
   questData: QuestData | null;
@@ -63,6 +64,14 @@ const StatsTab: React.FC<StatsTabProps> = ({ questData, loading, error }) => {
     }
   };
 
+  // Handle download
+  const handleDownload = () => {
+    const questId = questData.metadata?.quest_id;
+    if (questId) {
+      window.location.href = `${API_URL}/download/${questId}`;
+    }
+  };
+
   if (loading) {
     return <div className="p-4">Loading...</div>;
   }
@@ -77,8 +86,34 @@ const StatsTab: React.FC<StatsTabProps> = ({ questData, loading, error }) => {
 
   return (
     <div className="p-4">
-      <h2 className="text-2xl font-bold text-green-800">STATS</h2>
-      <div className="text-orange-500">QUEST #{questData.metadata?.quest_id || 'N/A'}</div>
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <h2 className="text-2xl font-bold text-green-800">STATS</h2>
+          <div className="text-orange-500">QUEST #{questData.metadata?.quest_id || 'N/A'}</div>
+        </div>
+        
+        <button
+          onClick={handleDownload}
+          className="px-4 py-2 bg-green-700 hover:bg-green-800 text-white rounded-md transition-colors duration-200 flex items-center gap-2"
+          disabled={!questData.metadata?.quest_id}
+        >
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            className="h-5 w-5" 
+            fill="none" 
+            viewBox="0 0 24 24" 
+            stroke="currentColor"
+          >
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeWidth={2} 
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" 
+            />
+          </svg>
+          Download Quest
+        </button>
+      </div>
       
       <div className="mt-6">
         <div className="mb-4">

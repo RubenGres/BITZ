@@ -16,6 +16,8 @@ from collections import Counter
 import time
 from PIL import Image, ImageOps
 from functools import partial
+import zipfile
+import io
 
 BASE_DIR = os.path.abspath("history")  # Base directory
 analyzers = {}
@@ -471,6 +473,57 @@ def delete(id=""):
     
     # Handle GET request (show password form)
     return render_template('delete.html', id=id)
+
+@app.route("/download/<quest_id>", methods=["GET"])
+def download_quest(quest_id):
+    """
+    Download a complete quest as a ZIP file containing all data and images.
+    """
+    if not quest_id:
+        return jsonify({"error": "No quest ID provided"}), 400
+    
+    # Paths to the quest data and images
+    data_path = os.path.join(BASE_DIR, "data", quest_id)
+    images_path = os.path.join(BASE_DIR, "images", quest_id)
+    
+    # Check if the quest exists
+    if not os.path.exists(data_path):
+        return jsonify({"error": f"Quest {quest_id} not found"}), 404
+    
+    # Create an in-memory ZIP file
+    memory_file = io.BytesIO()
+    
+    try:
+        with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+            # Add all files from the data directory
+            if os.path.exists(data_path):
+                for root, dirs, files in os.walk(data_path):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        arcname = os.path.join('data', os.path.relpath(file_path, data_path))
+                        zf.write(file_path, arcname)
+            
+            # Add all files from the images directory
+            if os.path.exists(images_path):
+                for root, dirs, files in os.walk(images_path):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        arcname = os.path.join('images', os.path.relpath(file_path, images_path))
+                        zf.write(file_path, arcname)
+        
+        # Seek to the beginning of the BytesIO object
+        memory_file.seek(0)
+        
+        # Create response with the ZIP file
+        response = make_response(memory_file.getvalue())
+        response.headers['Content-Type'] = 'application/zip'
+        response.headers['Content-Disposition'] = f'attachment; filename=quest_{quest_id}.zip'
+        
+        return response
+        
+    except Exception as e:
+        app.logger.error(f"Error creating ZIP for quest {quest_id}: {str(e)}")
+        return jsonify({"error": f"Error creating download: {str(e)}"}), 500
 
 @app.route("/dashboard/", methods=["GET"])
 def dashboard():
