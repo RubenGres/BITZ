@@ -14,7 +14,11 @@ interface InfoViewProps {
 export const InfoView: React.FC<InfoViewProps> = ({ uploadedImage, resultDict, onEndQuest, onGPSCoordinatesChange }) => {
   const [questionAnswered, setQuestionAnswered] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const [isSwiping, setIsSwiping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const touchStartX = useRef(0);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   const handleAnswer = (answer: string) => {
     if (answer === 'yes') {
@@ -50,6 +54,35 @@ export const InfoView: React.FC<InfoViewProps> = ({ uploadedImage, resultDict, o
     setIsChatOpen(!isChatOpen);
   };
 
+  // Touch event handlers for swipe gesture
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    setIsSwiping(true);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isSwiping) return;
+    
+    const currentX = e.touches[0].clientX;
+    const diff = touchStartX.current - currentX;
+    const minSwipeThreshold =60; // Minimum pixels to trigger the effect
+    
+    // Only allow left swipe (positive diff) and apply threshold
+    if (diff > minSwipeThreshold) {
+      const amplifiedDiff = (diff - minSwipeThreshold) * 1.5; // Multiply by 1.5 after threshold
+      const maxSwipe = window.innerWidth * 0.8; // Max 80% of screen width
+      setSwipeOffset(Math.min(amplifiedDiff, maxSwipe));
+    } else if (diff <= minSwipeThreshold) {
+      setSwipeOffset(0); // No movement until threshold is reached
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsSwiping(false);
+    // Animate back to original position
+    setSwipeOffset(0);
+  };
+
   // Common shadow style for all div elements
   const whiteShadowStyle = {
     boxShadow: '8px 8px 0px 0px #ffffff',
@@ -71,8 +104,9 @@ export const InfoView: React.FC<InfoViewProps> = ({ uploadedImage, resultDict, o
   }, [questionAnswered]);
 
   return (
-    <div className="relative w-full h-full overflow-y-auto">
+    <div className="relative w-full h-full overflow-hidden">
       <div
+        id="image_background"
         className="fixed inset-0 z-0"
         style={{
           backgroundImage: uploadedImage ? `url(${uploadedImage})` : 'none',
@@ -91,8 +125,18 @@ export const InfoView: React.FC<InfoViewProps> = ({ uploadedImage, resultDict, o
       {/* Chat View Component */}
       <ChatView isOpen={isChatOpen} analysisReply={resultDict} onClose={() => setIsChatOpen(false)} />
 
-      {/* Content - with padding to account for fixed header */}
-      <div className="relative z-10 flex flex-col h-full pt-20 pb-20">
+      {/* Content - with padding to account for fixed header and swipe functionality */}
+      <div 
+        ref={contentRef}
+        className="relative z-10 flex flex-col h-full pt-20 pb-20 overflow-y-auto"
+        style={{
+          transform: `translateX(-${swipeOffset}px)`,
+          transition: isSwiping ? 'none' : 'transform 0.3s ease-out',
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         {/* Species Identification */}
         <div className="bg-[#f6f9ec] bg-opacity-90 p-4 mb-10 mr-16" style={greenShadowStyle}>
           <div className="text-green-800 uppercase font-semibold">This is probably</div>
