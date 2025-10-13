@@ -110,8 +110,17 @@ class ImageAnalyzer:
         # default flavor to "basic" if not found
         flavor = "basic" if flavor not in self.system_prompts else flavor
 
-        print("history is:", history)
-        species_names = [eval(entry['assistant'])['species_identification']['name'] for entry in history] 
+        def get_species_name(entry):
+            try:
+                data = entry['assistant']
+                if isinstance(data, str):
+                    data = json.loads(data)
+                return data.get('species_identification', {}).get('name', '')
+            except:
+                return ''
+
+        species_names = [name for name in map(get_species_name, history) if name]
+
         print("species_names are:", species_names)
 
         try:
