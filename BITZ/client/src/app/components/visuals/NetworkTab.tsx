@@ -5,7 +5,7 @@ import { API_URL } from '@/app/Constants';
 
 const global_parameters = {
     interaction_mode: "final", // "auto" or "explore" or "final"
-    image_quality: "thumb", // "thumb", "medium", "large", "full"
+    image_quality: "thumb", // "icon", "thumb", "medium", "large", "full"
     connection_type: "user_id", // "user_id" or "species"
     cutoff_time: 99999999999999999, // maximum timestamp to display nodes
     delay_add_max_ms: 20, // don't wait for more than 
@@ -1029,8 +1029,8 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
             const x = width / 2 + radius * Math.cos(angle);
             const y = height / 2 + radius * Math.sin(angle);
 
-            // medium image resolution
-            const imageSrc = species.image_name ? `${API_URL}/explore/images/${questId}/${species.image_name}?res=medium` : '';
+            // image resolution
+            const imageSrc = species.image_name ? `${API_URL}/explore/images/${questId}/${species.image_name}?res=${global_parameters.image_quality}` : '';
 
             let imageFilename = species.image_name || '';
 

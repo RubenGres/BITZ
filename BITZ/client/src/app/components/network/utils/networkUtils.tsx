@@ -27,7 +27,7 @@ export const createNodes = (
         const x = width / 2 + radius * Math.cos(angle);
         const y = height / 2 + radius * Math.sin(angle);
         
-        const imageSrc = species.image_name ? `${API_URL}/explore/images/${questId}/${species.image_name}` : '';
+        const imageSrc = species.image_name ? `${API_URL}/explore/images/${questId}/${species.image_name}?res=thumb` : '';
         
         let imageFilename = species.image_name || '';
         

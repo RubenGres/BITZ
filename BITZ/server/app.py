@@ -304,6 +304,7 @@ def explore_images(image_path=""):
     
     # Define sizes for different resolutions
     sizes = {
+        'icon': (50, 50),
         'thumb': (150, 150),
         'medium': (800, 800),
         'large': (1600, 1600),
