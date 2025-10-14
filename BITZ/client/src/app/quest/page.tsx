@@ -48,6 +48,7 @@ export default function QuestPage() {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
       const flavorParam = urlParams.get('flavor');
+      console.log('Flavor extracted from URL:', flavorParam);
       setFlavor(flavorParam); // Will be null if not found
     }
   }, []);
@@ -60,7 +61,7 @@ export default function QuestPage() {
     setGpsCoordinates(newCoordinates);
   };
 
-  async function processImage(imageData: string) {
+  async function processImage(imageData: string, flavorValue: string | null) {
     try {
         // Prepare the request body with all needed parameters including flavor
         const requestBody = {
@@ -69,8 +70,10 @@ export default function QuestPage() {
           image_data: imageData,
           image_location: location,
           image_coordinates: gpsCoordinates,
-          flavor: flavor
+          flavor: flavorValue
         };
+        
+        console.log('Request body flavor:', flavorValue);
         
         const response = await fetch(API_URL + '/analyze', {
             method: 'POST',
@@ -90,10 +93,14 @@ export default function QuestPage() {
     setIsLoading(true);
     setProcessingStatus('Loading image...');
   
+    // Extract flavor directly from URL to avoid any state timing issues
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentFlavor = urlParams.get('flavor');
+    console.log('Flavor from URL at upload time:', currentFlavor);
+  
     const file = event.target.files?.[0];
   
     console.log('File:', file);
-    console.log('Flavor:', flavor); // Log flavor for debugging
   
     if (file) {
       const reader = new FileReader();
@@ -131,7 +138,7 @@ export default function QuestPage() {
             
             setProcessingStatus('Analyzing image...');
 
-            const result = await processImage(base64Data);
+            const result = await processImage(base64Data, currentFlavor);
             console.log('Result:', result);
             setResultDict(result);
             setIsLoading(false);
