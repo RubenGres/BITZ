@@ -8,6 +8,7 @@ Theses are the planned features for the future of the BITZ app, ordered by impor
 
 ⚠️ Most Important
 
+- fix larger bubble to be true (json issue vs unknown species) 
 - move main instance to a new NiceTrail's server
 - update API keys to NiceTrail's account
 - finish data backup pipeline
