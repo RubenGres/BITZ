@@ -37,6 +37,7 @@ Theses are the planned features for the future of the BITZ app, ordered by impor
 - unify species relationship in graph (some are full sentences, other only words)
 - rethink the relationships tone (relationship flavors?)
 - Use LLM streaming mode to have shorter loading times
+- add stats to explore tab and reorder
 
 ❓   New features 
 
