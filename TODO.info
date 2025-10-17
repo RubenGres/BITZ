@@ -23,11 +23,13 @@ Theses are the planned features for the future of the BITZ app, ordered by impor
 - Make it clear when you are still on a quest
 - Something changed, the prompts are not working as well anymore?
 - limit API calls / days to avoid invoice surprises + archive version
+- Stream mode to have faster results
 
 👍  Nice to have
 
 - download the data button in the quest view
 - translation to GBIF DwC format
+- Link to wikipedia
 - In depth README documentation
 - Refactoring of some of the client codebase (network graph)
 - Location based information at the beggining of the quest (you are at...)
@@ -40,6 +42,7 @@ Theses are the planned features for the future of the BITZ app, ordered by impor
 
 - display number of found species during the quest ?
 - user profile ? social features ? (oauth)
+- rework the connections
 
 ✅ Done
 
