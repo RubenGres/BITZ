@@ -13,6 +13,7 @@ Theses are the planned features for the future of the BITZ app, ordered by impor
 - finish data backup pipeline
 - Event page with separated species list / network
 - Add subdomain filtering for quests
+- Add the graph to the Venn Eyes on the field page 
 
 ❗  Important
 - Optimizing the database (atm it works but will be slow if too many users)
