@@ -1,6 +1,9 @@
 # .github/workflows/deploy-docker.yml
 name: Deploy with Docker
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       environment:
@@ -15,7 +18,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment }}
+    environment: ${{ github.event.inputs.environment || 'prod' }}
     
     steps:
       - name: Checkout code
