@@ -1,12 +1,14 @@
 import React from 'react';
 import { API_URL } from '@/app/Constants';
 import 'leaflet/dist/leaflet.css';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import 'leaflet.markercluster';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import FullscreenImageModal from '@/app/components/FullscreenImageModal';
 
 // Fix for Leaflet marker icons not showing properly in React
-// We need to redefine the icon paths
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -19,15 +21,13 @@ function MapResizer({ bounds }: { bounds: L.LatLngBounds | null }) {
   const map = useMap();
   
   React.useEffect(() => {
-    // Force a resize after component mounts
     setTimeout(() => {
       map.invalidateSize();
       
-      // Fit bounds to show all markers
       if (bounds && bounds.isValid()) {
         map.fitBounds(bounds, { 
-          padding: [20, 20], // Add some padding around the bounds
-          maxZoom: 16 // Prevent zooming in too much for single points
+          padding: [20, 20],
+          maxZoom: 16
         });
       }
     }, 250);
@@ -38,7 +38,6 @@ function MapResizer({ bounds }: { bounds: L.LatLngBounds | null }) {
 
 // Function to create custom colored markers
 const createCustomIcon = (color: string): L.Icon => {
-  // Create a custom SVG icon with the specified color
   const svgIcon = `
     <svg width="25" height="41" viewBox="0 0 25 41" xmlns="http://www.w3.org/2000/svg">
       <path d="M12.5 0C5.6 0 0 5.6 0 12.5c0 8.3 12.5 28.5 12.5 28.5S25 20.8 25 12.5C25 5.6 19.4 0 12.5 0z" 
@@ -73,9 +72,174 @@ interface SpeciesRow {
   'questId': string;
 }
 
+interface MarkerClusterLayerProps {
+  speciesData: SpeciesRow[];
+  questIcons: Record<string, L.Icon>;
+  questColors: Record<string, string>;
+  onImageClick: (src: string, alt: string) => void;
+  onViewQuest: (questId: string) => void;
+}
+
+// Custom component that adds marker clustering using Leaflet.markercluster
+function MarkerClusterLayer({ 
+  speciesData, 
+  questIcons, 
+  questColors, 
+  onImageClick, 
+  onViewQuest 
+}: MarkerClusterLayerProps) {
+  const map = useMap();
+  const clusterGroupRef = React.useRef<L.MarkerClusterGroup | null>(null);
+
+  React.useEffect(() => {
+    if (!map) return;
+
+    // Create marker cluster group with custom options
+    const markerClusterGroup = L.markerClusterGroup({
+      chunkedLoading: true,
+      maxClusterRadius: 40,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true,
+      // Custom cluster icon function
+      iconCreateFunction: function (cluster) {
+        const markers = cluster.getAllChildMarkers();
+        
+        // Count markers by quest to determine dominant color
+        const questCounts: Record<string, number> = {};
+        markers.forEach((marker: any) => {
+          const questId = marker.options.questId;
+          if (questId) {
+            questCounts[questId] = (questCounts[questId] || 0) + 1;
+          }
+        });
+        
+        // Find the quest with most markers in this cluster
+        let dominantQuestId = '';
+        let maxCount = 0;
+        Object.entries(questCounts).forEach(([questId, count]) => {
+          if (count > maxCount) {
+            maxCount = count;
+            dominantQuestId = questId;
+          }
+        });
+        
+        const color = questColors[dominantQuestId] || '#3388ff';
+        const count = markers.length;
+        
+        // Create custom cluster icon
+        return L.divIcon({
+          html: `<div style="
+            background-color: ${color}; 
+            width: 40px; 
+            height: 40px; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: white; 
+            font-weight: bold; 
+            border: 3px solid rgba(255,255,255,0.8); 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            font-size: 14px;
+          ">${count}</div>`,
+          className: 'custom-cluster-icon',
+          iconSize: L.point(40, 40, true),
+        });
+      }
+    });
+
+    // Add markers to cluster group
+    speciesData.forEach((species, index) => {
+      if (species.latitude && species.longitude && 
+          !isNaN(Number(species.latitude)) && !isNaN(Number(species.longitude))) {
+        
+        const questIcon = questIcons[species.questId];
+        const imageSrc = `${API_URL}/explore/images/${species.questId}/${species.image_name}?res=medium`;
+        const imageAlt = species.common_name || species.scientific_name || 'Species image';
+        
+        // Create marker with custom questId property
+        const marker = L.marker(
+          [Number(species.latitude), Number(species.longitude)],
+          { 
+            icon: questIcon,
+            // @ts-ignore - Add custom property for cluster color calculation
+            questId: species.questId
+          }
+        );
+
+        // Create popup content as DOM element
+        const popupContent = document.createElement('div');
+        popupContent.className = 'w-56';
+        popupContent.innerHTML = `
+          <div class="font-medium mb-1">
+            ${species.common_name || 'Unknown Species'}
+          </div>
+          ${species.scientific_name ? `<div class="text-sm italic mb-2">${species.scientific_name}</div>` : ''}
+          ${species.image_name ? `
+            <div class="mb-2">
+              <img
+                src="${imageSrc}"
+                alt="${imageAlt}"
+                class="w-full h-40 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity species-image"
+                loading="lazy"
+              />
+            </div>
+          ` : `
+            <div class="w-full h-32 bg-gray-200 rounded flex items-center justify-center mb-2">
+              <span class="text-gray-400 text-xs">No image</span>
+            </div>
+          `}
+          <div class="text-xs text-gray-600">
+            <div>Group: ${species.taxonomic_group || 'Unknown'}</div>
+            <div>Confidence: ${species.confidence || 'N/A'}</div>
+            ${species.discovery_timestamp ? `<div>Discovered: ${new Date(species.discovery_timestamp).toLocaleDateString()}</div>` : ''}
+          </div>
+          <div 
+            class="text-xs font-medium text-black text-center py-2 rounded mt-2 cursor-pointer hover:opacity-80 transition-opacity view-quest-btn" 
+            style="background-color: ${questColors[species.questId]}"
+          >
+            View Quest
+          </div>
+        `;
+
+        // Add click event listeners after popup content is added to DOM
+        marker.on('popupopen', () => {
+          const img = popupContent.querySelector('.species-image');
+          if (img) {
+            img.addEventListener('click', () => onImageClick(imageSrc, imageAlt));
+          }
+
+          const viewQuestBtn = popupContent.querySelector('.view-quest-btn');
+          if (viewQuestBtn) {
+            viewQuestBtn.addEventListener('click', () => onViewQuest(species.questId));
+          }
+        });
+
+        marker.bindPopup(popupContent);
+        markerClusterGroup.addLayer(marker);
+      }
+    });
+
+    // Add cluster group to map
+    map.addLayer(markerClusterGroup);
+    clusterGroupRef.current = markerClusterGroup;
+
+    // Cleanup function - remove cluster group when component unmounts
+    return () => {
+      if (clusterGroupRef.current) {
+        map.removeLayer(clusterGroupRef.current);
+        clusterGroupRef.current = null;
+      }
+    };
+  }, [map, speciesData, questIcons, questColors, onImageClick, onViewQuest]);
+
+  return null;
+}
+
 interface MapComponentProps {
   speciesData: SpeciesRow[];
-  questColors: Record<string, string>; // Maps questId to color
+  questColors: Record<string, string>;
   mapCenter: [number, number];
 }
 
@@ -105,7 +269,6 @@ const MapComponent: React.FC<MapComponentProps> = ({ speciesData, questColors, m
       return null;
     }
 
-    // Create bounds from all valid points
     const latLngs = validPoints.map(species => 
       L.latLng(Number(species.latitude), Number(species.longitude))
     );
@@ -122,22 +285,21 @@ const MapComponent: React.FC<MapComponentProps> = ({ speciesData, questColors, m
     return mapCenter;
   }, [bounds, mapCenter]);
 
-  const handleImageClick = (imageSrc: string, alt: string) => {
+  const handleImageClick = React.useCallback((imageSrc: string, alt: string) => {
     setFullscreenImage({ src: imageSrc, alt });
-  };
+  }, []);
 
-  const handleViewQuest = (questId: string) => {
+  const handleViewQuest = React.useCallback((questId: string) => {
     window.location.href = `/view?id=${questId}`;
-  };
+  }, []);
 
   return (
     <div className="h-full w-full" style={{ minHeight: '500px', display: 'flex', flexDirection: 'column' }}>
       <MapContainer 
         center={calculatedCenter} 
-        zoom={2} // Start with a low zoom, will be adjusted by fitBounds
+        zoom={2}
         style={{ height: '100%', width: '100%', flex: '1', minHeight: '500px', zIndex: 0 }}
       >
-        {/* This ensures the map resizes properly and fits all markers */}
         <MapResizer bounds={bounds} />
         
         <TileLayer
@@ -145,65 +307,13 @@ const MapComponent: React.FC<MapComponentProps> = ({ speciesData, questColors, m
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         
-        {speciesData.map((species, index) => {
-          // Only create markers for entries with valid coordinates
-          if (species.latitude && species.longitude && 
-              !isNaN(Number(species.latitude)) && !isNaN(Number(species.longitude))) {
-            
-            const questIcon = questIcons[species.questId];
-            const imageSrc = `${API_URL}/explore/images/${species.questId}/${species.image_name}?res=medium`;
-            const imageAlt = species.common_name || species.scientific_name || 'Species image';
-            
-            return (
-              <Marker 
-                key={`${species.questId}-${index}`}
-                position={[Number(species.latitude), Number(species.longitude)]} 
-                icon={questIcon}
-              >
-                <Popup>
-                  <div className="w-56">
-                    <div className="font-medium mb-1">
-                      {species.common_name || 'Unknown Species'}
-                    </div>
-                    {species.scientific_name && (
-                      <div className="text-sm italic mb-2">{species.scientific_name}</div>
-                    )}
-                    {species.image_name ? (
-                      <div className="mb-2">
-                        <img
-                          src={imageSrc}
-                          alt={imageAlt}
-                          className="w-full h-40 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
-                          loading="lazy"
-                          onClick={() => handleImageClick(imageSrc, imageAlt)}
-                        />
-                      </div>
-                    ) : (
-                      <div className="w-full h-32 bg-gray-200 rounded flex items-center justify-center mb-2">
-                        <span className="text-gray-400 text-xs">No image</span>
-                      </div>
-                    )}
-                    <div className="text-xs text-gray-600">
-                      <div>Group: {species.taxonomic_group || 'Unknown'}</div>
-                      <div>Confidence: {species.confidence || 'N/A'}</div>
-                      {species.discovery_timestamp && (
-                        <div>Discovered: {new Date(species.discovery_timestamp).toLocaleDateString()}</div>
-                      )}
-                    </div>
-                    <div 
-                      className="text-xs font-medium text-black text-center py-2 rounded mt-2 cursor-pointer hover:opacity-80 transition-opacity" 
-                      style={{ backgroundColor: questColors[species.questId] }}
-                      onClick={() => handleViewQuest(species.questId)}
-                    >
-                      View Quest
-                    </div>
-                  </div>
-                </Popup>
-              </Marker>
-            );
-          }
-          return null;
-        })}
+        <MarkerClusterLayer
+          speciesData={speciesData}
+          questIcons={questIcons}
+          questColors={questColors}
+          onImageClick={handleImageClick}
+          onViewQuest={handleViewQuest}
+        />
       </MapContainer>
 
       <FullscreenImageModal
