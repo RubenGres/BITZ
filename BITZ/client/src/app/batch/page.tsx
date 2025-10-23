@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Header from '@/app/Header';
 import { LoadingScreen } from './LoadingScreen';
-import { API_URL, FARM_LOCATIONS} from '../Constants';
+import { API_URL, FARM_LOCATIONS } from '../Constants';
 import { getUserId, getConversationId, createNewConversationId } from '../User';
 import { FaceAnonymizer } from '@/components/FaceAnonymizer';
 
@@ -24,7 +25,7 @@ export default function BatchUploadPage() {
   const [processingStatus, setProcessingStatus] = useState<string>('');
   const [currentQuestId, setCurrentQuestId] = useState<string>('');
   const [processedCount, setProcessedCount] = useState(0);
-  
+
   const faceProcessorRef = useRef<FaceAnonymizer | null>(null);
 
   // Initialize MediaPipe when component mounts
@@ -67,13 +68,13 @@ export default function BatchUploadPage() {
         image_coordinates: coordinates,
         flavor: 'basic'
       };
-      
+
       const response = await fetch(API_URL + '/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody)
       });
-      
+
       return response.json();
     } catch (err) {
       console.error('Error processing image:', err);
@@ -121,18 +122,18 @@ export default function BatchUploadPage() {
 
     for (let i = 0; i < uploadedImages.length; i++) {
       const image = uploadedImages[i];
-      
+
       try {
         setProcessingStatus(`Processing image ${i + 1} of ${uploadedImages.length}...`);
-        
+
         // Update status to processing
-        setUploadedImages(prev => prev.map(img => 
+        setUploadedImages(prev => prev.map(img =>
           img.id === image.id ? { ...img, status: 'processing' as const } : img
         ));
 
         // Read file as data URL
         const imageData = await readFileAsDataURL(image.file);
-        
+
         // Apply face anonymizer
         let processedImageData = imageData;
         if (faceProcessorRef.current) {
@@ -145,30 +146,30 @@ export default function BatchUploadPage() {
         }
 
         const base64Data = processedImageData.split(',')[1];
-        
+
         // Get random location
         const location = getRandomLocation();
-        
+
         setProcessingStatus(`Analyzing image ${i + 1}...`);
         const result = await processImage(base64Data, location.name, location.coordinates);
-        
+
         // Update with result
-        setUploadedImages(prev => prev.map(img => 
-          img.id === image.id ? { 
-            ...img, 
+        setUploadedImages(prev => prev.map(img =>
+          img.id === image.id ? {
+            ...img,
             status: 'complete' as const,
             processedData: processedImageData,
-            result 
+            result
           } : img
         ));
 
         setProcessedCount(prev => prev + 1);
-        
+
       } catch (error) {
         console.error(`Error processing image ${i + 1}:`, error);
-        
+
         // Update status to error
-        setUploadedImages(prev => prev.map(img => 
+        setUploadedImages(prev => prev.map(img =>
           img.id === image.id ? { ...img, status: 'error' as const } : img
         ));
       }
@@ -200,22 +201,24 @@ export default function BatchUploadPage() {
     setCurrentQuestId(getConversationId());
   };
 
-  const allProcessed = uploadedImages.length > 0 && 
+  const allProcessed = uploadedImages.length > 0 &&
     uploadedImages.every(img => img.status === 'complete' || img.status === 'error');
 
   return (
-    <div className="relative w-full min-h-screen overflow-auto">
-      <div className="absolute inset-0"
+    <>
+      <div className="min-h-screen"
         style={{
           backgroundImage: `url('/background/home.svg')`,
           backgroundColor: '#59bd8a',
           backgroundSize: 'cover',
-          backgroundPosition: 'center'
+          backgroundPosition: 'center',
+          backgroundRepeat: 'repeat'
         }}
       >
+        <Header menuColor="text-white" logoSrc="/logo/bitz_white.svg" />
         <div className="container mx-auto px-4 py-8 max-w-6xl">
           <h1 className="text-3xl font-bold text-white mb-6 text-center drop-shadow-lg">Batch Upload</h1>
-          
+
           {/* Processing Status Banner */}
           {isLoading && (
             <div className="mb-6 p-4 bg-blue-500 bg-opacity-90 rounded-lg shadow-lg animate-pulse">
@@ -275,14 +278,13 @@ export default function BatchUploadPage() {
                       alt="Upload preview"
                       className="w-full h-48 object-cover rounded-lg shadow-lg border-2 border-white border-opacity-50"
                     />
-                    
+
                     {/* Status Badge */}
-                    <div className={`absolute top-2 left-2 px-2 py-1 rounded text-xs font-medium ${
-                      image.status === 'pending' ? 'bg-gray-500 text-white' :
+                    <div className={`absolute top-2 left-2 px-2 py-1 rounded text-xs font-medium ${image.status === 'pending' ? 'bg-gray-500 text-white' :
                       image.status === 'processing' ? 'bg-blue-500 text-white animate-pulse' :
-                      image.status === 'complete' ? 'bg-green-500 text-white' :
-                      'bg-red-500 text-white'
-                    }`}>
+                        image.status === 'complete' ? 'bg-green-500 text-white' :
+                          'bg-red-500 text-white'
+                      }`}>
                       {image.status}
                     </div>
 
@@ -309,7 +311,7 @@ export default function BatchUploadPage() {
                 <span>{processedCount} / {uploadedImages.length}</span>
               </div>
               <div className="w-full bg-white bg-opacity-30 rounded-full h-3 shadow-lg">
-                <div 
+                <div
                   className="bg-white h-3 rounded-full transition-all duration-300 shadow-md"
                   style={{ width: `${(processedCount / uploadedImages.length) * 100}%` }}
                 />
@@ -347,6 +349,6 @@ export default function BatchUploadPage() {
 
         </div>
       </div>
-    </div>
+    </>
   );
 }

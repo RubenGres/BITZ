@@ -28,7 +28,7 @@ const Home: React.FC = () => {
         <Link href="/batch" className="block">
           <div className="bg-[#3ec488] text-white p-6 w-full text-center rounded-lg hover:bg-[#2d9c68] transition-colors">
             <h3 className="text-xl font-semibold mb-2">Batch Upload</h3>
-            <p className="text-sm">Upload multiple photos at once for identification</p>
+            <p className="text-sm">Upload multiple photos at once</p>
           </div>
         </Link>
 
