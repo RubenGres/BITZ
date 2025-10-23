@@ -6,7 +6,7 @@ import { MainScreen } from './MainScreen';
 import { InfoView } from './InfoView';
 import { API_URL } from '../Constants';
 import { getUserId, getConversationId, createNewConversationId} from '../User';
-import { FaceAnonymizer } from './FaceAnonymizer';
+import { FaceAnonymizer } from '@/components/FaceAnonymizer';
 
 export default function QuestPage() {  
   const [isLoading, setIsLoading] = useState(false);
