@@ -70,12 +70,13 @@ jobs:
                      -e "ssh -o ConnectTimeout=60" \
                      . ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }}:~/bitz-deployment/
       
-      - name: Stop existing containers
+      - name: Stop existing containers and clean up
         run: |
           ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} '
             cd ~/bitz-deployment 2>/dev/null || mkdir -p ~/bitz-deployment
             cd ~/bitz-deployment
-            docker compose down || echo "No containers to stop"
+            docker compose down --remove-orphans || echo "No containers to stop"
+            docker image prune -f
           '
       
       - name: Setup BITZ directory structure
