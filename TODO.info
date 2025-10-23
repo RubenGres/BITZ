@@ -8,45 +8,46 @@ Theses are the planned features for the future of the BITZ app, ordered by impor
 
 ⚠️ Most Important
 
-- fix larger bubble to be true (json issue vs unknown species) 
-- move main instance to a new NiceTrail's server
-- update API keys to NiceTrail's account
-- finish data backup pipeline
-- Event page with separated species list / network
-- Add subdomain filtering for quests
-- Add the graph to the Venn Eyes on the field page 
+- [ ] fix larger bubble to be true (json issue vs unknown species) 
+- [ ] move main instance to a new NiceTrail's server
+- [ ] update API keys to NiceTrail's account
+- [ ] finish data backup pipeline
+- [ ] Event page with separated species list / network
+- [ ] Add subdomain filtering for quests
+- [ ] Add the graph to the Venn Eyes on the field page 
 
 ❗  Important
-- Optimizing the database (atm it works but will be slow if too many users)
-- Optimizing client (dynamic cursor loading on the map, paginated explore list, network text is slowing everything down, etc. etc.)
-- Merge Amsterdam garden data in the main instance
-- Cluster species labels to improve loading times in global network view
-- Stop quest if too much time has passed or location is too far
-- Make it clear when you are still on a quest
-- Something changed, the prompts are not working as well anymore?
-- limit API calls / days to avoid invoice surprises + archive version
-- Stream mode to have faster results
+- [ ] Optimizing the database (atm it works but will be slow if too many users)
+- [ ] Optimizing client (dynamic cursor loading on the map, paginated explore list, network text is slowing everything down, etc. etc.)
+- [x] Merge Amsterdam garden data in the main instance
+- [ ] Cluster species labels to improve loading times in global network view
+- [x] Cluster markers in map to improve load
+- [ ] Stop quest if too much time has passed or location is too far
+- [ ] Make it clear when you are still on a quest
+- [x] Something changed, the prompts are not working as well anymore?
+- [ ] limit API calls / days to avoid invoice surprises + archive version
+- [ ] Stream mode to have faster results
 
 👍  Nice to have
 
-- download the data button in the quest view
-- translation to GBIF DwC format
-- Link to wikipedia
-- In depth README documentation
-- Refactoring of some of the client codebase (network graph)
-- Location based information at the beggining of the quest (you are at...)
-- update admin panel
-- unify species relationship in graph (some are full sentences, other only words)
-- rethink the relationships tone (relationship flavors?)
-- Use LLM streaming mode to have shorter loading times
-- add stats to explore tab and reorder
+- [x] download the data button in the quest view
+- [ ] translation to GBIF DwC format
+- [ ] Link to wikipedia
+- [ ] In depth README documentation
+- [ ] Refactoring of some of the client codebase (network graph)
+- [ ] Location based information at the beggining of the quest (you are at...)
+- [ ] update admin panel
+- [ ] unify species relationship in graph (some are full sentences, other only words)
+- [ ] rethink the relationships tone (relationship flavors?)
+- [ ] Use LLM streaming mode to have shorter loading times
+- [ ] add stats to explore tab and reorder
 
 ❓   New features 
 
-- display number of found species during the quest ?
-- user profile ? social features ? (oauth)
-- rework the connections
+- [ ] display number of found species during the quest ?
+- [ ] user profile ? social features ? (oauth)
+- [ ] rework the connections
 
 ✅ Done
 
-- interactions with previously found species panel
+- [x] interactions with previously found species panel
