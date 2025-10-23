@@ -104,7 +104,6 @@ def identify_chatgpt(image_path, language):
                 print(f"Unexpected format for {taxonomic_group}: expected list but got {type(species_list)}")
 
     return species_csv_lines
-
 def identify_and_populate(image, quest_id, history_directory, image_coordinates, language="english"):
     # Define species_csv_header before using it
     species_csv_header = ["image_name", "taxonomic_group", "scientific_name", "common_name", "confidence", "notes", "latitude", "longitude"]
@@ -114,14 +113,28 @@ def identify_and_populate(image, quest_id, history_directory, image_coordinates,
     # Ensure directory exists
     os.makedirs(os.path.dirname(csv_filename), exist_ok=True)
     
-    # Check if file exists to determine if we need to write the header
+    # Check if file exists and if it has a header
     file_exists = os.path.isfile(csv_filename)
+    needs_header = True
+    
+    if file_exists:
+        # Check if the file has content and if the first row is the header
+        with open(csv_filename, 'r', newline='') as file:
+            reader = csv.reader(file)
+            try:
+                first_row = next(reader)
+                # Check if first row matches our header
+                if first_row == species_csv_header:
+                    needs_header = False
+            except StopIteration:
+                # File is empty, we need the header
+                needs_header = True
     
     with open(csv_filename, 'a', newline='') as file:
         writer = csv.writer(file)
         
-        # Write header only if the file is new
-        if not file_exists:
+        # Write header if needed
+        if needs_header:
             writer.writerow(species_csv_header)
         
         # Get the species data 
