@@ -1,4 +1,4 @@
-export const API_URL = "https://vigilant-orbit-p77vv46rxqgh9654-5000.app.github.dev/"
+export const API_URL = process.env.API_URL || "https://api.bitz.tools"
 
 export const QUEST_COLORS = [
   '#FF6B6B', // Red
