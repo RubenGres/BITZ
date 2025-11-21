@@ -13,12 +13,12 @@ Theses are the planned features for the future of the BITZ app, ordered by impor
 - [ ] update API keys to NiceTrail's account
 - [ ] finish data backup pipeline
 - [ ] Event page with separated species list / network
-- [ ] Add subdomain filtering for quests
+- [x] Add subdomain filtering for quests
 - [ ] Add the graph to the Venn Eyes on the field page 
 
 ❗  Important
 - [ ] Optimizing the database (atm it works but will be slow if too many users)
-- [ ] Optimizing client (dynamic cursor loading on the map, paginated explore list, network text is slowing everything down, etc. etc.)
+- [x] Optimizing client (dynamic cursor loading on the map, paginated explore list, network text is slowing everything down, etc. etc.)
 - [x] Merge Amsterdam garden data in the main instance
 - [ ] Cluster species labels to improve loading times in global network view
 - [x] Cluster markers in map to improve load
