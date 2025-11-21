@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Papa from 'papaparse';
 import { QUEST_COLORS } from '@/app/Constants';
 import { hashStringToIndex } from '@/app/utils/hashUtils';
 import dynamic from 'next/dynamic';
+import * as geolib from 'geolib'; // geolib is imported but only used indirectly via the utility file now
+import { applyGlobalFilters, getActiveFilterDomainKey } from '@/app/utils/dataFilters'; // 👈 Import the filter functions
 
 // Dynamically import the map components with ssr disabled
 const MapWithNoSSR = dynamic(
@@ -23,28 +25,34 @@ interface SpeciesRow {
   'notes': string;
   'latitude': string;
   'longitude': string;
-  'questId': string; // Added to track which quest this species belongs to
+  'questId': string;
 }
 
 interface QuestData {
   species_data_csv: string;
-  // Add other quest properties as needed
 }
 
 interface MapTabProps {
-  questData: Record<string, QuestData>; // Changed to dict with questId as key
+  questData: Record<string, QuestData>;
   loading: boolean;
   error: string | null;
 }
 
+
+// --- React Component ---
+
 const MapTab: React.FC<MapTabProps> = ({ questData, loading, error }) => {
-  const [allSpeciesData, setAllSpeciesData] = useState<SpeciesRow[]>([]);
+  const [allSpeciesData, setAllSpeciesData] = useState<SpeciesRow[]>([]); // Raw parsed data
   const [parsedLoading, setParsedLoading] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
   const [mapCenter, setMapCenter] = useState<[number, number]>([0, 0]);
   const [hasValidCoordinates, setHasValidCoordinates] = useState(false);
   const [questColors, setQuestColors] = useState<Record<string, string>>({});
+  
+  // Get the domain key result for UI messaging
+  const domainKey = useMemo(() => getActiveFilterDomainKey(), []);
 
+  // --- CSV Parsing Logic ---
   useEffect(() => {
     if (questData && Object.keys(questData).length > 0) {
       setParsedLoading(true);
@@ -54,14 +62,18 @@ const MapTab: React.FC<MapTabProps> = ({ questData, loading, error }) => {
       const colors: Record<string, string> = {};
       const questIds = Object.keys(questData);
       
-      // Assign colors to each quest
-      questIds.forEach((questId, index) => {
+      questIds.forEach((questId) => {
         colors[questId] = QUEST_COLORS[hashStringToIndex(questId, QUEST_COLORS.length)];
       });
       setQuestColors(colors);
       
       let processedQuests = 0;
       const totalQuests = questIds.length;
+      
+      if (totalQuests === 0) {
+          setParsedLoading(false);
+          return;
+      }
       
       questIds.forEach((questId) => {
         const quest = questData[questId];
@@ -74,10 +86,8 @@ const MapTab: React.FC<MapTabProps> = ({ questData, loading, error }) => {
             complete: (results) => {
               if (results.errors.length > 0) {
                 console.warn(`CSV parsing errors for quest ${questId}:`, results.errors);
-                // Try to continue despite errors
               }
               
-              // Process the data to ensure all required fields exist
               const processedData = results.data.map((row: any) => {
                 return {
                   'image_name': row['image_name'] || '',
@@ -96,33 +106,10 @@ const MapTab: React.FC<MapTabProps> = ({ questData, loading, error }) => {
               allProcessedData.push(...(processedData as SpeciesRow[]));
               processedQuests++;
               
-              // Check if all quests have been processed
               if (processedQuests === totalQuests) {
+                // Set raw data; filtering and centering happens in useMemo
                 setAllSpeciesData(allProcessedData);
                 setParsedLoading(false);
-                
-                // Calculate map center based on valid coordinates from all quests
-                const validCoordinatesData = allProcessedData.filter(row => 
-                  row.latitude && row.longitude && 
-                  !isNaN(Number(row.latitude)) && !isNaN(Number(row.longitude))
-                );
-                
-                if (validCoordinatesData.length > 0) {
-                  setHasValidCoordinates(true);
-                  
-                  // Calculate the average of all coordinates to center the map
-                  const totalLat = validCoordinatesData.reduce((sum, row) => 
-                    sum + Number(row.latitude), 0);
-                  const totalLng = validCoordinatesData.reduce((sum, row) => 
-                    sum + Number(row.longitude), 0);
-                  
-                  setMapCenter([
-                    totalLat / validCoordinatesData.length,
-                    totalLng / validCoordinatesData.length
-                  ]);
-                } else {
-                  setHasValidCoordinates(false);
-                }
               }
             },
             error: (error: Error) => {
@@ -138,8 +125,47 @@ const MapTab: React.FC<MapTabProps> = ({ questData, loading, error }) => {
           }
         }
       });
+    } else if (Object.keys(questData).length === 0) {
+        setAllSpeciesData([]);
+        setParsedLoading(false);
     }
   }, [questData]);
+
+  // --- Filtering and Centering Logic ---
+  const filteredSpeciesData = useMemo(() => {
+    // 1. Apply the global filter
+    const data = applyGlobalFilters(allSpeciesData);
+
+    // 2. Recalculate center and check for valid coordinates based on the filtered data
+    const validCoordinatesData = data.filter(row => 
+      row.latitude && row.longitude && 
+      !isNaN(Number(row.latitude)) && !isNaN(Number(row.longitude))
+    );
+
+    if (validCoordinatesData.length > 0) {
+      // Use side-effects inside useMemo conditionally for dependent state, 
+      // although better handled in a subsequent useEffect if dependency graph is complex.
+      // Here, it's fine as it only runs when allSpeciesData changes.
+      setHasValidCoordinates(true);
+      
+      const totalLat = validCoordinatesData.reduce((sum, row) => 
+        sum + Number(row.latitude), 0);
+      const totalLng = validCoordinatesData.reduce((sum, row) => 
+        sum + Number(row.longitude), 0);
+      
+      setMapCenter([
+        totalLat / validCoordinatesData.length,
+        totalLng / validCoordinatesData.length
+      ]);
+    } else {
+      setHasValidCoordinates(false);
+      setMapCenter([0, 0]); 
+    }
+
+    return data;
+  }, [allSpeciesData]); // Only depends on the raw data
+
+  // --- Render Logic ---
 
   if (loading || parsedLoading) {
     return <div className="h-full w-full flex items-center justify-center">Loading...</div>;
@@ -154,13 +180,20 @@ const MapTab: React.FC<MapTabProps> = ({ questData, loading, error }) => {
   }
 
   if (!hasValidCoordinates) {
-    return <div className="h-full w-full flex items-center justify-center">No valid GPS coordinates found in the species data</div>;
+    const isFiltered = domainKey && (allSpeciesData.length > filteredSpeciesData.length);
+    const filterStatus = isFiltered ? 
+        `after filtering to within 5km of a farm for **${domainKey}**` : 
+        '';
+        
+    return <div className="h-full w-full flex items-center justify-center">
+        No valid GPS coordinates found in the species data {filterStatus}.
+    </div>;
   }
 
   return (
     <div className="h-full w-full" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 200px)' }}>      
       <MapWithNoSSR 
-        speciesData={allSpeciesData}
+        speciesData={filteredSpeciesData} // Use the filtered data
         questColors={questColors}
         mapCenter={mapCenter}
       />

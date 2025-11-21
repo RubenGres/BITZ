@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Papa from 'papaparse';
 import JSON5 from 'json5';
 import { API_URL } from '@/app/Constants';
+import { applyGlobalFilters } from '@/app/utils/dataFilters'; // 👈 NEW IMPORT for filtering
 
 const global_parameters = {
     interaction_mode: "final", // "auto" or "explore" or "final"
@@ -41,6 +42,8 @@ interface SpeciesRow {
     'discovery_timestamp': string;
     'confidence': string;
     'notes': string;
+    'latitude': string; // Needed for filtering
+    'longitude': string; // Needed for filtering
 }
 
 interface NetworkTabProps {
@@ -623,10 +626,17 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
     const zoomRef = useRef(1);
     const nodesRef = useRef<Node[]>([]);
     const connectionsRef = useRef<Connection[]>([]);
+    
+    // MODIFIED useEffect to handle asynchronous parsing and filtering
     useEffect(() => {
-        let allNodes: Node[] = [];
-        let sortedNodes: Node[] = []
+        nodesRef.current = nodes;
+    }, [nodes]);
 
+    useEffect(() => {
+        connectionsRef.current = connections;
+    }, [connections]);
+    
+    useEffect(() => {
         if (hasProcessedData.current) {
             return;
         }
@@ -640,7 +650,10 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
         ) => {
             setNodes([]);
 
-            if (sortedNodes.length === 0) return;
+            if (sortedNodes.length === 0) {
+                if (onComplete) onComplete();
+                return;
+            }
 
             let currentIndex = 0;
 
@@ -771,34 +784,9 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
             // Start removing nodes
             removeNextNode();
         };
-
-        // Process the data from all CSVs
-        Object.entries(questDataDict).forEach(([questId, questData]) => {
-            Papa.parse(questData.species_data_csv, {
-                header: true,
-                dynamicTyping: true,
-                skipEmptyLines: true,
-
-                complete: (results) => {
-                    const speciesData = results.data as SpeciesRow[];
-                    const newNodes = createNodes(speciesData, questId);
-                    if (newNodes) {
-                        allNodes = [...allNodes, ...newNodes];
-                    }
-                }
-            });
-        });
-
-        console.log("before filtering", allNodes.length)
-
-        if (allNodes) {
-            allNodes = allNodes.filter((node) => node.timestamp < global_parameters.cutoff_time);
-            allNodes.sort((a, b) => a.timestamp - b.timestamp);
-        }
-
-        console.log("after filtering", allNodes.length)
-
-        function startCycle() {
+        
+        // Function to start the visualization cycle
+        function startCycle(allNodes: Node[]) {
             // In "final" mode, show all data immediately without cycling
             if (global_parameters.interaction_mode === "final") {
                 // Add all nodes at once without delay
@@ -810,7 +798,7 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
             setTimeout(() => {
                 addNodesWithDelay(allNodes, function () {
                     setTimeout(() => {
-                        removeNodesWithDelay(allNodes, startCycle);
+                        removeNodesWithDelay(allNodes, () => startCycle(allNodes)); // Recursive call to restart cycle
                     }, global_parameters.delay_wait_for_rem_ms);
                 });
             }, global_parameters.delay_wait_for_add_ms)
@@ -874,10 +862,56 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
             setNodes(finalNodes);
             setConnections(finalConnections);
         };
+        
+        // --- NEW ASYNC PARSING AND FILTERING STARTS HERE ---
+        const parseAndFilterData = async () => {
+            const parsePromises: Promise<Node[] | null>[] = Object.entries(questDataDict).map(([questId, questData]) => {
+                return new Promise(resolve => {
+                    if (!questData?.species_data_csv) {
+                        return resolve(null);
+                    }
+                    
+                    Papa.parse(questData.species_data_csv, {
+                        header: true,
+                        dynamicTyping: true,
+                        skipEmptyLines: true,
+                        complete: (results) => {
+                            const speciesData = results.data as SpeciesRow[];
+                            // Filtering is now inside createNodes, which ensures filtering happens
+                            // on the data that still contains latitude/longitude.
+                            const newNodes = createNodes(speciesData, questId);
+                            resolve(newNodes || null);
+                        },
+                        error: (error) => {
+                            console.error(`Error parsing CSV for quest ${questId}:`, error);
+                            resolve(null);
+                        }
+                    });
+                });
+            });
 
-        startCycle();
+            // Wait for all CSVs to be parsed (and filtered within createNodes)
+            const results = await Promise.all(parsePromises);
+            
+            // Consolidate all parsed and filtered nodes
+            let allNodes = results.flatMap(nodes => nodes || []);
 
-    }, []);
+            console.log("Nodes before timestamp cutoff:", allNodes.length);
+
+            if (allNodes.length > 0) {
+                allNodes = allNodes.filter((node) => node.timestamp < global_parameters.cutoff_time);
+                allNodes.sort((a, b) => a.timestamp - b.timestamp);
+            }
+
+            console.log("Nodes after all filtering/sorting:", allNodes.length);
+
+            // Start the visualization cycle
+            startCycle(allNodes);
+        };
+
+        parseAndFilterData();
+
+    }, [questDataDict]); // Added questDataDict as a dependency to re-run if input data changes
 
     useEffect(() => {
         startAnimation();
@@ -895,14 +929,6 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
         panOffsetRef.current = panOffset;
         zoomRef.current = zoomLevel;
     }, [panOffset, zoomLevel]);
-
-    useEffect(() => {
-        nodesRef.current = nodes;
-    }, [nodes]);
-
-    useEffect(() => {
-        connectionsRef.current = connections;
-    }, [connections]);
 
     // Check for mobile device on mount
     useEffect(() => {
@@ -1013,7 +1039,11 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
 
     const createNodes = (speciesData: SpeciesRow[], questId: string) => {
         console.log('Creating nodes for quest id:', questId);
-        console.log('Species data len:', speciesData.length);
+        
+        // 🛑 APPLY FARM FILTER HERE
+        const filteredSpeciesData = applyGlobalFilters(speciesData);
+        console.log(`Species data for quest ${questId}: ${speciesData.length} raw, ${filteredSpeciesData.length} filtered.`);
+
 
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -1022,7 +1052,8 @@ const NetworkTab: React.FC<NetworkTabProps> = ({ questDataDict, loading, error }
         const width = canvas.width || window.innerWidth;
         const height = canvas.height || window.innerHeight;
 
-        speciesData.forEach((species, index) => {
+        // Use the filtered data to create nodes
+        filteredSpeciesData.forEach((species, index) => {
             const angle = Math.random() * Math.PI * 2;
             const radius = Math.min(width, height) * global_parameters.spawning_node_radius;
 

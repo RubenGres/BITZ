@@ -1,9 +1,13 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Papa from 'papaparse';
-import { QUEST_COLORS } from '@/app/Constants';
+import { QUEST_COLORS, API_URL, FARM_LOCATIONS } from '@/app/Constants';
 import { hashStringToIndex } from '@/app/utils/hashUtils';
-import { API_URL } from '@/app/Constants';
 import FullscreenImageModal from "@/app/components/FullscreenImageModal";
+// Assuming dataFilters.ts contains the necessary functions (like applyGlobalFilters, getDomainKey, etc.)
+// Note: You must ensure applyGlobalFilters and getActiveFilterDomainKey are exported from dataFilters.ts
+import { applyGlobalFilters, getActiveFilterDomainKey } from '@/app/utils/dataFilters'; 
+
+// --- INTERFACES ---
 
 interface SpeciesRow {
   'image_name': string;
@@ -25,13 +29,16 @@ interface QuestData {
 }
 
 interface ListTabProps {
-  questData: Record<string, QuestData>; // Changed to dictionary with questId as key
+  questData: Record<string, QuestData>;
   loading: boolean;
   error: string | null;
 }
 
+// --- REACT COMPONENT ---
+
 const ListTab: React.FC<ListTabProps> = ({ questData, loading, error }) => {
-  const [speciesData, setSpeciesData] = useState<SpeciesRow[]>([]);
+  // rawData holds the data immediately after parsing, before filtering/sorting.
+  const [rawData, setRawData] = useState<SpeciesRow[]>([]); 
   const [parsedLoading, setParsedLoading] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
   const [fullscreenImage, setFullscreenImage] = useState<{
@@ -45,6 +52,21 @@ const ListTab: React.FC<ListTabProps> = ({ questData, loading, error }) => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   
   const observerTarget = useRef<HTMLDivElement>(null);
+
+  // Memoized data: Applies the global filter and then sorts it.
+  const speciesData = useMemo(() => {
+    // 1. Apply the geographic filter using the external utility
+    const filtered = applyGlobalFilters(rawData);
+    
+    // 2. Sort the filtered data by timestamp (most recent first)
+    const sortedData = filtered.sort((a, b) => {
+      const dateA = new Date(a.discovery_timestamp || 0);
+      const dateB = new Date(b.discovery_timestamp || 0);
+      return dateB.getTime() - dateA.getTime();
+    });
+
+    return sortedData;
+  }, [rawData]); // Recalculate whenever new raw data is available
 
   useEffect(() => {
     if (questData && Object.keys(questData).length > 0) {
@@ -60,13 +82,8 @@ const ListTab: React.FC<ListTabProps> = ({ questData, loading, error }) => {
         if (!questInfo?.species_data_csv) {
           processedQuests++;
           if (processedQuests === questIds.length) {
-            // Sort all data by timestamp (most recent first)
-            const sortedData = allSpeciesData.sort((a, b) => {
-              const dateA = new Date(a.discovery_timestamp || 0);
-              const dateB = new Date(b.discovery_timestamp || 0);
-              return dateB.getTime() - dateA.getTime();
-            });
-            setSpeciesData(sortedData);
+            // Set the raw data, allowing useMemo to handle filtering/sorting
+            setRawData(allSpeciesData);
             setParsedLoading(false);
           }
           return;
@@ -81,7 +98,6 @@ const ListTab: React.FC<ListTabProps> = ({ questData, loading, error }) => {
               console.warn(`CSV parsing errors for quest ${questId}:`, results.errors);
             }
 
-            // Process the data for this quest
             // Use the quest-level timestamp (convert from Unix timestamp to ISO string)
             const questTimestamp = questInfo.timestamp 
               ? new Date(parseInt(questInfo.timestamp) * 1000).toISOString()
@@ -92,7 +108,7 @@ const ListTab: React.FC<ListTabProps> = ({ questData, loading, error }) => {
               'taxonomic_group': row['taxonomic_group'] || '',
               'scientific_name': row['scientific_name'] || '',
               'common_name': row['common_name'] || '',
-              'discovery_timestamp': questTimestamp,
+              'discovery_timestamp': questTimestamp, // Use the quest-level timestamp
               'confidence': row['confidence'] || '',
               'notes': row['notes'] || '',
               'latitude': row['latitude'] || '',
@@ -100,18 +116,12 @@ const ListTab: React.FC<ListTabProps> = ({ questData, loading, error }) => {
               'questId': questId
             })) as SpeciesRow[];
 
-            // Add this quest's data to the overall collection
             allSpeciesData.push(...processedQuestData);
             processedQuests++;
 
-            // If all quests have been processed, sort and set the data
+            // If all quests have been processed, set the raw data
             if (processedQuests === questIds.length) {
-              const sortedData = allSpeciesData.sort((a, b) => {
-                const dateA = new Date(a.discovery_timestamp || 0);
-                const dateB = new Date(b.discovery_timestamp || 0);
-                return dateB.getTime() - dateA.getTime();
-              });
-              setSpeciesData(sortedData);
+              setRawData(allSpeciesData);
               setParsedLoading(false);
             }
           },
@@ -128,7 +138,7 @@ const ListTab: React.FC<ListTabProps> = ({ questData, loading, error }) => {
         processQuest(questId, questData[questId]);
       });
     } else {
-      setSpeciesData([]);
+      setRawData([]);
       setParsedLoading(false);
     }
   }, [questData]);
@@ -136,6 +146,7 @@ const ListTab: React.FC<ListTabProps> = ({ questData, loading, error }) => {
   // Infinite scroll handler
   const handleObserver = useCallback((entries: IntersectionObserverEntry[]) => {
     const [target] = entries;
+    // Check against the length of the FILTERED data (speciesData)
     if (target.isIntersecting && !isLoadingMore && displayedRows < speciesData.length) {
       setIsLoadingMore(true);
       // Simulate loading delay for smooth UX
@@ -215,17 +226,26 @@ const ListTab: React.FC<ListTabProps> = ({ questData, loading, error }) => {
     return <div className="p-4">No quest data available</div>;
   }
 
-  // Get only the rows to display
+  // Get only the rows to display from the filtered and sorted data
   const visibleData = speciesData.slice(0, displayedRows);
+  const domainKey = getActiveFilterDomainKey();
+  const isFiltered = domainKey && (rawData.length > speciesData.length);
 
   return (
     <div className="p-4">
       {speciesData.length === 0 ? (
-        <p className="text-gray-600">No species data found</p>
+        <p className="text-gray-600">
+          No species data found {isFiltered ? `after applying domain filter for ${domainKey}.` : ''}
+        </p>
       ) : (
         <>
           <div className="mb-4 text-sm text-gray-600">
-            Showing {visibleData.length} of {speciesData.length} species
+            Showing {visibleData.length} of {speciesData.length} species.
+            {isFiltered && (
+              <span className="ml-2 text-yellow-700 font-medium">
+                (Filtered from {rawData.length} total by 5km radius around {domainKey} farms)
+              </span>
+            )}
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse border border-gray-200">
@@ -261,7 +281,7 @@ const ListTab: React.FC<ListTabProps> = ({ questData, loading, error }) => {
                 {visibleData.map((row, index) => (
                   <tr
                     key={`${row.questId}-${index}`}
-                    className="hover:bg-gray-50"
+                    className="hover:bg-gray-50 cursor-pointer"
                     style={{ borderLeft: '7px solid ' + QUEST_COLORS[hashStringToIndex(row.questId, QUEST_COLORS.length)] }}
                     onClick={() => { window.location.href = `/view?id=${row.questId}`; }}
                   >
