@@ -3,6 +3,7 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --site-max-width: 520px; /* used to align site container and side menu (increased) */
 }
 
 @theme inline {
@@ -27,3 +28,22 @@ body {
 code, pre, .font-mono {
   font-family: var(--font-space-mono), monospace;
 }
+
+/* Constrain overall site width on larger screens so layout matches mobile appearance */
+.site-container {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--site-max-width); /* adjust via --site-max-width */
+  margin: 0 auto; /* center on larger viewports */
+  /* allow the container and its children to shrink freely on very small viewports */
+  min-width: 0;
+}
+
+/* Optional: add a subtle background or elevation for very large screens (uncomment if desired)
+@media (min-width: 1280px) {
+  .site-container {
+    box-shadow: 0 4px 18px rgba(0,0,0,0.06);
+    border-radius: 8px;
+  }
+}
+*/

@@ -70,7 +70,9 @@ export default function RootLayout({
       <body
         className={`${inclusiveSans.variable} ${spaceMono.variable} antialiased`}
       >
-        {children}
+        <div className="site-container">
+          {children}
+        </div>
       </body>
     </html>
   );

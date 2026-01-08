@@ -13,12 +13,16 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose }) => {
 
   return (
     <div 
-      className={`fixed top-0 right-0 h-full w-64 bg-white shadow-lg transform transition-transform duration-300 z-100 border-l-2 border-green-500 ${
-        isOpen ? 'translate-x-0' : 'translate-x-full'
+      className={`fixed top-0 h-full bg-white shadow-lg transform transition-transform transition-opacity duration-300 z-100 border-l-2 border-green-500 ${
+        isOpen ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
       }`}
-
+      aria-hidden={!isOpen}
       style={{
         backgroundColor: '#f6f9ec',
+        /* Make the menu responsive: full width on small screens, up to 20rem on wider screens */
+        width: 'min(100%, 20rem)',
+        /* Align menu's right edge with the right edge of .site-container on wide screens, and fall back to viewport edge on small screens */
+        right: 'calc((100% - min(100%, var(--site-max-width)))/2)'
       }}
     >
       <div className="p-4 flex justify-end">
