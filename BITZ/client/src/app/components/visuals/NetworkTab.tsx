@@ -296,9 +296,9 @@ class Connection {
         this.labelPromise = null;
         this.isLabelLoading = false;
 
-        if (global_parameters.show_labels && node1.name && node2.name && node1.name !== node2.name) {
-            this.requestConnectionLabel();
-        }
+        //if (global_parameters.show_labels && node1.name && node2.name && node1.name !== node2.name) {
+            //this.requestConnectionLabel();
+        //}
     }
 
     requestConnectionLabel() {
