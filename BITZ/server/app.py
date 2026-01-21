@@ -971,6 +971,9 @@ def link_species_batch():
     if not species_pairs:
         return jsonify({"error": "No species pairs provided."}), 400
     
+    if len(species_pairs) > 10:
+        return jsonify({"error": "Too many species pairs provided. Maximum 10 allowed."}), 400
+
     # Validate each pair
     for i, pair in enumerate(species_pairs):
         if not isinstance(pair, list):
