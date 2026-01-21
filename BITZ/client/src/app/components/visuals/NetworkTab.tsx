@@ -358,28 +358,30 @@ class Connection {
 
         console.log(`Fetching labels for ${speciesPairs.length} species pairs in batch`);
 
-        try {
-            // Fetch all labels in batch
-            const results = await fetchSpeciesLinkBatch(speciesPairs);
-
-            // Update all connections with their labels
-            connectionMap.forEach((connections, cacheKey) => {
-                const label = results[cacheKey] || '';
-                connections.forEach(connection => {
-                    connection.text = label;
-                    connection.isLabelLoading = false;
+        if(speciesPairs.length < 10) {                
+            try {
+                // Fetch all labels in batch
+                const results = await fetchSpeciesLinkBatch(speciesPairs);
+                
+                // Update all connections with their labels
+                connectionMap.forEach((connections, cacheKey) => {
+                    const label = results[cacheKey] || '';
+                    connections.forEach(connection => {
+                        connection.text = label;
+                        connection.isLabelLoading = false;
+                    });
                 });
-            });
 
-        } catch (error) {
-            console.error('Batch label fetching failed:', error);
-            // Mark all connections as failed
-            connectionMap.forEach((connections) => {
-                connections.forEach(connection => {
-                    connection.text = '';
-                    connection.isLabelLoading = false;
+            } catch (error) {
+                console.error('Batch label fetching failed:', error);
+                // Mark all connections as failed
+                connectionMap.forEach((connections) => {
+                    connections.forEach(connection => {
+                        connection.text = '';
+                        connection.isLabelLoading = false;
+                    });
                 });
-            });
+            }
         }
     }
 
