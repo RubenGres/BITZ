@@ -11,14 +11,16 @@ services:
     env_file:
       - .env
     depends_on:
-      - bitz-frontend
-      - bitz-server
+      bitz-frontend:
+        condition: service_healthy
+      bitz-server:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - bitz-network
 
   bitz-frontend:
-    build: 
+    build:
       context: ./BITZ/client
       dockerfile: Dockerfile
       args:
@@ -31,7 +33,7 @@ services:
       bitz-server:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://0.0.0.0:3000/"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -40,7 +42,7 @@ services:
       - bitz-network
 
   bitz-server:
-    build: 
+    build:
       context: ./BITZ/server
       dockerfile: Dockerfile
     container_name: bitz-server
