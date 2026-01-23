@@ -5,7 +5,6 @@ import Header from '@/app/Header';
 import { LoadingScreen } from './LoadingScreen';
 import { API_URL, FARM_LOCATIONS } from '../Constants';
 import { getUserId, getConversationId, createNewConversationId } from '../User';
-import { FaceAnonymizer } from '@/components/FaceAnonymizer';
 
 interface UploadedImage {
   id: string;
@@ -26,31 +25,9 @@ export default function BatchUploadPage() {
   const [currentQuestId, setCurrentQuestId] = useState<string>('');
   const [processedCount, setProcessedCount] = useState(0);
 
-  const faceProcessorRef = useRef<FaceAnonymizer | null>(null);
-
-  // Initialize MediaPipe when component mounts
+  // Initialize quest ID
   useEffect(() => {
-    const initializeProcessor = async () => {
-      try {
-        faceProcessorRef.current = new FaceAnonymizer();
-        await faceProcessorRef.current.initialize();
-        console.log('Face anonymizer ready');
-      } catch (error) {
-        console.error('Failed to initialize face processor:', error);
-      }
-    };
-
-    initializeProcessor();
-
-    // Initialize quest ID
     setCurrentQuestId(createNewConversationId());
-
-    // Cleanup on unmount
-    return () => {
-      if (faceProcessorRef.current) {
-        faceProcessorRef.current.cleanup();
-      }
-    };
   }, []);
 
   const getRandomLocation = () => {
@@ -133,19 +110,7 @@ export default function BatchUploadPage() {
 
         // Read file as data URL
         const imageData = await readFileAsDataURL(image.file);
-
-        // Apply face anonymizer
-        let processedImageData = imageData;
-        if (faceProcessorRef.current) {
-          setProcessingStatus(`Pixelating faces in image ${i + 1}...`);
-          try {
-            processedImageData = await faceProcessorRef.current.processImageWithFacePixelation(imageData);
-          } catch (pixelationError) {
-            console.warn('Face pixelation failed, using original image:', pixelationError);
-          }
-        }
-
-        const base64Data = processedImageData.split(',')[1];
+        const base64Data = imageData.split(',')[1];
 
         // Get random location
         const location = getRandomLocation();
@@ -158,7 +123,7 @@ export default function BatchUploadPage() {
           img.id === image.id ? {
             ...img,
             status: 'complete' as const,
-            processedData: processedImageData,
+            processedData: imageData,
             result
           } : img
         ));

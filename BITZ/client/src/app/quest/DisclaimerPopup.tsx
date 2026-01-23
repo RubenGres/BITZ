@@ -32,7 +32,7 @@ const DisclaimerPopup: React.FC<DisclaimerPopupProps> = ({ onAccept, onViewTerms
             <h3 className="font-semibold text-gray-700 mb-2">DATA USAGE</h3>
             <p className="text-[#6ac497] font-bold leading-relaxed">
               By using BITZ, you consent to your submitted images being added to a public dataset for ecological research. 
-              All data will be anonymized and images with identifiable people will be blurred.
+              All data will be anonymized.
             </p>
           </div>
 

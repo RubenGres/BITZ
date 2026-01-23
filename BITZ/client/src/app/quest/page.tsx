@@ -6,7 +6,6 @@ import { MainScreen } from './MainScreen';
 import { InfoView } from './InfoView';
 import { API_URL } from '../Constants';
 import { getUserId, getConversationId, createNewConversationId} from '../User';
-import { FaceAnonymizer } from '@/components/FaceAnonymizer';
 
 export default function QuestPage() {  
   const [isLoading, setIsLoading] = useState(false);
@@ -17,30 +16,6 @@ export default function QuestPage() {
   const [location, setLocation] = useState<string>('');
   const [gpsCoordinates, setGpsCoordinates] = useState<string>('');
   const [processingStatus, setProcessingStatus] = useState<string>('');
-  
-  const faceProcessorRef = useRef<FaceAnonymizer | null>(null);
-
-  // Initialize MediaPipe when component mounts
-  useEffect(() => {
-    const initializeProcessor = async () => {
-      try {
-        faceProcessorRef.current = new FaceAnonymizer();
-        await faceProcessorRef.current.initialize();
-        console.log('Face anonymizer ready');
-      } catch (error) {
-        console.error('Failed to initialize face processor:', error);
-      }
-    };
-
-    initializeProcessor();
-
-    // Cleanup on unmount
-    return () => {
-      if (faceProcessorRef.current) {
-        faceProcessorRef.current.cleanup();
-      }
-    };
-  }, []);
 
   // Extract flavor from URL query parameters when component mounts
   useEffect(() => {
@@ -116,22 +91,8 @@ export default function QuestPage() {
   
         if (typeof imageData === 'string') {
           try {
-            // Apply face anonymizer if processor is available
-            let processedImageData = imageData;
-            
-            if (faceProcessorRef.current) {
-              setProcessingStatus('Detecting and pixelating faces...');
-              try {
-                processedImageData = await faceProcessorRef.current.processImageWithFacePixelation(imageData);
-                console.log('Face pixelation completed');
-              } catch (pixelationError) {
-                console.warn('Face pixelation failed, using original image:', pixelationError);
-                // Continue with original image if face pixelation fails
-              }
-            }
-
-            const base64Data = processedImageData.split(',')[1];
-            setUploadedFile(processedImageData); // Use processed image for display
+            const base64Data = imageData.split(',')[1];
+            setUploadedFile(imageData); // Use original image for display
             
             console.log('Starting image processing...');
             console.log('User Location:', location, gpsCoordinates);
