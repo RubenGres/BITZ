@@ -32,7 +32,7 @@ export default function Page() {
       {/* Landing Page - on top */}
       <div 
         className={`absolute inset-0 z-10 transition-transform duration-700 ${
-          isMovingUp ? '-translate-x-full' : ''
+          isMovingUp ? '-translate-x-full pointer-events-none' : ''
         }`}
         onClick={handleClick}
         style={{
