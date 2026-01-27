@@ -17,7 +17,4 @@ COPY . .
 
 RUN mkdir -p /app/history /app/history/data /app/history/images /app/static /app/templates
 
-RUN useradd -m appuser && chown -R appuser:appuser /app
-USER appuser
-
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--threads", "2", "--timeout", "120", "app:app"]
+CMD ["gunicorn", "--bind", "unix:/app/socket/gunicorn.sock", "--workers", "4", "--threads", "2", "--timeout", "120", "app:app"]
