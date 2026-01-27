@@ -51,6 +51,9 @@ interface NetworkTabProps {
     questId: string;
     loading: boolean;
     error: string | null;
+    filters?: {
+        searchText: string;
+    };
 }
 
 interface SpeciesInfo {

@@ -32,15 +32,23 @@ interface ListTabProps {
   questData: Record<string, QuestData>;
   loading: boolean;
   error: string | null;
+  filters?: {
+    searchText: string;
+  };
 }
 
 // --- REACT COMPONENT ---
 
-const ListTab: React.FC<ListTabProps> = ({ questData, loading, error }) => {
+const ListTab: React.FC<ListTabProps> = ({ questData, loading, error, filters }) => {
   // rawData holds the data immediately after parsing, before filtering/sorting.
-  const [rawData, setRawData] = useState<SpeciesRow[]>([]); 
+  const [rawData, setRawData] = useState<SpeciesRow[]>([]);
   const [parsedLoading, setParsedLoading] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
+  
+  // Provide default values for filters if not passed
+  const activeFilters = filters || {
+    searchText: ''
+  };
   const [fullscreenImage, setFullscreenImage] = useState<{
     src: string;
     alt: string;
@@ -56,9 +64,23 @@ const ListTab: React.FC<ListTabProps> = ({ questData, loading, error }) => {
   // Memoized data: Applies the global filter and then sorts it.
   const speciesData = useMemo(() => {
     // 1. Apply the geographic filter using the external utility
-    const filtered = applyGlobalFilters(rawData);
+    let filtered = applyGlobalFilters(rawData);
     
-    // 2. Sort the filtered data by timestamp (most recent first)
+    // 2. Apply text search filter across all fields
+    if (activeFilters.searchText) {
+      const searchLower = activeFilters.searchText.toLowerCase();
+      filtered = filtered.filter(row => {
+        return (
+          row['common_name']?.toLowerCase().includes(searchLower) ||
+          row['scientific_name']?.toLowerCase().includes(searchLower) ||
+          row['taxonomic_group']?.toLowerCase().includes(searchLower) ||
+          row['notes']?.toLowerCase().includes(searchLower) ||
+          row['image_name']?.toLowerCase().includes(searchLower)
+        );
+      });
+    }
+    
+    // 3. Sort the filtered data by timestamp (most recent first)
     const sortedData = filtered.sort((a, b) => {
       const dateA = new Date(a.discovery_timestamp || 0);
       const dateB = new Date(b.discovery_timestamp || 0);
@@ -66,7 +88,7 @@ const ListTab: React.FC<ListTabProps> = ({ questData, loading, error }) => {
     });
 
     return sortedData;
-  }, [rawData]); // Recalculate whenever new raw data is available
+  }, [rawData, activeFilters]); // Recalculate whenever new raw data is available
 
   useEffect(() => {
     if (questData && Object.keys(questData).length > 0) {

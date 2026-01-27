@@ -36,18 +36,26 @@ interface MapTabProps {
   questData: Record<string, QuestData>;
   loading: boolean;
   error: string | null;
+  filters?: {
+    searchText: string;
+  };
 }
 
 
 // --- React Component ---
 
-const MapTab: React.FC<MapTabProps> = ({ questData, loading, error }) => {
+const MapTab: React.FC<MapTabProps> = ({ questData, loading, error, filters }) => {
   const [allSpeciesData, setAllSpeciesData] = useState<SpeciesRow[]>([]); // Raw parsed data
   const [parsedLoading, setParsedLoading] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
   const [mapCenter, setMapCenter] = useState<[number, number]>([0, 0]);
   const [hasValidCoordinates, setHasValidCoordinates] = useState(false);
   const [questColors, setQuestColors] = useState<Record<string, string>>({});
+  
+  // Provide default values for filters if not passed
+  const activeFilters = filters || {
+    searchText: ''
+  };
   
   // Get the domain key result for UI messaging
   const domainKey = useMemo(() => getActiveFilterDomainKey(), []);
@@ -134,9 +142,23 @@ const MapTab: React.FC<MapTabProps> = ({ questData, loading, error }) => {
   // --- Filtering and Centering Logic ---
   const filteredSpeciesData = useMemo(() => {
     // 1. Apply the global filter
-    const data = applyGlobalFilters(allSpeciesData);
+    let data = applyGlobalFilters(allSpeciesData);
+    
+    // 2. Apply text search filter across all fields
+    if (activeFilters.searchText) {
+      const searchLower = activeFilters.searchText.toLowerCase();
+      data = data.filter(row => {
+        return (
+          row['common_name']?.toLowerCase().includes(searchLower) ||
+          row['scientific_name']?.toLowerCase().includes(searchLower) ||
+          row['taxonomic_group']?.toLowerCase().includes(searchLower) ||
+          row['notes']?.toLowerCase().includes(searchLower) ||
+          row['image_name']?.toLowerCase().includes(searchLower)
+        );
+      });
+    }
 
-    // 2. Recalculate center and check for valid coordinates based on the filtered data
+    // 3. Recalculate center and check for valid coordinates based on the filtered data
     const validCoordinatesData = data.filter(row => 
       row.latitude && row.longitude && 
       !isNaN(Number(row.latitude)) && !isNaN(Number(row.longitude))
@@ -163,7 +185,7 @@ const MapTab: React.FC<MapTabProps> = ({ questData, loading, error }) => {
     }
 
     return data;
-  }, [allSpeciesData]); // Only depends on the raw data
+  }, [allSpeciesData, activeFilters]); // Only depends on the raw data
 
   // --- Render Logic ---
 

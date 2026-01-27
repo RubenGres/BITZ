@@ -10,6 +10,9 @@ const QuestExplorer = () => {
   const [questDataDict, setQuestDataDict] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filters, setFilters] = useState({
+    searchText: ''
+  });
 
   useEffect(() => {
     // First, fetch the list of all quest IDs
@@ -75,11 +78,11 @@ const QuestExplorer = () => {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'list': 
-        return <ListTab questData={questDataDict} loading={loading} error={error} />;
+        return <ListTab questData={questDataDict} loading={loading} error={error} filters={filters} />;
       case 'network': 
-        return <NetworkTab questDataDict={questDataDict} loading={loading} error={error} />;
+        return <NetworkTab questDataDict={questDataDict} loading={loading} error={error} filters={filters} />;
       case 'map': 
-        return <MapTab questData={questDataDict} loading={loading} error={error} />;
+        return <MapTab questData={questDataDict} loading={loading} error={error} filters={filters} />;
       default: 
         return <h1> ☝🤓 </h1>
     }
@@ -87,6 +90,31 @@ const QuestExplorer = () => {
   
   return (
     <div className="w-full h-full flex flex-col">
+      
+      {/* Filters */}
+      <div className="px-6 py-4 bg-green-50 border-b border-green-300">
+        <h3 className="text-lg font-semibold text-green-700 mb-4">Search</h3>
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+          {/* Text Search Filter */}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={filters.searchText}
+              onChange={(e) => setFilters({...filters, searchText: e.target.value})}
+              placeholder="Search by name, species, notes..."
+              className="flex-1 px-3 py-2 border border-green-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+            {filters.searchText && (
+              <button
+                onClick={() => setFilters({searchText: ''})}
+                className="px-4 py-2 text-sm bg-white border border-green-400 text-green-600 rounded-md hover:bg-green-50 transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
       
       {/* Tabs - Scrollable container */}
       <div className="mt-4 px-6">
