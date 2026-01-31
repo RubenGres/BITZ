@@ -1,26 +1,21 @@
 server {
     listen 443 ssl;
     server_name ${API_DOMAIN};
-
     ssl_certificate ${CERT_PATH};
     ssl_certificate_key ${CERT_KEY_PATH};
-
     # Increase request size limit for large file uploads (16MB)
     client_max_body_size 16M;
-
     location / {
-    	proxy_pass http://unix:/app/socket/gunicorn.sock;
-    	proxy_set_header Host $host;
-    	proxy_set_header X-Real-IP $remote_addr;
-    	proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    	proxy_set_header X-Forwarded-Proto $scheme;
-       
+        proxy_pass http://unix:/app/socket/gunicorn.sock;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
         # CORS headers must be set at the Nginx level since it's handling the client connection
         add_header 'Access-Control-Allow-Origin' '*' always;
         add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
         add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
         add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range' always;
-        
         # Special handling for OPTIONS method (preflight requests)
         if ($request_method = 'OPTIONS') {
             add_header 'Access-Control-Allow-Origin' '*' always;
@@ -35,12 +30,24 @@ server {
 }
 
 server {
-    listen 443 ssl default_server;
-    server_name ${DOMAIN};
-
+    listen 443 ssl;
+    server_name beetroot.${DOMAIN};
     ssl_certificate ${CERT_PATH};
     ssl_certificate_key ${CERT_KEY_PATH};
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
 
+server {
+    listen 443 ssl default_server;
+    server_name ${DOMAIN};
+    ssl_certificate ${CERT_PATH};
+    ssl_certificate_key ${CERT_KEY_PATH};
     location / {
         # Proxy to the bitz-frontend container
         proxy_pass http://bitz-frontend:3000;
@@ -54,13 +61,11 @@ server {
 # Redirect HTTP to HTTPS (except for ACME challenge)
 server {
     listen 80;
-    server_name ${DOMAIN} ${API_DOMAIN};
-    
+    server_name ${DOMAIN} ${API_DOMAIN} beetroot.${DOMAIN};
     # Allow certbot challenges
     location /.well-known/acme-challenge/ {
         root ${WEBROOT_PATH};
     }
-    
     # Redirect everything else to HTTPS
     location / {
         return 301 https://$host$request_uri;
