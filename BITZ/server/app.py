@@ -10,6 +10,7 @@ from image_analyzer import ImageAnalyzer
 from flask import Flask, send_from_directory, abort, request, jsonify, url_for, render_template, make_response, redirect, Response, stream_with_context
 from flask_cors import CORS
 import oaak
+import db
 from openai import OpenAI
 from datetime import datetime
 from collections import Counter
@@ -37,26 +38,25 @@ def human_readable_size(size, decimal_places=1):
     return f"{size:.{decimal_places}f} PB"
 
 def get_quest_ids():
-    """List folder names in history/data directory - these represent quest IDs"""
-    quest_path = os.path.join(BASE_DIR, "data")
-    
-    # Check if the directory exists
-    if not os.path.isdir(quest_path):
-        return []
-    
-    # Get all items in the directory
-    items = os.listdir(quest_path)
-    
-    # Filter to only include directories and exclude any hidden folders
-    quest_ids = [
-        item for item in items 
-        if os.path.isdir(os.path.join(quest_path, item)) and not item.startswith('.')
-    ]
-    
-    # Sort the quest IDs for consistent output
-    quest_ids.sort()
-    
-    return quest_ids
+    """Get all quest IDs from MongoDB"""
+    try:
+        conversations = db.get_all_conversations()
+        quest_ids = [conv['conversation_id'] for conv in conversations if conv.get('conversation_id')]
+        quest_ids.sort()
+        return quest_ids
+    except Exception as e:
+        print(f"Error getting quest IDs from MongoDB: {e}")
+        # Fallback to filesystem if MongoDB fails
+        quest_path = os.path.join(BASE_DIR, "data")
+        if not os.path.isdir(quest_path):
+            return []
+        items = os.listdir(quest_path)
+        quest_ids = [
+            item for item in items 
+            if os.path.isdir(os.path.join(quest_path, item)) and not item.startswith('.')
+        ]
+        quest_ids.sort()
+        return quest_ids
 
 @app.route("/", methods=["GET"])
 def home():
@@ -90,10 +90,10 @@ def get_quest_metadata(quest_id, force_reload=False):
     
     Args:
         quest_id: The ID of the quest to get metadata for
-        force_reload: If True, bypass cache and reload metadata from disk
+        force_reload: If True, bypass cache and reload metadata from database
         
     Returns:
-        Metadata dictionary or None if files are missing
+        Metadata dictionary or None if quest is missing
     """
     global quest_metadata_cache
     
@@ -101,12 +101,13 @@ def get_quest_metadata(quest_id, force_reload=False):
     if not force_reload and quest_id in quest_metadata_cache:
         return quest_metadata_cache[quest_id]
     
-    # Construct paths to the CSV file and history JSON
-    csv_path = os.path.join(BASE_DIR, "data", quest_id, "species_data_english.csv")
-    history_path = os.path.join(BASE_DIR, "data", quest_id, "history.json")
-
-    if not os.path.isfile(history_path):
+    # Load conversation from MongoDB
+    history_json = db.load_conversation(quest_id)
+    if not history_json:
         return None
+    
+    # Construct path to the CSV file (CSV files remain on filesystem)
+    csv_path = os.path.join(BASE_DIR, "data", quest_id, "species_data_english.csv")
     
     # Read the CSV file
     csv_string = ""
@@ -115,13 +116,12 @@ def get_quest_metadata(quest_id, force_reload=False):
             csv_string = f.read()
     else:
         return None
-
-    # load the history JSON
-    with open(history_path, 'r', encoding='utf-8') as f:
-        history_json = json.load(f)
     
     flavor = history_json.get('flavor', 'unknown')
     location = history_json.get('location', None)
+
+    if not history_json.get('history') or len(history_json['history']) == 0:
+        return None
 
     quest_timestamp = history_json['history'][0]['timestamp']
 
@@ -129,13 +129,13 @@ def get_quest_metadata(quest_id, force_reload=False):
     end_time = datetime.fromtimestamp(int(history_json['history'][-1]['timestamp']))
     duration = (end_time - start_time).total_seconds()
 
-    nb_images = len(history_json.get('history', 0))
+    nb_images = len(history_json.get('history', []))
 
     # lines in csv_string -1 for header
-    species_count = len(csv_string.split('\n')) - 1
+    species_count = len(csv_string.split('\n')) - 1 if csv_string else 0
 
     # taxonomic_groups is second column in csv 
-    taxonomic_groups = [line.split(',')[1] for line in csv_string.strip().split('\n')[1:]]
+    taxonomic_groups = [line.split(',')[1] for line in csv_string.strip().split('\n')[1:]] if csv_string else []
     taxonomic_groups_count = dict(Counter(taxonomic_groups))
 
     # Create metadata dictionary
@@ -172,19 +172,22 @@ def quest_info():
     if metadata is None:
         return jsonify({"error": f"Quest {quest_id} not found or CSV file missing"}), 404
     
-    # Construct paths to the CSV file and history JSON
+    # Construct path to the CSV file (CSV files remain on filesystem)
     csv_path = os.path.join(BASE_DIR, "data", quest_id, "species_data_english.csv")
-    history_path = os.path.join(BASE_DIR, "data", quest_id, "history.json")
     
     # Read the CSV file
-    with open(csv_path, 'r', encoding='utf-8') as f:
-        csv_string = f.read()
+    csv_string = ""
+    if os.path.isfile(csv_path):
+        with open(csv_path, 'r', encoding='utf-8') as f:
+            csv_string = f.read()
     
-    # load the history JSON
-    with open(history_path, 'r', encoding='utf-8') as f:
-        history_json = json.load(f)
-        history_json['species_data_csv'] = csv_string
-        history_json['metadata'] = metadata
+    # Load the history from MongoDB
+    history_json = db.load_conversation(quest_id)
+    if not history_json:
+        return jsonify({"error": f"Quest {quest_id} not found"}), 404
+    
+    history_json['species_data_csv'] = csv_string
+    history_json['metadata'] = metadata
     
     # Return the JSON response
     return jsonify(history_json)
@@ -374,6 +377,18 @@ def explore_images(image_path=""):
 @app.route("/explore/", methods=["GET"])
 @app.route("/explore/<path:subpath>", methods=["GET"])
 def explore(subpath=""):
+    # Check if this is a history.json file request
+    if subpath.endswith("history.json"):
+        # Extract conversation_id from path (e.g., "data/{conversation_id}/history.json")
+        parts = subpath.split("/")
+        if len(parts) >= 3 and parts[0] == "data" and parts[-1] == "history.json":
+            conversation_id = parts[1]
+            history_json = db.load_conversation(conversation_id)
+            if history_json:
+                return jsonify(history_json)
+            else:
+                abort(404)
+    
     abs_path = os.path.join(BASE_DIR, subpath)
     
     # Prevent directory traversal attacks
@@ -588,8 +603,9 @@ def map_view():
         history_path = os.path.join(BASE_DIR, "data", quest_id, "history.json")
         imgs_path = os.path.join(BASE_DIR, "images", quest_id)
         
-        # Verify files exist
-        if not os.path.isfile(csv_path) or not os.path.isfile(history_path) or not os.path.isdir(imgs_path):
+        # Verify files exist (check MongoDB for history, filesystem for CSV and images)
+        history_json = db.load_conversation(quest_id)
+        if not history_json or not os.path.isfile(csv_path) or not os.path.isdir(imgs_path):
             continue  # Skip this quest if any required files are missing
         
         # Prepare relative paths for frontend
@@ -640,19 +656,32 @@ def recap(id):
 
 @app.route("/file/<path:subpath>", methods=["GET"])
 def get_file(subpath):
+    # Check if this is a history.json file request
+    if subpath.endswith("history.json"):
+        # Extract conversation_id from path (e.g., "data/{conversation_id}/history.json")
+        parts = subpath.split("/")
+        if len(parts) >= 3 and parts[0] == "data" and parts[-1] == "history.json":
+            conversation_id = parts[1]
+            history_json = db.load_conversation(conversation_id)
+            if history_json:
+                return jsonify(history_json)
+            else:
+                abort(404)
+    
+    # For other files, serve from filesystem as before
     abs_path = os.path.join(BASE_DIR, subpath)
-
     if not os.path.commonpath([BASE_DIR, abs_path]).startswith(BASE_DIR) or not os.path.isfile(abs_path):
         abort(403)
-
     return send_from_directory(BASE_DIR, subpath)
 
 @app.route("/load", methods=["POST"])
 def load_history():
     data = request.json
     conversation_id = data.get("conversation_id")
-    conversation = oaak.load_conversation(conversation_id).get('history', [])
-    return conversation
+    conversation_data = oaak.load_conversation(conversation_id)
+    if conversation_data:
+        return conversation_data.get('history', [])
+    return []
 
 @app.route("/images/")
 def image_grid(quest_id=None):
@@ -713,9 +742,10 @@ def image_grid(quest_id=None):
                                 'entry_id': len(species_data[image_name])
                             })
             
-            # Load history data
-            with open(history_path, 'r', encoding='utf-8') as f:
-                history_json = json.load(f)
+            # Load history data from MongoDB
+            history_json = db.load_conversation(qid)
+            if not history_json:
+                continue  # Skip if conversation not found
             
             # Get center location
             center_location = None

@@ -8,57 +8,37 @@ from langchain_openai import ChatOpenAI
 
 import oaak_classify
 import threading
+import db
 
 class ModelSingleton:
     _instance = None
     _model_name = None
 
     @classmethod
-    def get_instance(cls, model_name="gpt-4o"):
+    def get_instance(cls, model_name="gpt-5.2"):
         if cls._instance is None:
             cls._model_name = model_name
             cls._instance = ChatOpenAI(model=model_name)
         return cls._instance
 
-def get_model(model_name="gpt-4o"):
+def get_model(model_name="gpt-5.2"):
     return ModelSingleton.get_instance(model_name)
 
 def save_conversation(flavor, coordinates, location_name, conversation_id, user_id, history, history_directory="./history"):
-    """Save conversation history and images."""
-    history_data_dir = os.path.join(history_directory, "data")
-    
-    os.makedirs(history_data_dir, exist_ok=True)
-
-    # # check if the image directory exist 
-    # if not os.path.exists(convo_dir):
-    #     return # return if we don't have any images in the conversation (saving images create the dir)
-
-
-    convo_dir = os.path.join(history_data_dir, conversation_id)
-    history_file = os.path.join(convo_dir, "history.json")
-    with open(history_file, "w") as f:
-        conversation_data = {
-            "flavor": flavor,
-            "conversation_id": conversation_id,
-            "timestamp": str(int(time.time())),
-            "user_id": user_id,
-            "coordinates": coordinates,
-            "location": location_name,
-            "history": history  # Ensure it's saved as a list of dictionaries
-        }
-
-        json.dump(conversation_data, f, indent=4)
+    """Save conversation history to MongoDB."""
+    # Save to MongoDB
+    db.save_conversation(
+        flavor=flavor,
+        coordinates=coordinates,
+        location_name=location_name,
+        conversation_id=conversation_id,
+        user_id=user_id,
+        history=history
+    )
 
 def load_conversation(conversation_id, history_directory="./history"):
-    """Load conversation history if it exists."""
-    history_file = os.path.join(history_directory, "data", conversation_id, "history.json")
-
-    if os.path.exists(history_file):
-        with open(history_file, "r") as f:
-            data = json.load(f)
-            return data
-    
-    return None
+    """Load conversation history from MongoDB if it exists."""
+    return db.load_conversation(conversation_id)
 
 def save_image(image_b64, conversation_id, history_length, history_directory):
     history_data_dir = os.path.join(history_directory, "images")

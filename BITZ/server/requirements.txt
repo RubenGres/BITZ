@@ -11,3 +11,4 @@ python-dotenv
 markdown
 google-cloud-storage
 gunicorn
+pymongo
