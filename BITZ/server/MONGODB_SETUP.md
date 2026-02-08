@@ -4,7 +4,19 @@ This application now uses MongoDB to store conversation data instead of JSON fil
 
 ## Configuration
 
-The MongoDB connection is configured using environment variables. Create a `.env` file in the `server` directory with the following variables:
+The MongoDB connection is configured using environment variables.
+
+### Docker Compose Setup
+
+When using Docker Compose, MongoDB is automatically configured. The server connects to MongoDB using the service name `mongodb` on the internal Docker network.
+
+**No additional configuration needed** - the connection is set up automatically:
+- `MONGO_URI=mongodb://mongodb:27017/` (internal Docker network)
+- `MONGO_DATABASE=bitz` (or value from `.env` if set)
+
+### Manual Setup
+
+For manual installation, create a `.env` file in the `server` directory with the following variables:
 
 ```env
 MONGO_URI=mongodb://localhost:27017/
@@ -14,13 +26,39 @@ MONGO_DATABASE=bitz
 ### Environment Variables
 
 - `MONGO_URI` (optional, default: `mongodb://localhost:27017/`): The MongoDB connection URI
+  - **Docker Compose**: `mongodb://mongodb:27017/` (automatically set)
   - For local MongoDB: `mongodb://localhost:27017/`
   - For MongoDB Atlas (cloud): `mongodb+srv://username:password@cluster.mongodb.net/`
   - For authenticated local MongoDB: `mongodb://username:password@localhost:27017/`
 
 - `MONGO_DATABASE` (optional, default: `bitz`): The name of the MongoDB database to use
 
+- `MONGO_PORT` (optional, default: `27017`): Port to expose MongoDB on (Docker Compose only)
+
 ## Installation
+
+### Docker Compose (Recommended)
+
+MongoDB is included in the Docker Compose setup. The service is automatically configured and connected to the application.
+
+1. **Optional**: Set MongoDB port in your `.env` file (default: 27017):
+   ```env
+   MONGO_PORT=27017
+   MONGO_DATABASE=bitz
+   ```
+
+2. Start all services:
+   ```bash
+   docker compose up -d
+   ```
+
+   MongoDB will be available at `mongodb://mongodb:27017/` from within the Docker network.
+
+3. The `bitz-server` service is automatically configured with:
+   - `MONGO_URI=mongodb://mongodb:27017/`
+   - `MONGO_DATABASE=bitz` (or value from `.env`)
+
+### Manual Installation
 
 1. Install MongoDB on your system or use MongoDB Atlas (cloud)
 2. Install Python dependencies:

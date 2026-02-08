@@ -9,10 +9,15 @@ services:
     environment:
       - DELETE_PASSWORD=${DELETE_PASSWORD}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MONGO_URI=mongodb://mongodb:27017/
+      - MONGO_DATABASE=${MONGO_DATABASE:-bitz}
     volumes:
       - ./history:/app/history
       - ./static:/app/static
       - ./templates:/app/templates
+    depends_on:
+      mongodb:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/"]
@@ -20,3 +25,33 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - bitz-network
+
+  mongodb:
+    image: mongo:7.0
+    container_name: bitz-mongodb-dev
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=${MONGO_DATABASE:-bitz}
+    volumes:
+      - mongodb-data:/data/db
+      - mongodb-config:/data/configdb
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - bitz-network
+
+volumes:
+  mongodb-data:
+  mongodb-config:
+
+networks:
+  bitz-network:
+    driver: bridge
