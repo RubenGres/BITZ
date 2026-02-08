@@ -34,7 +34,7 @@ def extract_json(input_string):
     return parsed_data
 
 def identify_chatgpt_raw(image_path, language):
-    model = ChatOpenAI(model="gpt-4o")
+    model = ChatOpenAI(model="gpt-5.2")
 
     system_prompt = f"""
 Analyze this image and identify all visible species. Return your findings in JSON format with the following structure:
