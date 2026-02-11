@@ -15,7 +15,26 @@ interface UploadedImage {
   result?: any;
 }
 
-const MOCK_LOCATIONS = FARM_LOCATIONS['venn']
+const domain_key = getDomainKey()
+const MOCK_LOCATIONS = FARM_LOCATIONS[domain_key as keyof typeof FARM_LOCATIONS]
+
+export const getDomainKey = (): string => {
+  // Check for window existence to ensure this only runs client-side
+  if (typeof window === 'undefined') return "";
+  
+  const hostname = window.location.hostname;
+  
+  if (hostname.includes('localhost') || !isNaN(Number(hostname.replace(/\./g, '')))) {
+    return "";
+  }
+  
+  const parts = hostname.split('.');
+  if (parts.length >= 2) {
+    return parts[0]
+  }
+
+  return "";
+};
 
 export default function BatchUploadPage() {
   const [isLoading, setIsLoading] = useState(false);
