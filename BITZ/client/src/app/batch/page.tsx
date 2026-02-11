@@ -15,9 +15,6 @@ interface UploadedImage {
   result?: any;
 }
 
-const domain_key = getDomainKey()
-const MOCK_LOCATIONS = FARM_LOCATIONS[domain_key as keyof typeof FARM_LOCATIONS]
-
 export const getDomainKey = (): string => {
   // Check for window existence to ensure this only runs client-side
   if (typeof window === 'undefined') return "";
@@ -35,6 +32,9 @@ export const getDomainKey = (): string => {
 
   return "";
 };
+
+const domain_key = getDomainKey()
+const MOCK_LOCATIONS = FARM_LOCATIONS[domain_key as keyof typeof FARM_LOCATIONS]
 
 export default function BatchUploadPage() {
   const [isLoading, setIsLoading] = useState(false);
