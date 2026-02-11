@@ -17,10 +17,11 @@ export const QUEST_COLORS = [
 
 export const FARM_LOCATIONS = {
   "" : [],
-  
+
   "venn": [
       { name: 'Formiga Gloriosa', coordinates: '41.2966667,-8.591527'},
       { name: 'Marcelo Farm', coordinates: '41.4125961, -8.6315224'},
+      { name: 'Testing Farm', coordinates: '0.0, 0.0'}
     ],
 
   "formiga": [
@@ -32,6 +33,6 @@ export const FARM_LOCATIONS = {
     ],
 
   "testing": [
-      {name: 'Testing Farm', coordinates: '0.0, 0.0'}
+      { name: 'Testing Farm', coordinates: '0.0, 0.0'}
   ]
 }
