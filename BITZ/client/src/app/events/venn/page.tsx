@@ -43,15 +43,23 @@ export default function ProjectPage() {
         <section className="mb-4">
           <p className="mb-8">
             <span className="text-green-600 font-semibold">EYES ON THE FIELD </span> (<a href="http://venncanteen.com/">Venn</a>) was a farm visit and dinner event that used the BITZ tool to explored the agricultural biodiversity of the Porto region, using all of the senses.
+          <a
+            href="https://venn.bitz.tools/explore"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "#0070f3", textDecoration: "underline", margin: "1em 0", display: "inline-block" }}
+          >
+            Explore the data
+          </a>
           </p>
           
-          {/* <div className="mb-8">
+          <div className="mb-8">
             <img 
               src="/events/venn/venn-x-bitz_ig_post.jpg" 
               alt="Eyes on the Field (Venn) x BITZ Event Poster" 
               className="w-full max-w-md mx-auto  shadow-md"
             />
-          </div> */}
+          </div>
         </section>
 
         {/* WORKSHOP Section */}
