@@ -46,7 +46,7 @@ server {
 
 server {
     listen 443 ssl;
-    server_name video.${DOMAIN};
+    server_name eat.${DOMAIN};
     ssl_certificate ${CERT_PATH};
     ssl_certificate_key ${CERT_KEY_PATH};
 
@@ -62,7 +62,7 @@ server {
 # Redirect HTTP to HTTPS (except for ACME challenge)
 server {
     listen 80;
-    server_name ${DOMAIN} ${API_DOMAIN} beetroot.${DOMAIN} video.${DOMAIN};
+    server_name ${DOMAIN} ${API_DOMAIN} beetroot.${DOMAIN} eat.${DOMAIN};
     # Allow certbot challenges
     location /.well-known/acme-challenge/ {
         root ${WEBROOT_PATH};
