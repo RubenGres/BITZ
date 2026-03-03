@@ -44,10 +44,25 @@ server {
     }
 }
 
+server {
+    listen 443 ssl;
+    server_name video.${DOMAIN};
+    ssl_certificate ${CERT_PATH};
+    ssl_certificate_key ${CERT_KEY_PATH};
+
+    location / {
+        proxy_pass http://host.docker.internal:8888;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
 # Redirect HTTP to HTTPS (except for ACME challenge)
 server {
     listen 80;
-    server_name ${DOMAIN} ${API_DOMAIN} beetroot.${DOMAIN};
+    server_name ${DOMAIN} ${API_DOMAIN} beetroot.${DOMAIN} video.${DOMAIN};
     # Allow certbot challenges
     location /.well-known/acme-challenge/ {
         root ${WEBROOT_PATH};
