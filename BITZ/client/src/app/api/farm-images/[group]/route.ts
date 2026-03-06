@@ -102,7 +102,7 @@ export async function GET(
     result[farmName] = rows.slice(0, n).map(r => ({
       image_url: `${API_URL}/explore/images/${r.questId}/${r.image_name}`,
       quest_id: r.questId,
-      species_id: r.scientific_name,
+      species_id: r.image_name[0],
       common_name: r.common_name,
       scientific_name: r.scientific_name,
       discovery_timestamp: r.discovery_timestamp,
