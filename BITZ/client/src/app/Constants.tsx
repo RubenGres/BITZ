@@ -1,4 +1,4 @@
-import farmLocationsJson from '../../../farm_locations.json';
+import farmLocationsJson from '../../farm_locations.json';
 
 export const API_URL = process.env.API_URL || "https://api.bitz.tools"
 
