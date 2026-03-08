@@ -10,6 +10,9 @@
   "marcelo": [
     { "name": "Marcelo Farm", "coordinates": "41.4125961, -8.6315224" }
   ],
+  "Sweetgreen": [
+    { "name": "Sweetgreen Farm", "coordinates": "41.044190, -8.310076" }
+  ],
   "testing": [
     { "name": "Testing Farm", "coordinates": "0.0, 0.0" }
   ]

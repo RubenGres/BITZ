@@ -62,7 +62,7 @@ server {
 # Redirect HTTP to HTTPS (except for ACME challenge)
 server {
     listen 80;
-    server_name ${DOMAIN} ${API_DOMAIN} beetroot.${DOMAIN} eat.${DOMAIN};
+    server_name ${DOMAIN} ${API_DOMAIN} eat.${DOMAIN};
     # Allow certbot challenges
     location /.well-known/acme-challenge/ {
         root ${WEBROOT_PATH};
