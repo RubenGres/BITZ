@@ -15,6 +15,13 @@ interface SpeciesRow {
 
 const MAX_DISTANCE_METERS = 5000;
 
+// In-memory cache: keyed by group, stores result + the date it was computed
+const cache = new Map<string, { date: string; data: Record<string, object[]> }>();
+
+function getTodayDate(): string {
+  return new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+}
+
 function parseCSV(csv: string, questId: string): SpeciesRow[] {
   const lines = csv.trim().split('\n');
   if (lines.length < 2) return [];
@@ -36,6 +43,13 @@ export async function GET(
   const { group } = await params;
   const url = new URL(request.url);
   const n = Math.min(Math.max(parseInt(url.searchParams.get('n') || '5', 10) || 5, 1), 10);
+
+  const today = getTodayDate();
+  const cacheKey = `${group}:${n}`;
+  const cached = cache.get(cacheKey);
+  if (cached && cached.date === today) {
+    return NextResponse.json(cached.data);
+  }
 
   const farms = FARM_LOCATIONS[group];
   if (!farms || farms.length === 0) {
@@ -109,6 +123,8 @@ export async function GET(
       confidence: r.confidence,
     }));
   }
+
+  cache.set(cacheKey, { date: today, data: result });
 
   return NextResponse.json(result);
 }
