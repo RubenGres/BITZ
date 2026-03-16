@@ -15,6 +15,16 @@ interface SpeciesRow {
 
 const MAX_DISTANCE_METERS = 5000;
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 // In-memory cache: keyed by group, stores result + the date it was computed
 const cache = new Map<string, { date: string; data: Record<string, object[]> }>();
 
@@ -48,12 +58,12 @@ export async function GET(
   const cacheKey = `${group}:${n}`;
   const cached = cache.get(cacheKey);
   if (cached && cached.date === today) {
-    return NextResponse.json(cached.data);
+    return NextResponse.json(cached.data, { headers: corsHeaders });
   }
 
   const farms = FARM_LOCATIONS[group];
   if (!farms || farms.length === 0) {
-    return NextResponse.json({ error: `Unknown group: ${group}` }, { status: 404 });
+    return NextResponse.json({ error: `Unknown group: ${group}` }, { status: 404, headers: corsHeaders });
   }
 
   const farmCoords = farms.map(farm => {
@@ -64,7 +74,7 @@ export async function GET(
   // Fetch quest list from backend
   const listRes = await fetch(`${API_URL}/quest_list`);
   if (!listRes.ok) {
-    return NextResponse.json({ error: 'Failed to fetch quest list' }, { status: 502 });
+    return NextResponse.json({ error: 'Failed to fetch quest list' }, { status: 502, headers: corsHeaders });
   }
   const listData = await listRes.json();
   const questIds: string[] = Object.keys(listData.quests || {});
@@ -126,5 +136,5 @@ export async function GET(
 
   cache.set(cacheKey, { date: today, data: result });
 
-  return NextResponse.json(result);
+  return NextResponse.json(result, { headers: corsHeaders });
 }
