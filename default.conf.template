@@ -34,7 +34,19 @@ server {
     server_name ${DOMAIN};
     ssl_certificate ${CERT_PATH};
     ssl_certificate_key ${CERT_KEY_PATH};
+
     location / {
+        # CORS headers
+        if ($request_method = 'OPTIONS') {
+            add_header 'Access-Control-Allow-Origin' '*';
+            add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS';
+            add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization';
+            add_header 'Content-Length' '0';
+            return 204;
+        }
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
+
         # Proxy to the bitz-frontend container
         proxy_pass http://bitz-frontend:3000;
         proxy_set_header Host $host;
