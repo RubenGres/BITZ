@@ -63,6 +63,17 @@ server {
     ssl_certificate_key ${CERT_KEY_PATH};
 
     location / {
+        # CORS headers
+        if ($request_method = 'OPTIONS') {
+            add_header 'Access-Control-Allow-Origin' '*';
+            add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS';
+            add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization';
+            add_header 'Content-Length' '0';
+            return 204;
+        }
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
+
         proxy_pass http://host.docker.internal:8888;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
