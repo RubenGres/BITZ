@@ -52,7 +52,7 @@ export async function GET(
 ) {
   const { group } = await params;
   const url = new URL(request.url);
-  const n = Math.min(Math.max(parseInt(url.searchParams.get('n') || '5', 100000) || 5, 1), 100000);
+  const n = Math.min(Math.max(parseInt(url.searchParams.get('n') || '5', 10) || 5, 1), 100000);
 
   const today = getTodayDate();
   const cacheKey = `${group}:${n}`;
