@@ -5,6 +5,7 @@ import Header from '@/app/Header';
 import { LoadingScreen } from './LoadingScreen';
 import { API_URL, FARM_LOCATIONS } from '../Constants';
 import { getUserId, getConversationId, createNewConversationId } from '../User';
+import { getDomainKey } from '../utils/dataFilters';
 
 interface UploadedImage {
   id: string;
@@ -15,7 +16,8 @@ interface UploadedImage {
   result?: any;
 }
 
-const MOCK_LOCATIONS = FARM_LOCATIONS['venn']
+const domain_key = getDomainKey() ?? "";
+const MOCK_LOCATIONS = FARM_LOCATIONS[domain_key as keyof typeof FARM_LOCATIONS]
 
 export default function BatchUploadPage() {
   const [isLoading, setIsLoading] = useState(false);

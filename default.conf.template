@@ -29,15 +29,52 @@ server {
     }
 }
 
-
 server {
     listen 443 ssl default_server;
     server_name ${DOMAIN};
     ssl_certificate ${CERT_PATH};
     ssl_certificate_key ${CERT_KEY_PATH};
+
     location / {
+        # CORS headers
+        if ($request_method = 'OPTIONS') {
+            add_header 'Access-Control-Allow-Origin' '*';
+            add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS';
+            add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization';
+            add_header 'Content-Length' '0';
+            return 204;
+        }
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
+
         # Proxy to the bitz-frontend container
         proxy_pass http://bitz-frontend:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name eat.${DOMAIN};
+    ssl_certificate ${CERT_PATH};
+    ssl_certificate_key ${CERT_KEY_PATH};
+
+    location / {
+        # CORS headers
+        if ($request_method = 'OPTIONS') {
+            add_header 'Access-Control-Allow-Origin' '*';
+            add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS';
+            add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization';
+            add_header 'Content-Length' '0';
+            return 204;
+        }
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
+
+        proxy_pass http://host.docker.internal:8888;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -48,7 +85,7 @@ server {
 # Redirect HTTP to HTTPS (except for ACME challenge)
 server {
     listen 80;
-    server_name ${DOMAIN} ${API_DOMAIN};
+    server_name ${DOMAIN} ${API_DOMAIN} eat.${DOMAIN};
     # Allow certbot challenges
     location /.well-known/acme-challenge/ {
         root ${WEBROOT_PATH};

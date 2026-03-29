@@ -2,6 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { FARM_LOCATIONS } from './Constants';
+import { getDomainKey } from './utils/dataFilters';
 
 const Home: React.FC = () => {
   return (
@@ -25,12 +27,18 @@ const Home: React.FC = () => {
       </Link>
 
       <div className="w-full mt-8 space-y-4 px-6">
-        <Link href="/batch" className="block">
-          <div className="bg-[#3ec488] text-white p-6 w-full text-center rounded-lg hover:bg-[#2d9c68] transition-colors">
-            <h3 className="text-xl font-semibold mb-2">Batch Upload</h3>
-            <p className="text-sm">Upload multiple photos at once</p>
-          </div>
-        </Link>
+        {(() => {
+          const domainKey = getDomainKey();
+          const showBatch = domainKey !== null && domainKey in FARM_LOCATIONS;
+          return showBatch ? (
+            <Link href="/batch" className="block">
+              <div className="bg-[#3ec488] text-white p-6 w-full text-center rounded-lg hover:bg-[#2d9c68] transition-colors">
+                <h3 className="text-xl font-semibold mb-2">Batch Upload</h3>
+                <p className="text-sm">Upload multiple photos at once</p>
+              </div>
+            </Link>
+          ) : null;
+        })()}
 
 {/* 
         <Link href="/identify-file" className="block">

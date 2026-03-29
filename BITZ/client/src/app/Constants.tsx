@@ -1,3 +1,5 @@
+import farmLocationsJson from '../../farm_locations.json';
+
 export const API_URL = process.env.API_URL || "https://api.bitz.tools"
 
 export const QUEST_COLORS = [
@@ -15,9 +17,7 @@ export const QUEST_COLORS = [
   '#82E0AA', // Light Green
 ];
 
-export const FARM_LOCATIONS = {
-  "venn": [
-      { name: 'Formiga Gloriosa', coordinates: '41.2966667,-8.591527'},
-      { name: 'Marcelo Farm', coordinates: '41.4125961, -8.6315224'}
-    ]
+export const FARM_LOCATIONS: Record<string, { name: string; coordinates: string }[]> = {
+  "": [],
+  ...farmLocationsJson
 }
