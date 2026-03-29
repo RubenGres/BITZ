@@ -98,3 +98,15 @@ jobs:
               echo "MongoDB already has data — skipping migration."
             fi
           '
+
+      - name: Setup daily MongoDB backup cron
+        run: |
+          ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} '
+            chmod +x ~/bitz-deployment/scripts/backup-mongodb.sh
+            mkdir -p ~/bitz_backups
+
+            CRON_JOB="0 3 * * * MONGO_DATABASE=${{ vars.MONGO_DATABASE || '\''bitz'\'' }} $HOME/bitz-deployment/scripts/backup-mongodb.sh >> $HOME/bitz_backups/backup.log 2>&1"
+            ( crontab -l 2>/dev/null | grep -v "backup-mongodb.sh"; echo "$CRON_JOB" ) | crontab -
+            echo "Cron job installed:"
+            crontab -l | grep backup-mongodb
+          '
