@@ -21,14 +21,39 @@ from typing import Any, Optional
 import db
 
 
-def is_python_literal(text: str) -> bool:
-    """Heuristic: contains Python-specific tokens that aren't valid JSON."""
+def needs_fixing(text: str) -> bool:
+    """Check if a string value needs fixing (Python literal or nested literal in JSON)."""
     if not isinstance(text, str) or len(text) < 2:
         return False
     stripped = text.strip()
     if not (stripped.startswith("{") or stripped.startswith("[")):
         return False
-    return any(token in stripped for token in ("True", "False", "None", "'"))
+    if any(token in stripped for token in ("True", "False", "None", "'")):
+        return True
+    # Valid outer JSON but with a Python literal stuffed inside a string field
+    try:
+        obj = json.loads(stripped)
+        return _has_embedded_python_literal(obj)
+    except (json.JSONDecodeError, TypeError):
+        return False
+
+
+def _has_embedded_python_literal(obj: Any) -> bool:
+    """Recursively check if any string value looks like a Python dict/list literal."""
+    if isinstance(obj, dict):
+        for v in obj.values():
+            if _has_embedded_python_literal(v):
+                return True
+    elif isinstance(obj, list):
+        for v in obj:
+            if _has_embedded_python_literal(v):
+                return True
+    elif isinstance(obj, str):
+        s = obj.strip()
+        if (s.startswith("{") or s.startswith("[")) and \
+           any(tok in s for tok in ("'", "True", "False", "None")):
+            return True
+    return False
 
 
 def try_parse_python_literal(text: str) -> Optional[Any]:
@@ -54,6 +79,43 @@ def textual_fixup(text: str) -> str:
     return s
 
 
+def _fix_embedded_literals(obj: Any) -> Any:
+    """
+    Recursively walk a parsed JSON structure. If any string value is itself
+    a Python dict/list literal, parse it and inline the result.
+    """
+    if isinstance(obj, dict):
+        out = {}
+        for k, v in obj.items():
+            out[k] = _fix_embedded_literals(v)
+        # If the dict has null placeholder keys alongside an embedded literal
+        # in "information", and the literal contains the *real* top-level keys,
+        # promote the inner structure to replace the wrapper.
+        if "species_identification" in out:
+            si = out["species_identification"]
+            if isinstance(si, dict) and "information" in si and isinstance(si["information"], dict):
+                inner = si["information"]
+                if "species_identification" in inner:
+                    return inner
+        return out
+    elif isinstance(obj, list):
+        return [_fix_embedded_literals(v) for v in obj]
+    elif isinstance(obj, str):
+        s = obj.strip()
+        if (s.startswith("{") or s.startswith("[")) and \
+           any(tok in s for tok in ("'", "True", "False", "None")):
+            parsed = try_parse_python_literal(s)
+            if parsed is not None:
+                return _fix_embedded_literals(parsed)
+            fixed_text = textual_fixup(s)
+            try:
+                parsed = json.loads(fixed_text)
+                return _fix_embedded_literals(parsed)
+            except json.JSONDecodeError:
+                pass
+    return obj
+
+
 def try_fix(text: str) -> Optional[str]:
     """
     Try multiple strategies to convert a Python-ish string to valid JSON.
@@ -61,7 +123,7 @@ def try_fix(text: str) -> Optional[str]:
     """
     stripped = text.strip()
 
-    # Strategy 1: ast.literal_eval (handles most Python literals)
+    # Strategy 1: ast.literal_eval (handles pure Python literals)
     parsed = try_parse_python_literal(stripped)
     if parsed is not None:
         try:
@@ -77,7 +139,17 @@ def try_fix(text: str) -> Optional[str]:
     except json.JSONDecodeError:
         pass
 
-    # Strategy 3: more aggressive — strip markdown fences, extract JSON object
+    # Strategy 3: valid outer JSON with Python literals embedded in string fields
+    try:
+        obj = json.loads(stripped)
+        repaired = _fix_embedded_literals(obj)
+        result = json.dumps(repaired, ensure_ascii=False)
+        if result != stripped:
+            return result
+    except (json.JSONDecodeError, TypeError):
+        pass
+
+    # Strategy 4: strip markdown fences, extract JSON object
     inner = re.sub(r"^```(?:json)?\s*", "", stripped)
     inner = re.sub(r"\s*```$", "", inner).strip()
     match = re.search(r"(\{[\s\S]*\})", inner)
@@ -115,7 +187,7 @@ def fix_observations(apply: bool = False, diagnose: bool = False):
             if not value or not isinstance(value, str):
                 continue
 
-            if not is_python_literal(value):
+            if not needs_fixing(value):
                 continue
 
             result = try_fix(value)
