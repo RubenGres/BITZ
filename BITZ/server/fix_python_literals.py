@@ -14,6 +14,7 @@ Usage:
 import argparse
 import ast
 import json
+import re
 import sys
 from typing import Any, Optional
 
@@ -38,7 +39,61 @@ def try_parse_python_literal(text: str) -> Optional[Any]:
         return None
 
 
-def fix_observations(apply: bool = False):
+def textual_fixup(text: str) -> str:
+    """
+    Regex-based fixup for Python-ish strings that ast.literal_eval can't
+    handle (e.g. embedded newlines, mixed quoting, f-string leftovers).
+    """
+    s = text.strip()
+    s = s.replace("True", "true").replace("False", "false").replace("None", "null")
+    # Single-quoted keys/values → double-quoted, being careful around apostrophes
+    s = re.sub(r"(?<![a-zA-Z])'([^']*?)'(?=\s*[:,\]\}])", r'"\1"', s)
+    s = re.sub(r"(?<=[:,\[\{])\s*'([^']*?)'", r' "\1"', s)
+    # Trailing commas before } or ]
+    s = re.sub(r",\s*([}\]])", r"\1", s)
+    return s
+
+
+def try_fix(text: str) -> Optional[str]:
+    """
+    Try multiple strategies to convert a Python-ish string to valid JSON.
+    Returns clean JSON string or None.
+    """
+    stripped = text.strip()
+
+    # Strategy 1: ast.literal_eval (handles most Python literals)
+    parsed = try_parse_python_literal(stripped)
+    if parsed is not None:
+        try:
+            return json.dumps(parsed, ensure_ascii=False)
+        except (TypeError, ValueError):
+            pass
+
+    # Strategy 2: regex-based textual fixup + json.loads
+    fixed = textual_fixup(stripped)
+    try:
+        obj = json.loads(fixed)
+        return json.dumps(obj, ensure_ascii=False)
+    except json.JSONDecodeError:
+        pass
+
+    # Strategy 3: more aggressive — strip markdown fences, extract JSON object
+    inner = re.sub(r"^```(?:json)?\s*", "", stripped)
+    inner = re.sub(r"\s*```$", "", inner).strip()
+    match = re.search(r"(\{[\s\S]*\})", inner)
+    if match:
+        candidate = match.group(1)
+        candidate = textual_fixup(candidate)
+        try:
+            obj = json.loads(candidate)
+            return json.dumps(obj, ensure_ascii=False)
+        except json.JSONDecodeError:
+            pass
+
+    return None
+
+
+def fix_observations(apply: bool = False, diagnose: bool = False):
     col = db.get_observations_collection()
     total = col.count_documents({})
     print(f"Scanning {total} observations …\n")
@@ -47,6 +102,7 @@ def fix_observations(apply: bool = False):
     fixed = 0
     skipped = 0
     errors = []
+    error_samples = []
 
     for doc in col.find():
         doc_id = doc["_id"]
@@ -62,18 +118,15 @@ def fix_observations(apply: bool = False):
             if not is_python_literal(value):
                 continue
 
-            parsed = try_parse_python_literal(value)
-            if parsed is None:
-                errors.append((quest_id, position, field, "ast.literal_eval failed"))
+            result = try_fix(value)
+            if result is None:
+                errors.append((quest_id, position, field))
+                if diagnose and len(error_samples) < 5:
+                    preview = value[:500] + ("…" if len(value) > 500 else "")
+                    error_samples.append((quest_id, position, field, preview))
                 continue
 
-            try:
-                clean_json = json.dumps(parsed, ensure_ascii=False)
-            except (TypeError, ValueError) as e:
-                errors.append((quest_id, position, field, f"json.dumps failed: {e}"))
-                continue
-
-            updates[field] = clean_json
+            updates[field] = result
 
         if not updates:
             continue
@@ -94,8 +147,18 @@ def fix_observations(apply: bool = False):
         print(f"Skipped (dry-run) : {skipped}")
     if errors:
         print(f"Errors            : {len(errors)}")
-        for qid, pos, field, msg in errors:
-            print(f"  - [{qid} pos={pos}] {field}: {msg}")
+        for qid, pos, field in errors[:20]:
+            print(f"  - [{qid} pos={pos}] {field}")
+        if len(errors) > 20:
+            print(f"  … and {len(errors) - 20} more")
+
+    if diagnose and error_samples:
+        print(f"\n{'=' * 60}")
+        print("SAMPLE FAILURES (first 5)")
+        print("=" * 60)
+        for qid, pos, field, preview in error_samples:
+            print(f"\n--- [{qid} pos={pos}] {field} ---")
+            print(preview)
 
     if not apply and fixed:
         print("\nThis was a dry-run. Re-run with --apply to write changes.")
@@ -113,6 +176,10 @@ def main():
         "--apply", action="store_true",
         help="Actually write fixes (default is dry-run)",
     )
+    parser.add_argument(
+        "--diagnose", action="store_true",
+        help="Print first 5 unfixable values for debugging",
+    )
     args = parser.parse_args()
 
     print("=" * 60)
@@ -127,7 +194,7 @@ def main():
         print(f"Connection failed: {e}")
         sys.exit(1)
 
-    fix_observations(apply=args.apply)
+    fix_observations(apply=args.apply, diagnose=args.diagnose)
 
 
 if __name__ == "__main__":
