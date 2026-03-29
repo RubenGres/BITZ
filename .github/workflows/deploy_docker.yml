@@ -42,6 +42,7 @@ jobs:
           echo "CERT_PATH=${{ vars.CERT_PATH }}" >> .env
           echo "CERT_KEY_PATH=${{ vars.CERT_KEY_PATH }}" >> .env
           echo "WEBROOT_PATH=${{ vars.WEBROOT_PATH }}" >> .env
+          echo "MONGO_DATABASE=${{ vars.MONGO_DATABASE || 'bitz' }}" >> .env
       
       - name: Test SSH connection
         run: |
@@ -68,26 +69,32 @@ jobs:
                      -e "ssh -o ConnectTimeout=60" \
                      . ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }}:~/bitz-deployment/
       
-      - name: Stop existing containers and clean up
-        run: |
-          ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} '
-            cd ~/bitz-deployment 2>/dev/null || mkdir -p ~/bitz-deployment
-            cd ~/bitz-deployment
-            docker compose down --remove-orphans || echo "No containers to stop"
-            docker image prune -f
-          '
-      
       - name: Setup BITZ directory structure
         run: |
           ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} '
             sudo mkdir -p ${{ vars.HISTORY_PATH }} && sudo chown -R 1000:1000 ${{ vars.HISTORY_PATH }}
           '
       
-      - name: Extract and deploy
+      - name: Build and start containers
         run: |
           ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} '
             cd ~/bitz-deployment
-            docker compose build
-            docker compose up -d
+            docker compose up -d --build --remove-orphans
+            echo "Waiting for MongoDB to be healthy..."
+            timeout 60 bash -c "until docker exec bitz-mongodb mongosh --eval \"db.adminCommand(\\\"ping\\\")\" --quiet 2>/dev/null; do sleep 2; done"
             echo "Deployment completed successfully!"
+          '
+      
+      - name: Run migration if needed
+        run: |
+          ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} '
+            cd ~/bitz-deployment
+            QUEST_COUNT=$(docker exec bitz-mongodb mongosh --eval "db.getSiblingDB(\"bitz\").quests.countDocuments()" --quiet 2>/dev/null || echo "0")
+            echo "Current quest count in MongoDB: $QUEST_COUNT"
+            if [ "$QUEST_COUNT" = "0" ]; then
+              echo "No data in MongoDB — running migration..."
+              docker exec bitz-server python migrate_to_mongodb.py
+            else
+              echo "MongoDB already has data — skipping migration."
+            fi
           '

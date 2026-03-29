@@ -5,12 +5,15 @@ services:
     volumes:
       - ./default.local.conf.template:/etc/nginx/templates/default.conf.template:ro
       - socket-vol:/app/socket
-      # No /etc/letsencrypt mount needed locally
     ports:
       - "80:80"
-      # No 443 needed locally
 
   bitz-frontend:
     build:
       args:
         API_URL: http://localhost/api
+
+# Override the external web network so local dev works without it
+networks:
+  web:
+    external: false

@@ -2,14 +2,10 @@ services:
   nginx:
     image: nginx:alpine
     container_name: bitz-nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    expose:
+      - "80"
     volumes:
       - ./default.conf.template:/etc/nginx/templates/default.conf.template:ro
-      - /etc/letsencrypt:/etc/letsencrypt:ro
       - socket-vol:/app/socket
     env_file:
       - .env
@@ -21,6 +17,7 @@ services:
     restart: unless-stopped
     networks:
       - bitz-network
+      - web
 
   bitz-frontend:
     build:
@@ -97,10 +94,14 @@ services:
 volumes:
   socket-vol:
   mongodb-data:
+    name: bitz-mongodb-data
   mongodb-config:
+    name: bitz-mongodb-config
 
 networks:
   bitz-network:
     driver: bridge
     driver_opts:
       com.docker.network.driver.mtu: 1400
+  web:
+    external: true
