@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Migration script to migrate conversation history from JSON files to MongoDB.
+Migration script: JSON files + CSV → MongoDB (quests / observations / species).
 
 This script:
-1. Scans the history/data directory for all history.json files
-2. Reads and validates each JSON file
-3. Migrates the data to MongoDB
+1. Scans history/data/ for quest directories
+2. Reads history.json → saves quest metadata + individual observations
+3. Reads species_data_english.csv → saves individual species rows
 4. Optionally verifies the migration
 5. Provides detailed progress and error reporting
 
@@ -13,330 +13,309 @@ Usage:
     python migrate_to_mongodb.py [--dry-run] [--verify] [--history-dir PATH]
 """
 
-import os
+import csv
 import json
+import os
 import sys
 import argparse
-from pathlib import Path
 from typing import List, Dict, Any, Tuple
 import db
 
 
-def find_history_json_files(history_directory: str = "./history") -> List[Tuple[str, str]]:
+# -----------------------------------------------------------------------
+# Discovery
+# -----------------------------------------------------------------------
+
+def find_quest_dirs(history_directory: str = "./history") -> List[Tuple[str, str]]:
     """
-    Find all history.json files in the history/data directory.
-    
-    Args:
-        history_directory: Base directory containing the history data
-        
+    Find all quest directories that contain a history.json.
+
     Returns:
-        List of tuples: (conversation_id, file_path)
+        List of (quest_id, directory_path) tuples.
     """
-    history_data_dir = os.path.join(history_directory, "data")
-    
-    if not os.path.isdir(history_data_dir):
-        print(f"Error: History data directory not found: {history_data_dir}")
+    data_dir = os.path.join(history_directory, "data")
+
+    if not os.path.isdir(data_dir):
+        print(f"Error: Data directory not found: {data_dir}")
         return []
-    
-    json_files = []
-    
-    # Walk through all subdirectories
-    for root, dirs, files in os.walk(history_data_dir):
-        for file in files:
-            if file == "history.json":
-                file_path = os.path.join(root, file)
-                # Extract conversation_id from path (e.g., history/data/{conversation_id}/history.json)
-                relative_path = os.path.relpath(file_path, history_data_dir)
-                conversation_id = os.path.dirname(relative_path)
-                
-                # Handle case where file is directly in data directory
-                if conversation_id == ".":
-                    conversation_id = os.path.basename(os.path.dirname(file_path))
-                
-                json_files.append((conversation_id, file_path))
-    
-    return json_files
+
+    results = []
+    for root, _dirs, files in os.walk(data_dir):
+        if "history.json" in files:
+            quest_id = os.path.basename(root)
+            results.append((quest_id, root))
+
+    return results
 
 
-def validate_conversation_data(data: Dict[str, Any], conversation_id: str) -> Tuple[bool, str]:
-    """
-    Validate that the conversation data has the required fields.
-    
-    Args:
-        data: The conversation data dictionary
-        conversation_id: The conversation ID for error messages
-        
-    Returns:
-        Tuple of (is_valid, error_message)
-    """
-    required_fields = ["conversation_id", "history"]
-    
-    for field in required_fields:
-        if field not in data:
-            return False, f"Missing required field: {field}"
-    
-    # Verify conversation_id matches
-    if data.get("conversation_id") != conversation_id:
-        return False, f"Conversation ID mismatch: expected {conversation_id}, got {data.get('conversation_id')}"
-    
-    # Verify history is a list
+# -----------------------------------------------------------------------
+# Validation
+# -----------------------------------------------------------------------
+
+def validate_history(data: Dict[str, Any], quest_id: str) -> Tuple[bool, str]:
+    """Validate a history.json dict."""
+    if "conversation_id" not in data:
+        return False, "Missing field: conversation_id"
+    if data["conversation_id"] != quest_id:
+        return False, (
+            f"ID mismatch: folder={quest_id}, "
+            f"file={data['conversation_id']}"
+        )
     if not isinstance(data.get("history"), list):
-        return False, "History field must be a list"
-    
+        return False, "history field is not a list"
     return True, ""
 
 
-def migrate_file(conversation_id: str, file_path: str, dry_run: bool = False) -> Tuple[bool, str]:
+# -----------------------------------------------------------------------
+# Migration of a single quest
+# -----------------------------------------------------------------------
+
+def migrate_quest(
+    quest_id: str,
+    quest_dir: str,
+    dry_run: bool = False,
+) -> Tuple[bool, str]:
     """
-    Migrate a single history.json file to MongoDB.
-    
-    Args:
-        conversation_id: The conversation ID
-        file_path: Path to the history.json file
-        dry_run: If True, only validate without saving
-        
-    Returns:
-        Tuple of (success, message)
+    Migrate one quest directory → MongoDB.
+
+    Reads:
+      - history.json        → quests + observations collections
+      - species_data_english.csv  → species collection
     """
+    history_path = os.path.join(quest_dir, "history.json")
+    csv_path = os.path.join(quest_dir, "species_data_english.csv")
+
+    # -- read & validate history.json ----------------------------------
     try:
-        # Read the JSON file
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(history_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        
-        # Validate the data
-        is_valid, error_msg = validate_conversation_data(data, conversation_id)
-        if not is_valid:
-            return False, f"Validation failed: {error_msg}"
-        
-        if dry_run:
-            return True, "Validated (dry-run mode)"
-        
-        # Check if conversation already exists (safety check)
-        existing = db.load_conversation(conversation_id)
-        if existing:
-            return False, "Conversation already exists in MongoDB (use --skip-existing to skip)"
-        
-        # Extract fields for saving
-        flavor = data.get("flavor", "")
-        coordinates = data.get("coordinates", "")
-        location_name = data.get("location", "")
-        user_id = data.get("user_id", "")
-        history = data.get("history", [])
-        timestamp = data.get("timestamp")
-        
-        # Save to MongoDB
-        success = db.save_conversation(
-            flavor=flavor,
-            coordinates=coordinates,
-            location_name=location_name,
-            conversation_id=conversation_id,
-            user_id=user_id,
-            history=history,
-            timestamp=timestamp
-        )
-        
-        if success:
-            return True, "Migrated successfully"
-        else:
-            return False, "Failed to save to MongoDB"
-            
     except json.JSONDecodeError as e:
-        return False, f"Invalid JSON: {str(e)}"
+        return False, f"Invalid JSON: {e}"
     except Exception as e:
-        return False, f"Error: {str(e)}"
+        return False, f"Cannot read history.json: {e}"
 
+    ok, err = validate_history(data, quest_id)
+    if not ok:
+        return False, f"Validation failed: {err}"
 
-def verify_migration(conversation_id: str, file_path: str) -> Tuple[bool, str]:
-    """
-    Verify that a migrated conversation matches the original JSON file.
-    
-    Args:
-        conversation_id: The conversation ID
-        file_path: Path to the original history.json file
-        
-    Returns:
-        Tuple of (matches, message)
-    """
+    # -- read CSV (optional) -------------------------------------------
+    species_rows: List[Dict[str, str]] = []
+    if os.path.isfile(csv_path):
+        try:
+            with open(csv_path, "r", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    species_rows.append(row)
+        except Exception as e:
+            return False, f"Cannot read CSV: {e}"
+
+    if dry_run:
+        obs_count = len(data.get("history", []))
+        sp_count = len(species_rows)
+        return True, f"Validated ({obs_count} observations, {sp_count} species)"
+
+    # -- write to MongoDB -----------------------------------------------
     try:
-        # Load from MongoDB
-        mongo_data = db.load_conversation(conversation_id)
-        if not mongo_data:
-            return False, "Conversation not found in MongoDB"
-        
-        # Load from file
-        with open(file_path, 'r', encoding='utf-8') as f:
-            file_data = json.load(f)
-        
-        # Compare key fields (excluding MongoDB _id)
-        key_fields = ["conversation_id", "flavor", "timestamp", "user_id", 
-                      "coordinates", "location", "history"]
-        
-        differences = []
-        for field in key_fields:
-            file_value = file_data.get(field)
-            mongo_value = mongo_data.get(field)
-            
-            if file_value != mongo_value:
-                differences.append(f"{field}: file={file_value} != mongo={mongo_value}")
-        
-        if differences:
-            return False, f"Mismatches: {', '.join(differences)}"
-        
-        return True, "Verification passed"
-        
-    except Exception as e:
-        return False, f"Verification error: {str(e)}"
+        # 1. Quest metadata
+        db.save_quest(
+            quest_id=quest_id,
+            user_id=data.get("user_id", ""),
+            flavor=data.get("flavor"),
+            coordinates=data.get("coordinates"),
+            location=data.get("location"),
+            timestamp=data.get("timestamp"),
+        )
 
+        # 2. Observations (one per history entry)
+        for i, entry in enumerate(data.get("history", [])):
+            db.save_observation(
+                quest_id=quest_id,
+                position=i,
+                timestamp=entry.get("timestamp", ""),
+                user_message=entry.get("user", ""),
+                assistant_response=entry.get("assistant", ""),
+                image_filename=entry.get("image_filename"),
+                image_location=entry.get("image_location"),
+            )
+
+        # 3. Species (batch insert from CSV)
+        if species_rows:
+            batch = []
+            for row in species_rows:
+                batch.append({
+                    "quest_id": quest_id,
+                    "observation_image": row.get("image_name", ""),
+                    "taxonomic_group": row.get("taxonomic_group", ""),
+                    "scientific_name": row.get("scientific_name", ""),
+                    "common_name": row.get("common_name", ""),
+                    "confidence": row.get("confidence", ""),
+                    "notes": row.get("notes", ""),
+                    "latitude": row.get("latitude", ""),
+                    "longitude": row.get("longitude", ""),
+                })
+            db.save_species_batch(batch)
+
+        obs_count = len(data.get("history", []))
+        sp_count = len(species_rows)
+        return True, f"Migrated ({obs_count} observations, {sp_count} species)"
+
+    except Exception as e:
+        return False, f"Write error: {e}"
+
+
+# -----------------------------------------------------------------------
+# Verification
+# -----------------------------------------------------------------------
+
+def verify_quest(quest_id: str, quest_dir: str) -> Tuple[bool, str]:
+    """Verify a migrated quest against the original files."""
+    issues = []
+
+    # -- check quest metadata ------------------------------------------
+    quest = db.load_quest(quest_id)
+    if not quest:
+        return False, "Quest not found in MongoDB"
+
+    history_path = os.path.join(quest_dir, "history.json")
+    with open(history_path, "r", encoding="utf-8") as f:
+        orig = json.load(f)
+
+    for field in ("flavor", "user_id", "coordinates", "location"):
+        orig_val = orig.get(field)
+        db_val = quest.get(field)
+        if orig_val != db_val:
+            issues.append(f"quest.{field}: {orig_val!r} != {db_val!r}")
+
+    # -- check observation count ---------------------------------------
+    orig_obs = len(orig.get("history", []))
+    db_obs = db.count_observations(quest_id)
+    if orig_obs != db_obs:
+        issues.append(f"observation count: {orig_obs} != {db_obs}")
+
+    # -- check species count -------------------------------------------
+    csv_path = os.path.join(quest_dir, "species_data_english.csv")
+    if os.path.isfile(csv_path):
+        with open(csv_path, "r", encoding="utf-8") as f:
+            reader = csv.reader(f)
+            next(reader, None)  # skip header
+            orig_sp = sum(1 for _ in reader)
+        db_sp = db.count_species(quest_id)
+        if orig_sp != db_sp:
+            issues.append(f"species count: {orig_sp} != {db_sp}")
+
+    if issues:
+        return False, "; ".join(issues)
+    return True, "Verification passed"
+
+
+# -----------------------------------------------------------------------
+# Main
+# -----------------------------------------------------------------------
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Migrate conversation history from JSON files to MongoDB",
+        description="Migrate quest data from JSON/CSV files to MongoDB",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Dry run to see what would be migrated
   python migrate_to_mongodb.py --dry-run
-  
-  # Perform actual migration
   python migrate_to_mongodb.py
-  
-  # Migrate and verify
   python migrate_to_mongodb.py --verify
-  
-  # Use custom history directory
   python migrate_to_mongodb.py --history-dir /path/to/history
-        """
+        """,
     )
-    
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Validate files without saving to MongoDB"
-    )
-    
-    parser.add_argument(
-        "--verify",
-        action="store_true",
-        help="Verify migrated conversations match original files"
-    )
-    
-    parser.add_argument(
-        "--history-dir",
-        type=str,
-        default="./history",
-        help="Path to history directory (default: ./history)"
-    )
-    
-    parser.add_argument(
-        "--skip-existing",
-        action="store_true",
-        help="Skip conversations that already exist in MongoDB"
-    )
-    
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Validate without writing to MongoDB")
+    parser.add_argument("--verify", action="store_true",
+                        help="Verify data after migration")
+    parser.add_argument("--history-dir", type=str, default="./history",
+                        help="Path to history directory (default: ./history)")
+    parser.add_argument("--skip-existing", action="store_true",
+                        help="Skip quests already present in MongoDB")
+
     args = parser.parse_args()
-    
+
     print("=" * 70)
     print("MongoDB Migration Script")
     print("=" * 70)
     print()
-    
+
     if args.dry_run:
-        print("DRY RUN MODE: No data will be saved to MongoDB")
-        print()
-    
-    # Test MongoDB connection
+        print("DRY RUN MODE — no data will be written\n")
+
+    # -- test connection ------------------------------------------------
     print("Testing MongoDB connection...")
     try:
-        client = db.get_client()
-        client.admin.command('ping')
-        print("✓ MongoDB connection successful")
+        db.get_client().admin.command("ping")
+        print("✓ Connected\n")
     except Exception as e:
-        print(f"✗ MongoDB connection failed: {e}")
-        print("\nPlease check your MongoDB configuration in .env file")
+        print(f"✗ Connection failed: {e}")
+        print("Check your MONGO_URI in .env")
         sys.exit(1)
-    
-    print()
-    
-    # Find all history.json files
-    print(f"Scanning for history.json files in {args.history_dir}...")
-    json_files = find_history_json_files(args.history_dir)
-    
-    if not json_files:
-        print("No history.json files found.")
+
+    # -- discover quests ------------------------------------------------
+    print(f"Scanning {args.history_dir} ...")
+    quest_dirs = find_quest_dirs(args.history_dir)
+    if not quest_dirs:
+        print("No quest directories found.")
         sys.exit(0)
-    
-    print(f"Found {len(json_files)} history.json file(s)")
-    print()
-    
-    # Statistics
-    successful = 0
-    failed = 0
-    skipped = 0
-    errors = []
-    
-    # Process each file
-    for i, (conversation_id, file_path) in enumerate(json_files, 1):
-        print(f"[{i}/{len(json_files)}] Processing {conversation_id}...", end=" ")
-        
-        # Check if already exists
-        if not args.dry_run:
-            existing = db.load_conversation(conversation_id)
-            if existing:
-                if args.skip_existing:
-                    print("SKIPPED (already exists)")
-                    skipped += 1
-                    continue
-                else:
-                    # Warn but continue - migrate_file will handle the error
-                    pass
-        
-        # Migrate the file
-        success, message = migrate_file(conversation_id, file_path, args.dry_run)
-        
+    print(f"Found {len(quest_dirs)} quest(s)\n")
+
+    # -- process --------------------------------------------------------
+    ok_count = 0
+    fail_count = 0
+    skip_count = 0
+    errors: List[Tuple[str, str]] = []
+
+    for i, (quest_id, quest_dir) in enumerate(quest_dirs, 1):
+        print(f"[{i}/{len(quest_dirs)}] {quest_id} ", end="")
+
+        # skip-existing check
+        if not args.dry_run and args.skip_existing:
+            if db.load_quest(quest_id):
+                print("SKIPPED (exists)")
+                skip_count += 1
+                continue
+
+        success, msg = migrate_quest(quest_id, quest_dir, args.dry_run)
+
         if success:
-            print(f"✓ {message}")
-            successful += 1
-            
-            # Verify if requested
+            print(f"✓ {msg}")
+            ok_count += 1
+
             if args.verify and not args.dry_run:
-                verify_success, verify_msg = verify_migration(conversation_id, file_path)
-                if verify_success:
-                    print(f"  ✓ Verification: {verify_msg}")
+                v_ok, v_msg = verify_quest(quest_id, quest_dir)
+                if v_ok:
+                    print(f"  ✓ {v_msg}")
                 else:
-                    print(f"  ✗ Verification failed: {verify_msg}")
-                    errors.append((conversation_id, f"Verification: {verify_msg}"))
+                    print(f"  ✗ {v_msg}")
+                    errors.append((quest_id, f"Verify: {v_msg}"))
         else:
-            print(f"✗ {message}")
-            failed += 1
-            errors.append((conversation_id, message))
-    
-    # Print summary
+            print(f"✗ {msg}")
+            fail_count += 1
+            errors.append((quest_id, msg))
+
+    # -- summary --------------------------------------------------------
     print()
     print("=" * 70)
-    print("Migration Summary")
+    print("Summary")
     print("=" * 70)
-    print(f"Total files:     {len(json_files)}")
-    print(f"Successful:      {successful}")
-    print(f"Failed:          {failed}")
-    print(f"Skipped:         {skipped}")
-    print()
-    
+    print(f"Total:    {len(quest_dirs)}")
+    print(f"Success:  {ok_count}")
+    print(f"Failed:   {fail_count}")
+    print(f"Skipped:  {skip_count}")
+
     if errors:
-        print("Errors:")
-        for conversation_id, error in errors:
-            print(f"  - {conversation_id}: {error}")
-        print()
-    
+        print("\nErrors:")
+        for qid, msg in errors:
+            print(f"  - {qid}: {msg}")
+
     if args.dry_run:
-        print("This was a dry run. No data was saved to MongoDB.")
-        print("Run without --dry-run to perform the actual migration.")
-    elif successful > 0:
-        print("Migration completed successfully!")
-    
-    if failed > 0:
-        sys.exit(1)
-    else:
-        sys.exit(0)
+        print("\nDry run — nothing was written. Re-run without --dry-run.")
+    elif ok_count > 0:
+        print("\nMigration complete!")
+
+    sys.exit(1 if fail_count else 0)
 
 
 if __name__ == "__main__":

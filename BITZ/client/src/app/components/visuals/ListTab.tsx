@@ -333,10 +333,38 @@ const ListTab: React.FC<ListTabProps> = ({ questData, loading, error, filters })
                         </div>
                       )}
                     </td>
-                    <td className="border border-gray-200 px-4 py-2 text-sm">
+                    <td
+                      className="border border-gray-200 px-4 py-2 text-sm text-blue-700 hover:underline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (row.image_name) {
+                          openFullscreen(
+                            `${API_URL}/explore/images/${row.questId}/${row.image_name}?res=medium`,
+                            row['common_name'] || row['scientific_name'] || 'Species image',
+                            row.questId,
+                            row.latitude,
+                            row.longitude
+                          );
+                        }
+                      }}
+                    >
                       {row['common_name'] || 'N/A'}
                     </td>
-                    <td className="border border-gray-200 px-4 py-2 text-sm font-medium italic">
+                    <td
+                      className="border border-gray-200 px-4 py-2 text-sm font-medium italic text-blue-700 hover:underline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (row.image_name) {
+                          openFullscreen(
+                            `${API_URL}/explore/images/${row.questId}/${row.image_name}?res=medium`,
+                            row['common_name'] || row['scientific_name'] || 'Species image',
+                            row.questId,
+                            row.latitude,
+                            row.longitude
+                          );
+                        }
+                      }}
+                    >
                       {row['scientific_name'] || 'N/A'}
                     </td>
                     <td className="border border-gray-200 px-4 py-2 text-sm">
