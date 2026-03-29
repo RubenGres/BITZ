@@ -26,10 +26,6 @@ export const getDomainKey = (): string | null => {
   
   const hostname = window.location.hostname;
   
-  if (hostname.includes('localhost') || !isNaN(Number(hostname.replace(/\./g, '')))) {
-    return null;
-  }
-  
   const parts = hostname.split('.');
   if (parts.length >= 2) {
     return parts[0]

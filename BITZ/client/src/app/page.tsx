@@ -14,8 +14,8 @@ export default function Page() {
     const hostname = window.location.hostname;
     const parts = hostname.split('.');
     
-    // If there's a subdomain (more than 2 parts, or more than 1 for localhost)
-    if (parts.length > 2 || (parts.length === 2 && !parts[1].includes('localhost'))) {
+    // If there's a subdomain (e.g. "ruben.bitz.tools" or "hello.localhost")
+    if (parts.length > 2 || (parts.length === 2 && parts[1] === 'localhost')) {
       setSplashText(parts[0]);
     }
   }, []);
