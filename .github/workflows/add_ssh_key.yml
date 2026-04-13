@@ -1,0 +1,48 @@
+name: Add SSH Public Key to VPS
+
+on:
+  workflow_dispatch:
+    inputs:
+      public_key:
+        description: 'SSH public key to add (paste full contents of id_*.pub)'
+        required: true
+        type: string
+      comment:
+        description: 'Label for this key (e.g. "ruben-macbook")'
+        required: false
+        type: string
+
+jobs:
+  add-key:
+    runs-on: ubuntu-latest
+    environment: prod
+
+    steps:
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add host key to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ vars.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Add public key to VPS
+        run: |
+          ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} \
+            "mkdir -p ~/.ssh && chmod 700 ~/.ssh && \
+             KEY='${{ inputs.public_key }}' && \
+             COMMENT='${{ inputs.comment }}' && \
+             if grep -qF \"\$KEY\" ~/.ssh/authorized_keys 2>/dev/null; then \
+               echo 'Key already present, skipping.'; \
+             else \
+               echo \"\$KEY \$COMMENT\" >> ~/.ssh/authorized_keys && \
+               chmod 600 ~/.ssh/authorized_keys && \
+               echo 'Key added successfully.'; \
+             fi"
+
+      - name: Verify
+        run: |
+          ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} \
+            "echo 'Authorized keys:' && cat ~/.ssh/authorized_keys | awk '{print \$3, substr(\$2,1,20)\"...\"}'"
