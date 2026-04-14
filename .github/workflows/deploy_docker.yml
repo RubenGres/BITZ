@@ -85,18 +85,10 @@ jobs:
             echo "Deployment completed successfully!"
           '
       
-      - name: Run migration if needed
+      - name: Run migration
         run: |
           ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} '
-            cd ~/bitz-deployment
-            QUEST_COUNT=$(docker exec bitz-mongodb mongosh --eval "db.getSiblingDB(\"bitz\").quests.countDocuments()" --quiet 2>/dev/null || echo "0")
-            echo "Current quest count in MongoDB: $QUEST_COUNT"
-            if [ "$QUEST_COUNT" = "0" ]; then
-              echo "No data in MongoDB — running migration..."
-              docker exec bitz-server python migrate_to_mongodb.py
-            else
-              echo "MongoDB already has data — skipping migration."
-            fi
+            docker exec bitz-server python migrate_to_mongodb.py --history-dir /app/history --skip-existing
           '
 
       - name: Setup daily MongoDB backup cron
