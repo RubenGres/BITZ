@@ -85,11 +85,14 @@ jobs:
             echo "Deployment completed successfully!"
           '
       
-      - name: Run migration
-        run: |
-          ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} '
-            docker exec bitz-server python migrate_to_mongodb.py --history-dir /app/history --skip-existing
-          '
+      # Migration: one-time step, already ran 2026-04-14. Re-enable manually if needed.
+      # To run manually on VPS:
+      #   docker exec bitz-server python migrate_to_mongodb.py --history-dir /app/history --skip-existing
+      # - name: Run migration
+      #   run: |
+      #     ssh ${{ vars.VPS_USER }}@${{ vars.VPS_HOST }} '
+      #       docker exec bitz-server python migrate_to_mongodb.py --history-dir /app/history --skip-existing
+      #     '
 
       - name: Setup daily MongoDB backup cron
         run: |
