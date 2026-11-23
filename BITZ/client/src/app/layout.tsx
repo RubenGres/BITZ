@@ -5,12 +5,12 @@ import "./globals.css";
 const inclusiveSans = localFont({
   src: [
     {
-      path: './fonts/InclusiveSans-VariableFont_wght.ttf',
+      path: './fonts/InclusiveSans-VariableFont_wght.woff2',
       weight: '100 900',
       style: 'normal',
     },
     {
-      path: './fonts/InclusiveSans-Italic-VariableFont_wght.ttf',
+      path: './fonts/InclusiveSans-Italic-VariableFont_wght.woff2',
       weight: '100 900',
       style: 'italic',
     },
@@ -21,26 +21,27 @@ const inclusiveSans = localFont({
 const spaceMono = localFont({
   src: [
     {
-      path: './fonts/SpaceMono-Regular.ttf',
+      path: './fonts/SpaceMono-Regular.woff2',
       weight: '400',
       style: 'normal',
     },
     {
-      path: './fonts/SpaceMono-Bold.ttf',
+      path: './fonts/SpaceMono-Bold.woff2',
       weight: '700',
       style: 'normal',
     },
     {
-      path: './fonts/SpaceMono-Italic.ttf',
+      path: './fonts/SpaceMono-Italic.woff2',
       weight: '400',
       style: 'italic',
     },
     {
-      path: './fonts/SpaceMono-BoldItalic.ttf',
+      path: './fonts/SpaceMono-BoldItalic.woff2',
       weight: '700',
       style: 'italic',
     },
   ],
+  preload: false,
   variable: "--font-space-mono",
 });
 
