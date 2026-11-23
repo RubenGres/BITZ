@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import React, { useState } from 'react';
 
 interface SideMenuProps {
@@ -34,11 +35,11 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose }) => {
         <ul>
 
           <li className="border border-green-500 p-4">
-            <a href="/list" className="text-black uppercase font-medium block">My Quests</a>
+            <Link onClick={onClose} prefetch={isOpen ? null : false} href="/list" className="text-black uppercase font-medium block">My Quests</Link>
           </li>
 
           <li className="border border-green-500 p-4">
-            <a href="/explore" className="text-black uppercase font-medium block">Explore</a>
+            <Link onClick={onClose} prefetch={isOpen ? null : false} href="/explore" className="text-black uppercase font-medium block">Explore</Link>
           </li>
           
           <li className="border border-green-500 p-4">
@@ -50,14 +51,14 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose }) => {
               </button>
               {questDropdownOpen && (
                 <ul className="mt-2 ml-8 space-y-2">
-                  <li><a href="/events/venn" className="text-green-600 hover:text-green-800 capitalize"> VENN canteen - Porto </a></li>
+                  <li><Link onClick={onClose} prefetch={isOpen ? null : false} href="/events/venn" className="text-green-600 hover:text-green-800 capitalize"> VENN canteen - Porto </Link></li>
                 </ul>
               )}
             </div>
           </li>
 
           <li className="border border-green-500 p-4">
-            <a href="/about" className="text-black uppercase font-medium block">About</a>
+            <Link onClick={onClose} prefetch={isOpen ? null : false} href="/about" className="text-black uppercase font-medium block">About</Link>
           </li>
 
         </ul>

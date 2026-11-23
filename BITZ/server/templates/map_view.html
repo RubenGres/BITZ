@@ -115,31 +115,14 @@
         });
         
         // Load data for all quests
-        async function loadAllQuestsData() {
+        function loadAllQuestsData() {
             let totalSpeciesCount = 0;
             
             for (const quest of questsData) {
-                try {
-                    // Fetch history JSON
-                    const historyResponse = await fetch(quest.history_path);
-                    const historyJson = await historyResponse.json();
-                    
-                    // Fetch CSV
-                    const csvResponse = await fetch(quest.csv_path);
-                    const csvText = await csvResponse.text();
-                    
-                    // Process data
-                    const speciesData = processCSV(csvText);
-                    totalSpeciesCount += speciesData.length;
-                    
-                    // Create markers
-                    createMarkersForQuest(quest.id, historyJson, speciesData, quest.images_path);
-                    
-                } catch (error) {
-                    console.error(`Error loading data for quest ${quest.id}:`, error);
-                }
+                totalSpeciesCount += quest.species.length;
+                createMarkersForQuest(quest.id, quest, quest.species, quest.images_path);
             }
-            
+
             // Update stats
             document.getElementById('total-quests').textContent = questsData.length;
             document.getElementById('total-species').textContent = totalSpeciesCount;
@@ -148,24 +131,6 @@
             fitMapToAllMarkers();
             
             // Control panel removed
-        }
-        
-        // Process CSV data
-        function processCSV(csv) {
-            const lines = csv.split('\n');
-            const headers = lines[0].split(',');
-            
-            return lines.slice(1)
-                .filter(line => line.trim())
-                .map(line => {
-                    const values = line.split(',');
-                    return {
-                        image_name: values[0],
-                        taxonomic_group: values[1],
-                        scientific_name: values[2],
-                        common_name: values[3]
-                    };
-                });
         }
         
         // Create markers for a quest
@@ -212,7 +177,7 @@
                 const numberIcon = L.divIcon({
                     html: `<div style="background-color: ${questColors[questId]}; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid white;">${index + 1}</div>`,
                     className: 'number-marker',
-                    iconSize: [24,, 24],
+                    iconSize: [24, 24],
                     iconAnchor: [12, 12]
                 });
                 
@@ -274,7 +239,7 @@
         // Function removed - no more toggle functionality needed
         
         // Load all data when page loads
-        window.addEventListener('load', loadAllQuestsData);
+        loadAllQuestsData();
     </script>
 </body>
 </html>

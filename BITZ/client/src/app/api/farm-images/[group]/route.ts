@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { API_URL, FARM_LOCATIONS } from '@/app/Constants';
+import Papa from 'papaparse';
 import { getDistance } from 'geolib';
 
 interface SpeciesRow {
@@ -33,17 +34,9 @@ function getTodayDate(): string {
 }
 
 function parseCSV(csv: string, questId: string): SpeciesRow[] {
-  const lines = csv.trim().split('\n');
-  if (lines.length < 2) return [];
+  return Papa.parse<SpeciesRow>(csv, { header: true, skipEmptyLines: true }).data
+    .map(row => ({ ...row, questId }));
 
-  const headers = lines[0].split(',').map(h => h.trim());
-  return lines.slice(1).map(line => {
-    const values = line.split(',').map(v => v.trim());
-    const row: Record<string, string> = {};
-    headers.forEach((h, i) => { row[h] = values[i] ?? ''; });
-    row.questId = questId;
-    return row as unknown as SpeciesRow;
-  });
 }
 
 export async function GET(
@@ -71,31 +64,12 @@ export async function GET(
     return { name: farm.name, latitude, longitude };
   });
 
-  // Fetch quest list from backend
-  const listRes = await fetch(`${API_URL}/quest_list`);
-  if (!listRes.ok) {
-    return NextResponse.json({ error: 'Failed to fetch quest list' }, { status: 502, headers: corsHeaders });
+  const response = await fetch(API_URL + '/explorer_data');
+  if (!response.ok) {
+    return NextResponse.json({ error: 'Failed to fetch explorer data' }, { status: 502, headers: corsHeaders });
   }
-  const listData = await listRes.json();
-  const questIds: string[] = Object.keys(listData.quests || {});
-
-  // Fetch quest info in parallel
-  const questResults = await Promise.allSettled(
-    questIds.map(id =>
-      fetch(`${API_URL}/quest_info?id=${id}`).then(r => r.ok ? r.json() : null)
-    )
-  );
-
-  // Parse CSV data from each quest
-  const allRows: SpeciesRow[] = [];
-  for (let i = 0; i < questIds.length; i++) {
-    const result = questResults[i];
-    if (result.status !== 'fulfilled' || !result.value) continue;
-    const csvString: string = result.value.species_data_csv || '';
-    if (csvString) {
-      allRows.push(...parseCSV(csvString, questIds[i]));
-    }
-  }
+  const quests: Record<string, { species_data_csv: string }> = await response.json();
+  const allRows = Object.entries(quests).flatMap(([id, quest]) => parseCSV(quest.species_data_csv, id));
 
   // Bucket observations by nearest farm within 5km
   const perFarm: Record<string, SpeciesRow[]> = {};

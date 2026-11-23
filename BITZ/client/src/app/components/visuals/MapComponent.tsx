@@ -168,43 +168,41 @@ function MarkerClusterLayer({
           }
         );
 
-        // Create popup content as DOM element
-        const popupContent = document.createElement('div');
-        popupContent.className = 'w-56';
-        popupContent.innerHTML = `
-          <div class="font-medium mb-1">
-            ${species.common_name || 'Unknown Species'}
-          </div>
-          ${species.scientific_name ? `<div class="text-sm italic mb-2">${species.scientific_name}</div>` : ''}
-          ${species.image_name ? `
-            <div class="mb-2">
-              <img
-                src="${imageSrc}"
-                alt="${imageAlt}"
-                class="w-full h-40 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity species-image"
-                loading="lazy"
-              />
+        marker.bindPopup(() => {
+          const popupContent = document.createElement('div');
+          popupContent.className = 'w-56';
+          popupContent.innerHTML = `
+            <div class="font-medium mb-1">
+              ${species.common_name || 'Unknown Species'}
             </div>
-          ` : `
-            <div class="w-full h-32 bg-gray-200 rounded flex items-center justify-center mb-2">
-              <span class="text-gray-400 text-xs">No image</span>
+            ${species.scientific_name ? `<div class="text-sm italic mb-2">${species.scientific_name}</div>` : ''}
+            ${species.image_name ? `
+              <div class="mb-2">
+                <img
+                  src="${imageSrc}"
+                  alt="${imageAlt}"
+                  class="w-full h-40 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity species-image"
+                  loading="lazy"
+                />
+              </div>
+            ` : `
+              <div class="w-full h-32 bg-gray-200 rounded flex items-center justify-center mb-2">
+                <span class="text-gray-400 text-xs">No image</span>
+              </div>
+            `}
+            <div class="text-xs text-gray-600">
+              <div>Group: ${species.taxonomic_group || 'Unknown'}</div>
+              <div>Confidence: ${species.confidence || 'N/A'}</div>
+              ${species.discovery_timestamp ? `<div>Discovered: ${new Date(species.discovery_timestamp).toLocaleDateString()}</div>` : ''}
             </div>
-          `}
-          <div class="text-xs text-gray-600">
-            <div>Group: ${species.taxonomic_group || 'Unknown'}</div>
-            <div>Confidence: ${species.confidence || 'N/A'}</div>
-            ${species.discovery_timestamp ? `<div>Discovered: ${new Date(species.discovery_timestamp).toLocaleDateString()}</div>` : ''}
-          </div>
-          <div 
-            class="text-xs font-medium text-black text-center py-2 rounded mt-2 cursor-pointer hover:opacity-80 transition-opacity view-quest-btn" 
-            style="background-color: ${questColors[species.questId]}"
-          >
-            View Quest
-          </div>
-        `;
+            <div
+              class="text-xs font-medium text-black text-center py-2 rounded mt-2 cursor-pointer hover:opacity-80 transition-opacity view-quest-btn"
+              style="background-color: ${questColors[species.questId]}"
+            >
+              View Quest
+            </div>
+          `;
 
-        // Add click event listeners after popup content is added to DOM
-        marker.on('popupopen', () => {
           const img = popupContent.querySelector('.species-image');
           if (img) {
             img.addEventListener('click', () => onImageClick(imageSrc, imageAlt));
@@ -214,9 +212,8 @@ function MarkerClusterLayer({
           if (viewQuestBtn) {
             viewQuestBtn.addEventListener('click', () => onViewQuest(species.questId));
           }
+          return popupContent;
         });
-
-        marker.bindPopup(popupContent);
         markerClusterGroup.addLayer(marker);
       }
     });

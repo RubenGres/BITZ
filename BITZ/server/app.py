@@ -142,6 +142,14 @@ def get_quest_metadata(quest_id, force_reload=False):
     
     return metadata
 
+@app.get("/explorer_data")
+def explorer_data():
+    response = jsonify(db.get_explorer_quests(request.args.get("view") == "network"))
+    response.cache_control.public = True
+    response.cache_control.max_age = 30
+    return response
+
+
 @app.route("/quest_info", methods=["GET"])
 def quest_info():
     data = request.args
@@ -636,39 +644,31 @@ def dashboard():
 
 @app.route("/map")
 def map_view():
-    quest_ids = get_quest_ids()
+    quests = {}
+    for quest in db.get_quests_collection().find({}, {"quest_id": 1, "location": 1, "_id": 0}):
+        quest_id = quest["quest_id"]
+        if os.path.isdir(os.path.join(BASE_DIR, "images", quest_id)):
+            quests[quest_id] = {
+                "id": quest_id, "location": quest.get("location"), "history": [],
+                "species": [], "images_path": url_for("explore_images", image_path=quest_id + "/"),
+            }
+    if not quests:
+        return "No quests with map data found", 404
 
-    if not quest_ids:
-        return "Error: No quest IDs provided. Use ?ids=quest1&ids=quest2", 400
-    
-    # Prepare data for all quests
-    all_quests_data = []
-    
-    for quest_id in quest_ids:
-        imgs_path = os.path.join(BASE_DIR, "images", quest_id)
+    fields = {"quest_id": 1, "timestamp": 1, "image_location": 1, "image_filename": 1, "_id": 0}
+    for obs in db.get_observations_collection().find({"image_location": {"$ne": None}}, fields).sort([("quest_id", 1), ("position", 1)]):
+        quest = quests.get(obs.pop("quest_id"))
+        if quest:
+            quest["history"].append(obs)
 
-        # Check quest exists in MongoDB and images exist on disk
-        quest = db.load_quest(quest_id)
-        if not quest or not os.path.isdir(imgs_path):
-            continue
+    fields = {"quest_id": 1, "observation_image": 1, "common_name": 1, "scientific_name": 1, "taxonomic_group": 1, "_id": 0}
+    for row in db.get_species_collection().find({}, fields):
+        quest = quests.get(row.pop("quest_id"))
+        if quest:
+            row["image_name"] = row.pop("observation_image", "")
+            quest["species"].append(row)
+    return render_template("map_view.html", quests=list(quests.values()))
 
-        # Relative paths for frontend (CSV & history served via /explore/ from MongoDB)
-        relative_csv_path = f"/explore/data/{quest_id}/species_data_english.csv"
-        relative_history_path = f"/explore/data/{quest_id}/history.json"
-        relative_imgs_path = f"/explore/images/{quest_id}/"
-
-        all_quests_data.append({
-            "id": quest_id,
-            "csv_path": relative_csv_path,
-            "history_path": relative_history_path,
-            "images_path": relative_imgs_path
-        })
-    
-    if not all_quests_data:
-        return "Error: None of the provided quest IDs exist or have valid data", 404
-    
-    # Render the quests overview template
-    return render_template('map_view.html', quests=all_quests_data)
 
 @app.route("/recap/<id>")
 def recap(id):

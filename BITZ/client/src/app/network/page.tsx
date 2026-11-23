@@ -3,76 +3,10 @@ import React, { useState, useEffect } from 'react';
 import Header from '@/app/Header';
 import Footer from '@/app/Footer';
 import NetworkTab from '../components/visuals/NetworkTab';
-import { API_URL } from '@/app/Constants';
+import { useExplorerData } from '../utils/useExplorerData';
 
 export default function NetworkPage() {
-  const [questDataDict, setQuestDataDict] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [selectedQuestId, setSelectedQuestId] = useState("");
-
-  useEffect(() => {
-    // First, fetch the list of all quest IDs
-    fetch(`${API_URL}/quest_list`)
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Failed to fetch quest list');
-        }
-        return response.json();
-      })
-      .then(data => {
-        if (!data || !data.quests) {
-          throw new Error('Invalid quest list data structure');
-        }
-       
-        // Get all quest IDs from the quests object keys
-        const questIds = Object.keys(data.quests);
-       
-        // If no selectedQuestId is set, use the first one
-        if (questIds.length > 0 && !selectedQuestId) {
-          setSelectedQuestId(questIds[0]);
-        }
-       
-        // Create an array of promises to fetch details for each quest
-        const questPromises = questIds.map(id =>
-          fetch(`${API_URL}/quest_info?id=${id}`)
-            .then(response => {
-              if (!response.ok) {
-                throw new Error(`Failed to fetch quest info for ${id}`);
-              }
-              return response.json();
-            })
-            .then(questData => {
-              return { id, data: questData };
-            })
-            .catch(err => {
-              console.error(`Error fetching quest ${id}:`, err);
-              return { id, data: null, error: err.message };
-            })
-        );
-       
-        // Wait for all quest detail requests to complete
-        return Promise.all(questPromises);
-      })
-      .then(questResults => {
-        // Build the questDataDict from the results
-        const newQuestDataDict = {};
-       
-        questResults.forEach(result => {
-          if (result.data) {
-            newQuestDataDict[result.id] = result.data;
-          }
-        });
-       
-        setQuestDataDict(newQuestDataDict);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error('Error fetching quests:', err);
-        setError(err.message);
-        setLoading(false);
-      });
-  }, [selectedQuestId]);
+  const { questDataDict, loading, error } = useExplorerData(true);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#f6f9ec]">
@@ -107,7 +41,6 @@ export default function NetworkPage() {
             <div className="flex-grow  flex w-full h-full">
               <NetworkTab
                 questDataDict={questDataDict}
-                questId={selectedQuestId}
                 loading={loading}
                 error={error}
               />

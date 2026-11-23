@@ -1,78 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { API_URL } from '@/app/Constants';
-import NetworkTab from '../components/visuals/NetworkTab';
-import ListTab from '../components/visuals/ListTab';
+import React, { useState } from 'react';
+import { useExplorerData } from '../utils/useExplorerData';
+import dynamic from 'next/dynamic';
+const NetworkTab = dynamic(() => import('../components/visuals/NetworkTab'));
+const ListTab = dynamic(() => import('../components/visuals/ListTab'));
 import MapTab from '../components/visuals/MapTab';
 // import { QuestData } from './QuestTypes';
 
 const QuestExplorer = () => {
   const [activeTab, setActiveTab] = useState('map');
-  const [questDataDict, setQuestDataDict] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { questDataDict, loading, error } = useExplorerData(activeTab === 'network');
   const [filters, setFilters] = useState({
     searchText: ''
   });
-
-  useEffect(() => {
-    // First, fetch the list of all quest IDs
-    fetch(`${API_URL}/quest_list`)
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Failed to fetch quest list');
-        }
-        return response.json();
-      })
-      .then(data => {
-        if (!data || !data.quests) {
-          throw new Error('Invalid quest list data structure');
-        }
-       
-        // Get all quest IDs from the quests object keys
-        const questIds = Object.keys(data.quests);
-       
-        // Create an array of promises to fetch details for each quest
-        const questPromises = questIds.map(id =>
-          fetch(`${API_URL}/quest_info?id=${id}`)
-            .then(response => {
-              if (!response.ok) {
-                throw new Error(`Failed to fetch quest info for ${id}`);
-              }
-              return response.json();
-            })
-            .then(questData => {
-              return { id, data: questData };
-            })
-            .catch(err => {
-              console.error(`Error fetching quest ${id}:`, err);
-              return { id, data: null, error: err.message };
-            })
-        );
-       
-        // Wait for all quest detail requests to complete
-        return Promise.all(questPromises);
-      })
-      .then(questResults => {
-        // Build the questDataDict from the results
-        const newQuestDataDict = {};
-       
-        questResults.forEach(result => {
-          if (result.data) {
-            newQuestDataDict[result.id] = result.data;
-            //console.log(result.data)
-          }
-        });
-       
-        console.log('All quest data loaded:', newQuestDataDict);
-        setQuestDataDict(newQuestDataDict);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error('Error fetching quests:', err);
-        setError(err.message);
-        setLoading(false);
-      });
-  }, []);
 
   // Render the appropriate tab content based on activeTab state
   const renderTabContent = () => {

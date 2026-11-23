@@ -11,6 +11,8 @@ This keeps documents small, lets us query/filter/paginate at every level,
 and matches how the data is actually produced and consumed.
 """
 
+import csv
+import io
 import os
 import time
 from typing import Optional, Dict, Any, List
@@ -359,30 +361,53 @@ def get_species_groups(quest_id: str) -> Dict[str, int]:
         return {}
 
 
-def get_species_csv_string(quest_id: str) -> str:
-    """Reconstruct the CSV string from species documents."""
-    try:
-        species = load_species(quest_id)
-        if not species:
-            return ""
-        header = "image_name,taxonomic_group,scientific_name,common_name,confidence,notes,latitude,longitude"
-        lines = [header]
-        for sp in species:
-            line = ",".join([
-                sp.get("observation_image", ""),
-                sp.get("taxonomic_group", ""),
-                sp.get("scientific_name", ""),
-                sp.get("common_name", ""),
-                sp.get("confidence", ""),
-                sp.get("notes", ""),
-                sp.get("latitude", ""),
-                sp.get("longitude", ""),
-            ])
-            lines.append(line)
-        return "\n".join(lines) + "\n"
-    except Exception as e:
-        print(f"Error generating CSV string: {e}")
+SPECIES_CSV_FIELDS = (
+    "observation_image", "taxonomic_group", "scientific_name", "common_name",
+    "confidence", "notes", "latitude", "longitude",
+)
+
+
+def species_csv(rows):
+    if not rows:
         return ""
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(("image_name", *SPECIES_CSV_FIELDS[1:]))
+    writer.writerows([row.get(key, "") for key in SPECIES_CSV_FIELDS] for row in rows)
+    return output.getvalue()
+
+
+def get_species_csv_string(quest_id: str) -> str:
+    return species_csv(load_species(quest_id))
+
+
+def get_explorer_quests(include_history: bool):
+    quests = {}
+    for quest in get_quests_collection().find({}, {"quest_id": 1, "timestamp": 1, "user_id": 1, "_id": 0}):
+        item = {"timestamp": quest.get("timestamp"), "species_data_csv": ""}
+        if include_history:
+            item.update(user_id=quest.get("user_id"), history=[])
+        quests[quest["quest_id"]] = item
+
+    rows = {}
+    projection = dict.fromkeys(SPECIES_CSV_FIELDS, 1)
+    projection.update(quest_id=1, _id=0)
+    for row in get_species_collection().find({}, projection):
+        if row["quest_id"] in quests:
+            rows.setdefault(row["quest_id"], []).append(row)
+    for quest_id, species in rows.items():
+        quests[quest_id]["species_data_csv"] = species_csv(species)
+
+    if include_history:
+        fields = {"quest_id": 1, "timestamp": 1, "assistant_response": 1, "image_filename": 1, "_id": 0}
+        for obs in get_observations_collection().find({"image_filename": {"$ne": None}}, fields).sort([("quest_id", 1), ("position", 1)]):
+            if obs["quest_id"] in quests:
+                quests[obs["quest_id"]]["history"].append({
+                    "image_filename": obs["image_filename"],
+                    "timestamp": obs.get("timestamp"),
+                    "assistant": obs.get("assistant_response"),
+                })
+    return quests
 
 
 # ===================================================================

@@ -5,6 +5,11 @@
 server {
     listen 80;
     server_name ${API_DOMAIN};
+    gzip on;
+    gzip_types application/json;
+    gzip_min_length 1024;
+    gzip_vary on;
+    gzip_proxied any;
     client_max_body_size 16M;
 
     location / {
